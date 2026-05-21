@@ -332,20 +332,314 @@ Tauri Rust Backend（原生二进制）
 
 ---
 
-## 九、待完成事项
+## 九、WASM 计算引擎模块拆分
 
-- [ ] 功能矩阵细化到可操作级别
-- [ ] 每个模块的 UI/UX 原型
-- [ ] WASM 计算引擎模块拆分
-- [ ] SQLite 数据库 schema 设计
-- [ ] 技术指标分类列表（300+指标完整清单）
-- [ ] 策略回测引擎详细参数设计
-- [ ] K线图自研 Canvas 引擎技术方案
-- [ ] 授权系统完整设计（密钥生成→分发→验证→反篡改）
+所有核心计算逻辑编译为 WASM，在浏览器沙箱中运行。模块划分如下：
+
+```
+wasm/
+├── wasm-core/           # 核心基础设施
+│   ├── dataframe.rs     # 内部 DataFrame 实现（类 pandas 接口）
+│   ├── linalg.rs        # 线性代数（协方差矩阵、特征值分解等）
+│   ├── stats.rs         # 统计函数库（分位数、正态分布、t检验等）
+│   └── types.rs         # 共享类型定义
+│
+├── wasm-indicators/     # 技术指标计算引擎
+│   ├── trend/           # 趋势类指标 (60+)
+│   ├── momentum/        # 动量类指标 (50+)
+│   ├── volatility/      # 波动类指标 (40+)
+│   ├── volume/          # 成交量类指标 (30+)
+│   ├── cycle/           # 周期类指标 (20+)
+│   ├── composite/       # 复合指标 (30+)
+│   └── custom/          # 自定义指标脚本解释器
+│
+├── wasm-pattern/        # K线形态识别引擎
+│   ├── single_line.rs   # 单线形态 (10种)
+│   ├── double_line.rs   # 双线形态 (15种)
+│   ├── triple_line.rs   # 三线形态 (20种)
+│   ├── multi_line.rs    # 多线复合形态 (16种)
+│   └── confidence.rs    # 形态置信度评分
+│
+├── wasm-scanner/        # 选股扫描引擎
+│   ├── condition.rs     # 条件表达式解析器
+│   ├── executor.rs      # 并行扫描执行器
+│   ├── ranking.rs       # 多因子打分排序
+│   └── cache.rs         # 增量扫描结果缓存
+│
+├── wasm-backtest/       # 策略回测引擎
+│   ├── vector_engine.rs # 向量化回测（核心：return = position.shift(1) * market_return）
+│   ├── event_engine.rs  # 事件驱动回测
+│   ├── metrics.rs       # 绩效指标计算
+│   ├── optimizer.rs     # 参数优化（网格搜索 + 遗传算法 + Optuna贝叶斯）
+│   ├── cross_val.rs     # Walk-Forward 交叉验证
+│   └── monte_carlo.rs   # Monte Carlo 模拟
+│
+├── wasm-distribution/   # 筹码分布估算引擎
+│   ├── estimate.rs      # 成本分布估计算法
+│   ├── concentration.rs # 集中度/获利比例计算
+│   └── history.rs       # 历史筹码动画数据
+│
+├── wasm-profile/        # Market/Volume Profile 引擎
+│   ├── market_profile.rs # TPO/Market Profile 计算
+│   ├── volume_profile.rs # Volume Profile 计算
+│   └── poc.rs           # POC/VAH/VAL 关键价位
+│
+└── wasm-license/        # 授权验证模块
+    ├── rsa_verify.rs    # RSA-4096 签名验证
+    ├── fingerprint.rs   # 机器指纹采集与哈希
+    └── anti_tamper.rs   # 完整性校验（运行时 checksum）
+```
+
+## 十、SQLite 数据库 Schema 设计（草案）
+
+```sql
+-- 股票基础信息表
+CREATE TABLE stocks (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,         -- '000001.SZ'
+    name TEXT NOT NULL,                 -- '平安银行'
+    exchange TEXT NOT NULL,             -- 'SZ' | 'SH' | 'BJ'
+    industry TEXT,                      -- 行业分类
+    sector TEXT,                        -- 板块
+    listing_date TEXT,                  -- 上市日期
+    is_st BOOLEAN DEFAULT 0,           -- 是否ST
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 日线行情数据表
+CREATE TABLE daily_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    stock_id INTEGER NOT NULL REFERENCES stocks(id),
+    trade_date TEXT NOT NULL,           -- '2026-05-21'
+    open REAL NOT NULL,
+    high REAL NOT NULL,
+    low REAL NOT NULL,
+    close REAL NOT NULL,
+    volume REAL NOT NULL,               -- 成交量（手）
+    amount REAL NOT NULL,               -- 成交额（元）
+    turnover_rate REAL,                 -- 换手率
+    pre_close REAL,                     -- 前收盘
+    change_pct REAL,                    -- 涨跌幅
+    UNIQUE(stock_id, trade_date)
+);
+
+-- CREATE INDEX idx_daily_date ON daily_prices(trade_date);
+-- CREATE INDEX idx_daily_stock ON daily_prices(stock_id);
+
+-- 分钟线行情（可选，付费功能）
+CREATE TABLE minute_prices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    stock_id INTEGER NOT NULL REFERENCES stocks(id),
+    trade_time TEXT NOT NULL,           -- '2026-05-21 09:35:00'
+    open REAL, high REAL, low REAL, close REAL,
+    volume REAL, amount REAL,
+    UNIQUE(stock_id, trade_time)
+);
+
+-- 交易记录表
+CREATE TABLE trades (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    stock_id INTEGER NOT NULL REFERENCES stocks(id),
+    direction TEXT NOT NULL,            -- 'buy' | 'sell'
+    price REAL NOT NULL,
+    quantity INTEGER NOT NULL,          -- 股数
+    trade_date TEXT NOT NULL,
+    trade_time TEXT,
+    commission REAL DEFAULT 0,          -- 手续费
+    stamp_tax REAL DEFAULT 0,           -- 印花税
+    strategy_name TEXT,                 -- 关联策略名称
+    emotion_tag TEXT,                   -- 情绪标签
+    notes TEXT,                         -- 备注
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 策略定义表
+CREATE TABLE strategies (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL UNIQUE,
+    description TEXT,
+    type TEXT NOT NULL,                 -- 'trend' | 'mean_reversion' | 'momentum' | 'ml' | 'composite'
+    script TEXT,                        -- 策略脚本（自定义指标语法）
+    params TEXT,                        -- JSON格式参数字典
+    created_at TEXT DEFAULT (datetime('now')),
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 回测实验结果表
+CREATE TABLE backtest_results (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    strategy_id INTEGER REFERENCES strategies(id),
+    start_date TEXT NOT NULL,
+    end_date TEXT NOT NULL,
+    initial_capital REAL NOT NULL,
+    final_capital REAL,
+    total_return REAL,
+    annual_return REAL,
+    max_drawdown REAL,
+    sharpe_ratio REAL,
+    win_rate REAL,
+    profit_loss_ratio REAL,
+    total_trades INTEGER,
+    params_json TEXT,                   -- 本次回测使用的参数（JSON）
+    metrics_json TEXT,                  -- 完整指标（JSON）
+    equity_curve_json TEXT,             -- 资金曲线压缩数据
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 自选股/监控列表
+CREATE TABLE watchlists (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,                  -- 列表名称
+    description TEXT,
+    created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE watchlist_items (
+    watchlist_id INTEGER REFERENCES watchlists(id) ON DELETE CASCADE,
+    stock_id INTEGER REFERENCES stocks(id),
+    added_at TEXT DEFAULT (datetime('now')),
+    PRIMARY KEY (watchlist_id, stock_id)
+);
+
+-- 用户设置/偏好
+CREATE TABLE user_preferences (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,                 -- JSON格式
+    updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- 授权信息表（加密存储）
+CREATE TABLE license_info (
+    id INTEGER PRIMARY KEY CHECK (id = 1),  -- 单行表
+    license_key TEXT NOT NULL,
+    activation_date TEXT NOT NULL,
+    expiry_date TEXT,                    -- NULL 表示永久
+    machine_fingerprint TEXT NOT NULL,
+    feature_flags TEXT NOT NULL,         -- JSON: {"pro": true, "expiry": null}
+    signature TEXT NOT NULL              -- RSA签名，防篡改
+);
+```
+
+## 十一、自研 K线图 Canvas 引擎技术方案
+
+### 为什么自研
+- ECharts/TradingView 的 K线图库不支持 Volume Profile、Market Profile 叠加
+- 专业功能（筹码分布叠加、自定义画线持久化）需底层控制
+- 体积可控，不依赖外部商业授权
+
+### 分层架构
+
+```
+React 组件层 (KLineChart, IndicatorOverlay, DrawingTools)
+       ↓
+Canvas 渲染引擎 (自研)
+       ↓
+┌──────────────────────────────────┐
+│  视口管理器 (ViewportManager)     │
+│  ├─ 可视K线范围计算               │
+│  ├─ 缩放/平移/惯性滚动            │
+│  ├─ 十字光标追踪                  │
+│  └─ 多图表视口联动                │
+├──────────────────────────────────┤
+│  图层系统 (LayerManager)          │
+│  ├─ K线图层（蜡烛实体+影线）      │
+│  ├─ 成交量图层（柱状+颜色映射）   │
+│  ├─ 指标图层（线/柱/散点/带状）   │
+│  ├─ 画线图层（SVG Overlay）       │
+│  ├─ 形态标注图层                   │
+│  ├─ 订单标记图层                   │
+│  ├─ Volume Profile 图层            │
+│  ├─ Market Profile (TPO) 图层      │
+│  └─ 网格/坐标轴图层                │
+├──────────────────────────────────┤
+│  交互系统                          │
+│  ├─ Tooltip（跟随十字光标）        │
+│  ├─ 右键菜单                       │
+│  ├─ 画线工具（拖拽起点→终点）     │
+│  └─ 键盘快捷键                     │
+├──────────────────────────────────┤
+│  WebGL 加速层（大数据量场景）      │
+│  └─ 全市场扫描结果可视化           │
+└──────────────────────────────────┘
+```
+
+### 性能目标
+
+| 场景 | 数据量 | 目标帧率 |
+|------|--------|---------|
+| 单股票日K，10年数据 | ~2500根K线 | 60fps（缩放/平移） |
+| 全市场扫描结果散点图 | 5000+ 数据点 | 30fps（WebGL） |
+| Volume Profile 计算+渲染 | 每根K线的成交分布 | 500ms 内完成 |
+
+## 十二、授权系统完整设计
+
+### 密钥体系
+
+```
+开发者端（你的电脑上，离线操作）
+  ├─ 私钥 (RSA-4096) → 签署激活码，永不离开你的电脑
+  └─ 公钥 → 嵌入软件分发版本
+
+用户端（软件内WASM模块）
+  └─ 公钥 → 验证激活码签名
+```
+
+### 激活码格式
+
+```
+ME-V1-AbCdEf123456-2026-05-21-PRO-<RSA签名>
+ ─── ─── ────────── ────────── ─── ──────────
+  │    │      │          │       │       │
+  │    │      │          │       │     4096位签名(base64)
+  │    │      │          │      PRO/STD
+  │    │      │       激活日期
+  │    │    机器指纹哈希(前12位)
+  │  版本号
+ 前缀(产品标识)
+```
+
+### 验证流程
+
+```
+用户输入激活码
+    ↓
+WASM模块提取：机器指纹哈希 对比 激活码中的哈希 → 不匹配则拒绝
+    ↓
+WASM模块：公钥验签 激活码签名 → 签名无效则拒绝
+    ↓
+SQLite 写入 license_info 表
+    ↓
+运行时每次启动：checksum license_info → 被篡改则功能退化到免费版
+```
+
+### 防篡改机制
+
+1. 激活信息表 `license_info` 整行RSA签名，任何字段被手工修改→验签失败
+2. WASM二进制整体SHA256哈希嵌入Rust原生层，启动时比对
+3. JS前端obfuscator.io开启 `selfDefending` 选项，检测格式化/调试即崩溃
+4. DevTools检测（DevLock方案）：DevTools打开时触发全屏遮罩+DOM清空
+
+### 激活码生成工具
+
+一个独立的小工具（你自己用），输入：
+- 用户提供的机器指纹
+- 购买的版本（PRO/STD）
+- 有效期（永久/年付）
+
+输出一行激活码字符串，直接复制发给用户。
+
+## 十三、待完成事项
+
+- [ ] 功能矩阵每个细分项的用户故事（谁、在什么场景、解决什么问题）
+- [ ] 每个模块的 UI/UX 线框图
+- [ ] 技术指标 80/300+ 完整分类清单
+- [ ] 20个策略模板详细说明
+- [ ] 自定义指标脚本语言语法设计
 - [ ] 打包/分发/自动更新方案
-- [ ] 中文语言包与适老化 UI（大字体模式）
-- [ ] 定价策略最终确定
+- [ ] 适老化UI设计（大字体模式、高对比度模式）
+- [ ] 官网落地页设计
+- [ ] 定价策略 A/B 测试方案
 
 ---
 
-> **此文档为活文档，随设计推进逐步完善。所有决策记录于此，避免信息丢失。**
+> **此文档为活文档，随设计推进逐步完善。所有决策记录于此，避免上下文丢失。**
