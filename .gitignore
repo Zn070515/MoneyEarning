@@ -8,6 +8,7 @@ dist/
 build/
 target/
 out/
+.superpowers/
 
 # IDE
 .vscode/

@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/wasm-core",
+    "crates/wasm-indicators",
+    "crates/wasm-pattern",
+    "crates/wasm-scanner",
+    "crates/wasm-backtest",
+    "crates/wasm-distribution",
+    "crates/wasm-profile",
+    "crates/wasm-license",
+    "crates/wasm-custom",
+    "packages/app/src-tauri",
+]
