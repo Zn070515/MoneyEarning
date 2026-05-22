@@ -1,0 +1,135 @@
+/* ══════════════════════════════════════════════════════════
+   Accessibility Theme — 适老化UI
+   Large font mode & High contrast mode
+   ══════════════════════════════════════════════════════════ */
+
+/* —— Large Font Mode —— */
+html[data-large-font] {
+  font-size: 18px;
+}
+
+html[data-large-font] body {
+  font-size: 18px !important;
+}
+
+html[data-large-font] div,
+html[data-large-font] span,
+html[data-large-font] p,
+html[data-large-font] td,
+html[data-large-font] th,
+html[data-large-font] li,
+html[data-large-font] label,
+html[data-large-font] a {
+  font-size: inherit !important;
+}
+
+html[data-large-font] button {
+  font-size: 16px !important;
+  padding: 8px 16px !important;
+  min-height: 36px !important;
+}
+
+html[data-large-font] input,
+html[data-large-font] select,
+html[data-large-font] textarea,
+html[data-large-font] option {
+  font-size: 16px !important;
+  padding: 6px 10px !important;
+  min-height: 32px !important;
+}
+
+html[data-large-font] h1 { font-size: 28px !important; }
+html[data-large-font] h2 { font-size: 24px !important; }
+html[data-large-font] h3 { font-size: 20px !important; }
+
+html[data-large-font] table {
+  font-size: 15px !important;
+}
+
+html[data-large-font] small,
+html[data-large-font] .hint,
+html[data-large-font] .note {
+  font-size: 14px !important;
+}
+
+html[data-large-font] button[style*="font-size"],
+html[data-large-font] select[style*="font-size"],
+html[data-large-font] input[style*="font-size"] {
+  font-size: 16px !important;
+}
+
+/* —— High Contrast Mode —— */
+html[data-high-contrast] {
+  --hc-bg: #000000;
+  --hc-bg-alt: #0a0a0a;
+  --hc-border: #ffffff;
+  --hc-text: #ffffff;
+  --hc-accent: #ffff00;
+  --hc-positive: #00ff00;
+  --hc-negative: #ff4444;
+}
+
+html[data-high-contrast] body {
+  background: #000000 !important;
+  color: #ffffff !important;
+}
+
+/* Force high-contrast overrides for common dark-theme backgrounds */
+html[data-high-contrast] [style*="background"] {
+  /* Let specific overrides handle this */
+}
+
+/* Buttons — ensure text is readable */
+html[data-high-contrast] button {
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+  background: #000000 !important;
+}
+
+html[data-high-contrast] button:hover {
+  background: #ffffff !important;
+  color: #000000 !important;
+}
+
+/* Inputs/selects — white borders */
+html[data-high-contrast] input,
+html[data-high-contrast] select,
+html[data-high-contrast] textarea {
+  border: 2px solid #ffffff !important;
+  color: #ffffff !important;
+  background: #000000 !important;
+}
+
+/* Tables — clear borders */
+html[data-high-contrast] table,
+html[data-high-contrast] th,
+html[data-high-contrast] td {
+  border-color: #ffffff !important;
+  color: #ffffff !important;
+}
+
+html[data-high-contrast] th {
+  background: #1a1a1a !important;
+}
+
+/* Links */
+html[data-high-contrast] a {
+  color: #ffff00 !important;
+}
+
+/* Focus visible */
+html[data-high-contrast] *:focus-visible {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px;
+}
+
+/* Reduce transparency/blur effects for better readability */
+html[data-high-contrast] [style*="opacity"],
+html[data-high-contrast] [style*="rgba"] {
+  /* Preserve but ensure readability of text inside */
+}
+
+/* —— Combined mode — apply both —— */
+html[data-large-font][data-high-contrast] {
+  /* Both modes active — each rule set applies independently */
+}
