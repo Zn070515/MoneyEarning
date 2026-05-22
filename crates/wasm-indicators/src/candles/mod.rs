@@ -94,7 +94,7 @@ pub fn cdl_shooting_star(df: &DataFrame, _params: &HashMap<String, f64>) -> Resu
 
 // 6. Engulfing — body engulfs previous body
 pub fn cdl_engulfing(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, _h, _l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 1..n {
@@ -111,7 +111,7 @@ pub fn cdl_engulfing(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<V
 
 // 7. Harami — body contained within previous body
 pub fn cdl_harami(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, _h, _l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 1..n {
@@ -128,11 +128,11 @@ pub fn cdl_harami(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<
 
 // 8. Piercing — bull opens below prev low, closes above 50% of prev body
 pub fn cdl_piercing(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, _h, l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 1..n {
-        let prev_body = body(o[i-1], c[i-1]);
+        let _prev_body = body(o[i-1], c[i-1]);
         let prev_mid = (o[i-1] + c[i-1]) / 2.0;
         if !is_bullish(o[i-1], c[i-1]) && is_bullish(o[i], c[i])
             && o[i] < l[i-1] && c[i] > prev_mid && c[i] < o[i-1] {
@@ -144,7 +144,7 @@ pub fn cdl_piercing(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Ve
 
 // 9. Dark Cloud Cover — bear opens above prev high, closes below 50% of prev body
 pub fn cdl_dark_cloud_cover(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, h, _l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 1..n {
@@ -159,7 +159,7 @@ pub fn cdl_dark_cloud_cover(df: &DataFrame, _params: &HashMap<String, f64>) -> R
 
 // 10. Morning Star — 3-candle: bear + small body + bull
 pub fn cdl_morning_star(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, _h, _l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 2..n {
@@ -173,7 +173,7 @@ pub fn cdl_morning_star(df: &DataFrame, _params: &HashMap<String, f64>) -> Resul
 
 // 11. Evening Star — 3-candle: bull + small body + bear
 pub fn cdl_evening_star(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, _h, _l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 2..n {
@@ -187,7 +187,7 @@ pub fn cdl_evening_star(df: &DataFrame, _params: &HashMap<String, f64>) -> Resul
 
 // 12. Three White Soldiers — 3 consecutive bullish, each closing higher
 pub fn cdl_three_white_soldiers(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, _h, _l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 2..n {
@@ -200,7 +200,7 @@ pub fn cdl_three_white_soldiers(df: &DataFrame, _params: &HashMap<String, f64>) 
 
 // 13. Three Black Crows — 3 consecutive bearish, each closing lower
 pub fn cdl_three_black_crows(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (o, _h, _l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 2..n {
@@ -229,7 +229,7 @@ pub fn cdl_marubozu(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Ve
 
 // 15. Inside Bar — entire candle contained within previous candle's range
 pub fn cdl_inside(df: &DataFrame, _params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
-    let (o, h, l, c) = get_ohlc(df);
+    let (_o, h, l, c) = get_ohlc(df);
     let n = c.len();
     let mut result = vec![0.0; n];
     for i in 1..n {
