@@ -1,6 +1,6 @@
 {
   "name": "@me/app",
-  "version": "0.1.0",
+  "version": "0.6.0",
   "private": true,
   "description": "桌面应用主入口",
   "scripts": {
@@ -9,7 +9,10 @@
     "build": "tsc && vite build && tauri build",
     "build:web": "tsc && vite build",
     "typecheck": "tsc --noEmit",
-    "lint": "eslint src/"
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx,css}\""
   },
   "dependencies": {
     "@me/chart-engine": "workspace:*",
@@ -22,7 +25,13 @@
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.0",
+    "@typescript-eslint/eslint-plugin": "^7.0",
+    "@typescript-eslint/parser": "^7.0",
     "@vitejs/plugin-react": "^4.3",
+    "eslint": "^8.57",
+    "eslint-plugin-react": "^7.34",
+    "eslint-plugin-react-hooks": "^4.6",
+    "prettier": "^3.2",
     "typescript": "^5.4",
     "vite": "^5.4"
   }

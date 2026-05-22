@@ -2229,18 +2229,601 @@ COLORWHITE COLORCYAN COLORMAGENTA
 - [x] 通达信76内置指标兼容映射（4大公式类型、50+函数兼容、ME Script设计方向）
 - [x] 20个策略模板详细说明（含策略逻辑、参数、适用市场环境、绩效基准、风险提示）
 - [x] ME Script 自定义指标脚本语言完整语法规范（词法/语法/函数库/控制流/绘图/跨周期/EBNF/编译器架构）
-- [ ] 功能矩阵每个细分项的用户故事（谁、在什么场景、解决什么问题）
-- [ ] 每个模块的 UI/UX 线框图
-- [ ] 打包/分发/自动更新方案
-- [ ] 适老化UI设计（大字体模式、高对比度模式）
-- [ ] 官网落地页设计
-- [ ] 定价策略 A/B 测试方案
-- [ ] Alpha158因子库→WASM迁移方案（151/158因子、DAG计算管线）
-- [ ] 4种原创搜索算法（CAPS/CGPC/MARS/MetaSearcher）的产品化方案
-- [ ] 数据下载源方案（A股日线/分钟线免费数据源选型）
-- [ ] WASM各模块性能基准测试方案
-- [ ] ME Script编译器的完整实现（Lexer→Parser→WASM Codegen）
-- [ ] 20个策略模板的完整回测验证（每个策略在A股2015-2024全周期测试）
+- [x] 功能矩阵每个细分项的用户故事（§十七）
+- [x] 每个模块的 UI/UX 线框图（§二十一）
+- [x] 打包/分发/自动更新方案（§十八）
+- [x] 适老化UI设计（大字体模式、高对比度模式）— `packages/app/src/theme.tsx` + `theme.css`
+- [x] 官网落地页设计（§二十）
+- [x] 定价策略 A/B 测试方案（§十九）
+- [x] Alpha158因子库→WASM迁移方案（162/158因子、DAG计算管线）— `crates/wasm-factors/src/`
+- [x] 4种原创搜索算法（CAPS/CGPC/MARS/MetaSearcher）的产品化方案 — `crates/wasm-scanner/src/search.rs`
+- [x] 数据下载源方案（A股日线/分钟线免费数据源选型）（§十六）
+- [x] WASM各模块性能基准测试方案 — `crates/wasm-*/src/benches.rs`（3个crate，10个bench case）
+- [x] ME Script编译器的完整实现（Lexer→Parser→AST→Compiler→Runtime — `crates/wasm-custom/src/` 6模块 + 27测试）
+- [x] 20个策略模板的完整回测验证（每个策略在A股2015-2024全周期测试）
+
+---
+
+## 十六、A股数据下载源方案
+
+### 已实现：东方财富免费API
+
+当前 `packages/app/src-tauri/src/download.rs` 已实现基于东方财富公开API的数据下载：
+
+| 接口 | 地址 | 说明 |
+|------|------|------|
+| 股票列表 | `push2.eastmoney.com/api/qt/clist/get` | 全市场5000+股票，含代码/名称/最新价/涨跌幅 |
+| 日K线 | `push2his.eastmoney.com/api/qt/stock/kline/get` | 全历史日线数据，含OHLCV+振幅+涨跌幅+换手率 |
+
+**优势**：免费、无需认证、历史数据完整（1990年起）、含换手率（A股关键指标）
+**限制**：单次请求有限流风险，无分钟线数据
+
+### 分钟线数据源选型
+
+| 数据源 | 粒度 | 覆盖 | 认证 | 可靠性 | 推荐 |
+|--------|------|------|------|--------|:--:|
+| 东方财富通 | 1min/5min/15min/30min/60min | 全A股 | 无需登录 | ★★★ 较稳定 | **首选** |
+| 新浪财经 | 1min/5min/15min/30min/60min | 全A股 | 无需登录 | ★★☆ 有时断流 | 备选 |
+| 腾讯财经 | 1min/5min | 全A股 | 无需登录 | ★★☆ | 备选 |
+| JoinQuant/jqdatasdk | 1min+ | 全A股 | 需注册 | ★★★★ | 专业版可选 |
+| Tushare Pro | 1min+ | 全A股 | 需积分 | ★★★★ | 专业版可选 |
+
+**结论**：免费版使用东方财富分钟线API（klt参数：1=1min, 5=5min, 15=15min, 30=30min, 60=60min），付费版可集成Tushare Pro作为高质量备用源。
+
+### 批量下载策略
+
+```
+免费版：单次单股 → 用户按需下载
+付费版：
+  ├─ 批量下载队列（最多8线程并发）
+  ├─ 限流保护（请求间隔250ms，减少被封风险）
+  ├─ 自动重试（失败重试3次，指数退避）
+  ├─ 增量更新（仅下载本地最新日期之后的数据）
+  └─ 定时自动更新（每日收盘后30分钟自动触发）
+```
+
+### 数据质量管理
+
+- 复权数据：东方财富API kqt参数控制（不复权/前复权/后复权），默认前复权
+- 停牌处理：停牌日成交量=0，标记而非删除
+- 异常值检测：涨跌幅>11%（非科创板/创业板）→标记为异常
+- 去重策略：按(stock_id, trade_date)唯一约束，INSERT OR REPLACE
+
+---
+
+## 十七、功能矩阵用户故事
+
+### 模块一：行情数据中枢
+- **散户老张**（48岁，股龄3年）：每天收盘后用同花顺导出的CSV导入MoneyEarning，想在本地统一查看所有股票数据，不用在5个APP间切换。一次导入500只股票日线，1分钟内完成。
+- **上班族小李**（35岁，股龄1年）：午休时想快速下载今天的数据更新，看盘后分析。点击"批量更新"按钮，系统自动识别需要更新的股票并下载增量数据。
+
+### 模块二：K线图表系统
+- **技术派老王**（52岁，股龄10年）：习惯通达信的画线工具，想在K线上画趋势线、斐波那契回调，画线在不同周期间自动同步。选中画线工具→在K线上拖拽→右键保存为模板。
+- **波段交易者**（42岁，兼职炒股）：想同时看4只候选股票的日线图，对比走势选最佳入场点。
+
+### 模块三：技术指标引擎
+- **指标研究控**（45岁，工程背景）：想一次叠加MACD+RSI+布林带+成交量，对比不同参数效果。从指标库拖拽指标到图表，调整参数，实时预览。
+- **通达信迁移用户**（50岁，通达信老用户）：复制粘贴通达信公式 `CROSS(MA(C,5),MA(C,20))` 到ME Script编辑器，直接运行看到信号。
+
+### 模块四：选股扫描引擎
+- **周末选股党**（40岁）：每周末花2小时全市场扫描，找出"MACD金叉+放量+突破60日线"的股票。设置3个条件→一键扫描5000只→3分钟内出排名结果。
+- **盘中盯盘族**（38岁）：设置预警条件"RSI<20超卖"，符合条件的股票弹窗+声音提醒。
+
+### 模块五：策略回测引擎
+- **策略验证者**（43岁，有编程基础）：想验证"海龟交易法在A股2020-2024年表现如何"。选策略模板→设参数→点回测→看资金曲线和Sharpe→调参数再测。
+- **参数优化者**（39岁）：双均线策略fast=5, slow=20是最优的吗？用网格搜索5-20, 10-60全组合，找到Sharpe最高的参数对。
+
+### 模块六：复盘工具
+- **纪律派老赵**（55岁）：每笔交易后记录买入理由和情绪标签（"冲动追高"/"理性建仓"），月底看情绪分布→发现60%亏损来自"冲动追高"→开始克制。
+- **训练模式学习者**（36岁，股龄半年）：用历史数据逐根K线判断买卖点，隐藏后续走势，做完后再对照实际走势→训练盘感。
+
+### 模块七/八/九/十（略）
+- 形态识别：形态研究者自动标记K线形态+历史胜率统计
+- 筹码分布：套牢盘分析者看上方套牢盘压力位决定是否入场
+- 组合分析：多账户管理者看跨账户行业集中度
+
+---
+
+## 十八、打包/分发/自动更新方案
+
+### 打包方案
+
+| 平台 | 格式 | 工具 | 体积 |
+|------|------|------|------|
+| Windows（主力） | `.msi` + `.exe` (NSIS) | Tauri bundler + WiX | ~25-35MB |
+| macOS | `.dmg` | Tauri bundler | ~30-40MB |
+| Linux | `.AppImage` + `.deb` | Tauri bundler | ~35-45MB |
+
+**代码签名**：
+- Windows：购买EV Code Signing Certificate（约¥2000/年），SmartScreen不再拦截
+- macOS：Apple Developer Program（$99/年），需公证（notarization）
+
+### 分发链路
+
+```
+版本发布 (GitHub Releases)
+    ↓
+├─ 官网下载页 (Cloudflare Pages, 免费)
+├─ 网盘备用 (百度网盘/蓝奏云, 中国用户下载速度快)
+└─ GitHub Releases (国际用户 + CDN加速)
+    ↓
+内置自动更新检查 (tauri-plugin-updater)
+    ↓
+增量更新 (仅下载差异包, ~5-15MB vs 全量~30MB)
+```
+
+### 自动更新方案（已实现基础）
+
+`packages/app/src-tauri/tauri.conf.json` 已配置 `tauri-plugin-updater` v2：
+
+```json
+"plugins": {
+  "updater": {
+    "endpoints": ["https://cdn.example.com/updates/{{target}}/{{arch}}/{{current_version}}"],
+    "pubkey": "<RSA公钥>",
+    "windows": { "installMode": "passive" }
+  }
+}
+```
+
+**待完成**：配置CDN端点、生成RSA签名密钥对、实现增量补丁（`zstd`压缩差分）。
+
+### 版本管理
+
+- 语义版本：`v<MAJOR>.<MINOR>.<PATCH>`（如 v0.7.0）
+- 发布渠道：`stable`（默认）、`beta`（付费用户可选）
+- 强制更新：数据库schema变更时，客户端版本<最低版本→强制更新弹窗
+- 灰度发布：按百分比逐步推送给用户（CDN层实现）
+
+---
+
+## 十九、定价策略 A/B 测试方案
+
+### 测试一：心理价格锚点
+
+**假设**：在"终身买断 ¥199"旁边显示"首年 ¥149"会让 ¥199 看起来更划算。
+
+| 变体A | 变体B |
+|--------|--------|
+| 免费版 / 首年¥149 / 终身¥199 | 免费版 / 终身¥199（无中间选项） |
+
+**指标**：终身买断转化率。预期A组+15%。
+
+### 测试二：付费引导时机
+
+**假设**：触发功能边界时弹出引导，比固定位置静态展示效果好。
+
+| 变体A（时机） | 变体B（时机） |
+|--------|--------|
+| 用户点击付费功能时弹窗："此功能为专业版功能，升级即可使用" | 首页固定位置显示升级入口 |
+
+**指标**：付费页访问率、转化率。预期A组2x转化。
+
+### 测试三：免费试用时长
+
+**假设**：14天vs 7天试用期对转化率的影响。
+
+| 变体A | 变体B |
+|--------|--------|
+| 14天全功能试用 | 7天全功能试用 |
+
+**指标**：试用到期后7日内付费率。需平衡"足够体验"和"及时转化"。
+
+### 测试四：定价文案
+
+| 变体A | 变体B | 变体C |
+|--------|--------|--------|
+| "终身买断 ¥199" | "一次付费，永久使用 ¥199" | "¥199 = 终生VIP（原价¥499）" |
+
+**指标**：点击→购买转化率。
+
+### 实施方式
+
+初始阶段（用户量<100）：手工切换定价页面配置，观察转化率
+用户量增长后：服务端配置A/B分流（Cloudflare Workers + KV），30/70分流比例
+
+---
+
+## 二十、官网落地页设计
+
+### 页面结构
+
+```
+┌──────────────────────────────────────────────┐
+│  Hero Section                                │
+│  "你的股票数据，留在你的电脑上"                 │
+│  "专业级量化分析 · 完全离线 · 一次买断"         │
+│  [免费下载 Windows版]  [查看功能对比]           │
+│  "已支持macOS/Linux · 14天全功能免费试用"       │
+├──────────────────────────────────────────────┤
+│  Why MoneyEarning?                           │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐     │
+│  │ 100%离线  │ │ 300+指标 │ │ 一次买断 │     │
+│  │ 数据私密  │ │ 专业分析 │ │  ¥199    │     │
+│  └──────────┘ └──────────┘ └──────────┘     │
+├──────────────────────────────────────────────┤
+│  功能亮点截图轮播                              │
+│  [K线图] [指标面板] [回测报告] [扫描结果]       │
+├──────────────────────────────────────────────┤
+│  对比表：免费版 vs 付费版                      │
+│  (精简版功能矩阵，重点突出付费版增量)            │
+├──────────────────────────────────────────────┤
+│  FAQ                                         │
+│  Q: 数据从哪里来？A: 东方财富免费API+手动导入   │
+│  Q: 会不会上传数据？A: 100%本地，零网络依赖     │
+│  Q: 换电脑怎么办？A: 激活码绑定机器，支持迁移    │
+├──────────────────────────────────────────────┤
+│  Footer: 备案号 · 联系方式 · 政策条款           │
+└──────────────────────────────────────────────┘
+```
+
+### 技术方案
+
+- **部署**：Cloudflare Pages（免费，全球CDN，中国大陆有节点）
+- **框架**：纯HTML+CSS（单页，≤200KB），响应式（桌面+移动端适配）
+- **下载分发**：Cloudflare R2（免费10GB/月）或 GitHub Releases
+- **备案**：中国大陆需ICP备案（约20个工作日），初期先挂海外域名
+- **统计**：Cloudflare Web Analytics（隐私友好，无Cookie）
+
+### 配色
+
+- 主色：`#0f0f23`（深空蓝黑，与软件内暗色主题一致）
+- 强调色：`#fbbf24`（金色，软件内相同色系）
+- 字体：系统默认中文字体（MiSans/PingFang SC），14-18px
+
+---
+
+## 二十一、UI/UX 线框图（模块级）
+
+### 整体布局
+```
+┌──────────┬──────────────────────┬──────────┐
+│ Header: Logo | 版本 | License | 大字/高对比 | 导入 │
+├──────────┼──────────────────────┼──────────┤
+│          │  Chart Toolbar       │          │
+│ Left     ├──────────────────────┤  Right   │
+│ Sidebar  │                      │  Sidebar │
+│ (280px)  │   Chart Canvas       │  (300px) │
+│          │   (Main Content)     │          │
+│ - 股票   │                      │  - 交易  │
+│ - 自选   │   flex: 1            │  - 策略  │
+│ - 指标   │                      │  - 回测  │
+│          │                      │  - 扫描  │
+│          │                      │  - 筹码  │
+│          │                      │  - 风险  │
+├──────────┴──────────────────────┴──────────┤
+│ Status Bar: 数据加载状态 · 最后更新时间       │
+└──────────────────────────────────────────────┘
+```
+
+### 各模块布局要点
+
+**股票列表 (Left Sidebar → 股票)**
+```
+┌────────────────────┐
+│ [搜索框: 代码/名称]  │
+│ [市场筛选: 全部▾]   │
+├────────────────────┤
+│ 000001 平安银行     │
+│ 000002 万科A        │
+│ ...滚动列表...      │
+│ ── 点击行→加载K线   │
+└────────────────────┘
+```
+
+**指标选择器 (Left Sidebar → 指标)**
+```
+┌────────────────────┐
+│ 分类Tab: 趋势|动量|..│
+├────────────────────┤
+│ ☑ MACD   [参数▾]   │
+│ ☑ RSI    [14▾]     │
+│ ☐ KDJ              │
+│ ...可滚动指标列表    │
+└────────────────────┘
+```
+
+**交易记录 (Right Sidebar → 交易)**
+```
+┌────────────────────┐
+│ [+ 新增交易]        │
+├────────────────────┤
+│ 2026-05-20 买入     │
+│ 平安银行 ¥12.50     │
+│ 1000股 情绪:理性建仓 │
+│ ──────────────────  │
+│ 盈亏统计面板         │
+│ 总盈亏:+¥3,250      │
+│ 胜率: 62%           │
+└────────────────────┘
+```
+
+**策略面板 (Right Sidebar → 策略)**
+```
+┌────────────────────┐
+│ 策略模板: [双均线▾]  │
+│ 参数:               │
+│  快线: [5]          │
+│  慢线: [20]         │
+│ [▶ 回测] [⚙ 优化]  │
+├────────────────────┤
+│ 回测结果:           │
+│ 年化: 8.2%          │
+│ Sharpe: 0.51        │
+│ 最大回撤: -32%      │
+│ [查看详情→]         │
+└────────────────────┘
+```
+
+**扫描面板 (Right Sidebar → 扫描)**
+```
+┌────────────────────┐
+│ 条件1: [MACD▾] [金叉▾] │
+│ [+ 添加条件]        │
+│ 逻辑: AND ▾         │
+│ [▶ 开始扫描]        │
+├────────────────────┤
+│ 结果排名 (按评分↓)   │
+│ 1. 000001 评分:92   │
+│ 2. 600036 评分:88   │
+│ ...                 │
+└────────────────────┘
+```
+
+### 响应式策略
+
+| 屏幕宽度 | 布局 |
+|---------|------|
+| ≥1400px | 三栏：LSidebar(280) + Chart(flex) + RSidebar(300) |
+| 1200-1400px | 双栏：LSidebar(240) + Chart(flex)，RSidebar折叠为底部Tab |
+| <1200px | 单栏：Chart全屏，两侧边栏变成Overlay抽屉 |
+| 4K/超宽 | 三栏等比例放大，K线可显示更多数据点 |
+
+---
+
+## 十五、质检与风控体系
+
+> v1.0 | 2026-05-22 | 基于开源生态扫描 + 金融行业 QA 最佳实践 + A股特殊规则
+
+### 15.1 已安装的工具集
+
+#### AI Agent Skills（Claude Code 插件）
+
+| 来源 | Skill 名称 | 用途 |
+|------|-----------|------|
+| Superpowers 5.1.0 | `verify` | 运行应用验证代码变更生效 |
+| Superpowers 5.1.0 | `code-review` | PR diff 正确性审查 |
+| Superpowers 5.1.0 | `systematic-debugging` | 系统性缺陷定位 |
+| Superpowers 5.1.0 | `test-driven-development` | TDD 开发流程 |
+| Superpowers 5.1.0 | `verification-before-completion` | 完成前门控检查 |
+| Superpowers 5.1.0 | `security-review` | 安全审查（四层防御验证） |
+| GenSkills 1.4.2 | `accessibility-audit` | WCAG 无障碍审计 |
+| GenSkills 1.4.2 | `code-review` | 多维审查（安全/性能/正确性/可维护） |
+| GenSkills 1.4.2 | `dead-code` | 死代码检测 |
+| GenSkills 1.4.2 | `dependency-audit` | 依赖审计（未使用/过时/冲突） |
+| GenSkills 1.4.2 | `error-boundary` | 未处理异常检测 |
+| GenSkills 1.4.2 | `lint-fix` | 自动检测+修复 lint 问题 |
+| GenSkills 1.4.2 | `refactor` | 行为保持重构 |
+| GenSkills 1.4.2 | `security-audit` | OWASP Top 10 + CVE 扫描 |
+| GenSkills 1.4.2 | `test-generator` | 自动生成测试套件 |
+| GenSkills 1.4.2 | `type-check` | TypeScript/Rust 类型错误修复 |
+| GenSkills 1.4.2 | `perf-optimize` | 性能瓶颈分析与优化 |
+| GenSkills 1.4.2 | `mock-data` | 测试 mock 数据生成 |
+| GenSkills 1.4.2 | `release-notes` | 发布 changelog 生成 |
+
+#### Python 量化工具（conda base 环境）
+
+```bash
+# 已安装
+pip install quantlite==1.0.2    # 过拟合检测（DSR/CSCV）+ Bootstrap CI
+conda install -c conda-forge pandas numpy scipy matplotlib
+
+# 待安装（GitHub 克隆到 scripts/）
+git clone https://github.com/plaintext-capital/pypbo.git scripts/pypbo/
+# pypbo: PBO/PSR/DSR/MinTRL 专项库，参考 Lopez de Prado 论文
+```
+
+#### 量化专用 conda 环境
+
+```bash
+conda create -n quant-qa python=3.12 -y
+conda activate quant-qa
+pip install quantlite pandas numpy scipy statsmodels matplotlib
+```
+
+### 15.2 参考开源项目（量化验证与风控）
+
+#### 核心对标项目
+
+| 项目 | 语言 | 核心能力 | 对本产品的参考价值 |
+|------|------|---------|-----------------|
+| **[backtester-mcp](https://github.com/bcosm/backtester-mcp)** | Python | PBO/DSR/CSCV/PSR + Bootstrap CI + Walk-Forward | **最强过拟合检测链**，MCP 协议原生支持 AI Agent 调用 |
+| **[pypbo](https://github.com/plaintext-capital/pypbo)** | Python | PBO + PSR + DSR + MinTRL | 算法参考——CSCV 并行交叉验证的参考实现 |
+| **[quant-backtesting-validation](https://github.com/Hussain0327/quant-backtesting-validation)** | TS/Next.js | 三重检验（Sharpe CI + Permutation + MC） | 统计显著性判定规则（3/3=强证据, 2/3=需研究） |
+| **[Quanto](https://github.com/skyliquid22/Quanto)** | Python | Data Health Checks + Qualification Gates + 可审计 manifest | 数据健康检查管线 + 策略上线门控 |
+| **[marketbench.ai](https://marketbench.ai)** | Python | 回测输出 vs 参考实现的 MAE 比对 | 数值精度验证——不同引擎输出交叉比对 |
+| **[findata-guard](https://github.com/xbtlin/findata-guard)** | Python | OHLCV 约束检查 + Benford 分析 + Merkle 审计 | 数据完整性/一致性验证框架 |
+| **[ml4t/data](https://github.com/ml4t/data)** | Python | OHLCVValidator + AnomalyManager（20+ 数据源适配） | 生产级数据质量管线 |
+
+#### A股专项参考
+
+| 项目 | 核心能力 |
+|------|---------|
+| **[hikyuu](https://github.com/fasiondog/hikyuu)** | C++/Python 超高速量化框架，A股深度适配，止损/资金管理/滑点 |
+| **[金策智算](https://github.com/ScottZt/jin-ce-zhi-suan)** | 三省六部分层风控，门下省一票否决制审核→刑部违规追溯 |
+
+#### 行业 QA 框架
+
+| 框架 | 来源 | 核心方法 |
+|------|------|---------|
+| **th2** | Exactpro | AI 驱动模型化测试 + mini-robots 模拟交易行为（套利/VWAP/合成策略） |
+| **H2 Framework** | Wealthfront | 历史决策回归（新代码 vs 旧决策）+ 新老系统并行对比 |
+| **Implementation Risk Framework** | arXiv 2603.20319 | 15 策略 × 5 引擎交叉比对，Engine Spread/IUI/DAF/CSI 四指标 |
+| **Tauri + WebDriver** | Tauri 官方 | `tauri-driver` + WebdriverIO E2E，`cargo test` 后端单元测试 |
+
+### 15.3 Rust 原生库依赖计划
+
+可以直接 `Cargo.toml` 集成的 crate：
+
+```toml
+# 性能指标交叉验证（替代自写的指标计算）
+[dependencies]
+quant-metrics = "0.2"    # Sharpe/Sortino/Calmar/VaR/CVaR/MaxDD/WinRate
+trametricks = "0.1"      # 轻量回测指标，依赖极少
+quantstats-rs = "0.1"    # HTML Tear Sheet（SVG 图表 + 报告）
+
+# 数值精度保证
+rust_decimal = "1"       # 金融级定点小数，避免浮点累积误差
+
+[dev-dependencies]
+mockall = "0.13"         # Rust mocking 框架
+serial_test = "3"        # 串行测试（状态共享场景）
+tempfile = "3"           # 临时文件测试
+```
+
+> **注意**：Rust 生态目前缺少 PBO/DSR 原生实现。需将 `pypbo` 的 CSCV 算法+ DSR 公式移植到 `wasm-backtest`，或通过 PyO3 桥接 Python 库。
+
+### 15.4 四层质检体系设计
+
+```
+┌──────────────────────────────────────────────────┐
+│  第四层：AI Agent 持续审查层（Claude Code）         │
+│  ├─ code-review (每次 PR)                        │
+│  ├─ security-audit (每周)                        │
+│  ├─ dependency-audit (每次发布前)                  │
+│  ├─ dead-code (每次 milestone)                   │
+│  ├─ test-generator (新模块完成后)                  │
+│  └─ verify (每次功能变更后手工冒烟)                 │
+├──────────────────────────────────────────────────┤
+│  第三层：策略回测验证层（wasm-backtest + Python）    │
+│  ├─ PBO (Probability of Backtest Overfitting)    │
+│  ├─ Deflated Sharpe Ratio (多重测试校正)          │
+│  ├─ Walk-Forward 交叉验证                          │
+│  ├─ Monte Carlo 交易序列随机化                      │
+│  ├─ 参数稳定性分析（网格搜索 + 遗传算法）              │
+│  └─ 回测输出 vs 参考实现交叉比对                     │
+├──────────────────────────────────────────────────┤
+│  第二层：数据质量层（wasm-core + 导入管线）          │
+│  ├─ OHLCV 一致性检查 (high≥low, high≥open/close)  │
+│  ├─ A股 涨跌停/停牌/ST/退市 前置过滤               │
+│  ├─ 缺失数据检测 + 交易日历校验                      │
+│  ├─ 复权数据交叉比对                                │
+│  ├─ 异常值检测 (Z-score + IQR + Isolation Forest) │
+│  └─ 前视偏差 (look-ahead bias) 自动检测            │
+├──────────────────────────────────────────────────┤
+│  第一层：编译时保证层（Rust #[cfg(test)]）          │
+│  ├─ 每个指标独立 unit test (对照 TA-Lib 基准值)    │
+│  ├─ 指标联动测试 (A指标修改 → 依赖指标回归)         │
+│  ├─ NaN/Inf/Zero 边界值覆盖                       │
+│  ├─ 数值精度回归 (浮点容差 1e-8)                   │
+│  └─ WASM 编译产物 integrity hash 自动比对          │
+└──────────────────────────────────────────────────┘
+```
+
+### 15.5 A 股数据质量检查清单
+
+#### 数据导入阶段
+
+| 检查项 | 方法 | 阈值/规则 |
+|--------|------|---------|
+| OHLCV 基本约束 | `high >= max(open, close)` 且 `low <= min(open, close)` | 违反→标记异常行 |
+| 日内涨跌幅校验 | `-20% <= change_pct <= +20%`（主板/中小板 ±10%，科创/创业 ±20%） | 超出→按板块校验 |
+| 一字板检测 | `open == high == low == close` 且当天非停牌 | 标记为不可交易信号 |
+| 复权数据对齐 | 分红/送股/定增日期 vs 复权因子突变日期 | ＞1个交易日偏差→告警 |
+| 重复交易日 | 同一 stock_id + trade_date 出现多次 | 删除重复，保留最新 |
+| 缺失交易日 | 交易日历 vs 实际数据行 | 标记跳空缺口天数 |
+| 成交量非负 | `volume >= 0` | `volume = 0`→停牌或一字板 |
+| 换手率异常 | 非基金类换手率 > 50% | 标记为疑似异常 |
+
+#### 回测前过滤
+
+| 过滤条件 | 规则 | 实现位置 |
+|---------|------|---------|
+| ST / *ST / 退市 | `'ST' in name or '*ST' in name or 退市` → 剔除 | wasm-scanner 前置 |
+| 停牌中 | 最近交易日状态=停牌 → 剔除 | wasm-core DataFrame |
+| 涨跌停封死 | 当日开盘=涨停价 or 跌停价 → 该日不可交易 | wasm-backtest 交易执行层 |
+| 次新股 | 上市不足 60 个交易日 → 剔除 | wasm-scanner 前置 |
+| 科创板 | 代码以 '688' 开头 → 可选过滤 | wasm-scanner 配置项 |
+| 成交量极小 | 日均成交量 < 100手 → 剔除（流动性过滤） | wasm-scanner 前置 |
+| 长期停牌 | 最近 10 日内停牌天数 > 5 → 剔除 | wasm-core DataFrame |
+
+#### 前视偏差检查
+
+| 类型 | 风险 | 防护 |
+|------|------|------|
+| 财务数据 | 使用 Q1 数据时实际 Q1 尚未公布 | 严格按报告披露日期访问数据 |
+| 指数成分股调整 | 使用当前成分股名单回测历史 | 保存各期成分股快照 |
+| 幸存者偏差 | 只看存活到今天的股票 | 保留已退市/被并购股票历史数据 |
+| 技术指标计算 | 计算 `ref(N)` 时意外引用未来值 | `position = signal.shift(1)` 强制 lag |
+| Train/Test 泄漏 | Walk-Forward 时 in-sample 与 out-sample 重叠 | Purged K-Fold CV 分配 |
+
+### 15.6 回测过拟合检测流程（PBO/DSR）
+
+参考 Lopez de Prado & Bailey 论文 + `pypbo`/`backtester-mcp` 实现：
+
+#### 判定标准
+
+| 指标 | 阈值 | 含义 |
+|------|:----:|------|
+| **PBO** (Probability of Backtest Overfitting) | < 0.10 | 10% 以下过拟合概率→可信 |
+| **DSR** (Deflated Sharpe Ratio) | > 0.95 (P值) | 经多次试验校正后仍显著→真实 alpha |
+| **PSR** (Probabilistic Sharpe Ratio) | > 0.95 | 夏普 > 0 的概率 |
+| **MinTRL** (Minimum Track Record Length) | < 实际样本量 | 实际数据足够支撑结论 |
+| Walk-Forward 样本外/内收益比 | > 0.5 | 样本外表现不低于样本内一半 |
+
+#### CSCV 算法步骤（拟移植到 wasm-backtest）
+
+```
+1. 对策略做 N 次参数扫描，记录每次试验的 Sharpe ratio → 矩阵 S[1×N]
+2. 将 N 次试验随机分成 S 对 (每组 N/2)
+3. 对每对：(a) 用 IS 组选最优参数 (b) 记录 OOS 的 Sharpe
+4. 计算 OOS Sharpe 的相对排名 → logit 值
+5. 拟合 logit 的累积分布 → PBO = 排名逻辑回归的概率下界
+```
+
+### 15.7 Tauri 桌面应用测试架构
+
+```
+┌──────────────────────────────────┐
+│  E2E: tauri-driver + WebdriverIO │ ← 关键用户路径（数据导入→K线图→回测→导出）
+├──────────────────────────────────┤
+│  Integration: cargo test         │ ← Rust 后端 IPC 命令 + WASM 调用链
+├──────────────────────────────────┤
+│  Unit: cargo test / vitest       │ ← 指标计算 / 形态识别 / UI 组件
+└──────────────────────────────────┘
+```
+
+**实施建议**：
+
+1. **Rust 后端**：所有 `#[tauri::command]` 函数增加 `#[cfg(test)] mod` 单元测试，使用 `mockall` mock 数据库连接
+2. **WASM 核心**：每个指标函数对标 TA-Lib 基准值，用 `approx` crate 做浮点容差断言
+3. **前端组件**：`@tauri-apps/api` mocks + Vitest，测试 UI 渲染和状态管理
+4. **E2E**：安装 `cargo install tauri-driver`，配置 WebdriverIO，覆盖核心用户流程
+5. **CI 管线**：GitHub Actions 矩阵（Windows→主力，macOS→兼容性）
+
+### 15.8 实施路径
+
+| 阶段 | 时间 | 任务 | 交付物 |
+|------|------|------|--------|
+| **Phase 1：编译时防线** | 第1-2周 | 为每个指标模块添加 `#[cfg(test)]` 单元测试；`wasm-core` 添加 OHLCV 约束检查函数；`wasm-indicators` 每个指标对照 TA-Lib 基准值 | 每个 crate 测试覆盖率 ≥ 40% |
+| **Phase 2：数据防线** | 第3-4周 | 实现导入数据校验管线（停牌/ST/涨跌停/复权/缺失）；`wasm-backtest` 添加前视偏差自动检测；交易日历模块 | 导入数据自动质量报告 |
+| **Phase 3：回测防线** | 第5-7周 | 移植 CSCV/PBO/DSR 算法到 `wasm-backtest`；引入 `quant-metrics` Rust crate；回测报告增加过拟合风险评分 | PBO < 0.10 的自动标记 |
+| **Phase 4：CI + AI 持续审查** | 第8-9周 | 配置 GitHub Actions 测试矩阵；集成 `tauri-driver` E2E；编码规范文档 + AI code-review hook | 每次 PR 自动运行测试+审查 |
+| **Phase 5：性能与安全** | 第10-12周 | 全市场扫描压力测试；WASM 完整性校验自动化；授权系统渗透测试 | 压力测试报告 + 安全审计报告 |
+
+### 15.9 风险评分卡（策略上线门控）
+
+每个策略上线前必须通过以下硬性门控：
+
+| 门控项 | 通过条件 | 不通过处理 |
+|--------|---------|-----------|
+| 数据完整性 | 缺失交易日 < 5% 总交易日 | 回填缺失数据或缩小回测区间 |
+| 前视偏差 | 零前视泄漏（自动化检测通过） | 修复 `shift`/`ref` 调用链 |
+| 参数过拟合 | PBO < 0.10 且 DSR P值 > 0.95 | 简化参数空间或增加样本外验证长度 |
+| Walk-Forward 稳定性 | OOS/IS 收益比 > 0.5 | 重新设计策略或接受该策略为"仅参考" |
+| 极端行情压力 | 覆盖 2008/2015/2018/2024 四轮熊市 | 回撤超过 50%→增加止损机制 |
+| 计算精度 | 浮点累积误差 < 1e-6（与参考实现比对） | 引入 `rust_decimal` 定点小数 |
+| 实盘一致性 | paper trading 3个月 vs 回测偏差 < 2% | 检查滑点/手续费/流动性模型 |
 
 ---
 
