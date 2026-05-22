@@ -1,0 +1,16 @@
+{
+  "name": "@me/chart-engine",
+  "version": "0.1.0",
+  "private": true,
+  "description": "自研K线图引擎 — Canvas + WebGL",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src/"
+  },
+  "devDependencies": {
+    "typescript": "^5.4"
+  }
+}

@@ -1,0 +1,168 @@
+import { useState } from "react";
+import { invoke } from "@tauri-apps/api/core";
+
+interface ImportResult {
+  stock_count: number;
+  row_count: number;
+  skipped: number;
+  date_range: [string, string] | null;
+}
+
+interface ImportDialogProps {
+  visible: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+}
+
+export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps) {
+  const [filePath, setFilePath] = useState("");
+  const [stockCode, setStockCode] = useState("");
+  const [exchange, setExchange] = useState("SZ");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<ImportResult | null>(null);
+  const [error, setError] = useState("");
+
+  if (!visible) return null;
+
+  const handleImport = async () => {
+    if (!filePath.trim() || !stockCode.trim()) return;
+    setLoading(true);
+    setError("");
+    try {
+      const res = await invoke<ImportResult>("import_csv", {
+        filePath: filePath.trim(),
+        stockCode: stockCode.trim(),
+        exchange,
+      });
+      setResult(res);
+      onSuccess();
+    } catch (e) {
+      setError(String(e));
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      zIndex: 1000,
+    }} onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#16213e", border: "1px solid #2a2a4a",
+        borderRadius: 8, padding: 24, width: 480, maxWidth: "90vw",
+        fontFamily: "monospace", color: "#ccc", fontSize: 13,
+      }}>
+        <h2 style={{ margin: "0 0 20px", color: "#fbbf24", fontSize: 16 }}>
+          导入CSV数据
+        </h2>
+
+        {/* File path */}
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 12, color: "#888", marginBottom: 4, display: "block" }}>
+            CSV文件路径
+          </label>
+          <input value={filePath}
+            onChange={e => setFilePath(e.target.value)}
+            placeholder='输入完整路径，如 C:\data\000001.csv'
+            style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
+        </div>
+
+        {/* Code + Exchange */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+          <div>
+            <label style={{ fontSize: 12, color: "#888", marginBottom: 4, display: "block" }}>
+              股票代码
+            </label>
+            <input value={stockCode}
+              onChange={e => setStockCode(e.target.value)}
+              placeholder='如 "000001"'
+              style={inputStyle} />
+          </div>
+          <div>
+            <label style={{ fontSize: 12, color: "#888", marginBottom: 4, display: "block" }}>
+              交易所
+            </label>
+            <select value={exchange}
+              onChange={e => setExchange(e.target.value)}
+              style={inputStyle}>
+              <option value="SZ">深圳 (SZ)</option>
+              <option value="SH">上海 (SH)</option>
+              <option value="BJ">北京 (BJ)</option>
+              <option value="HK">香港 (HK)</option>
+              <option value="US">美股 (US)</option>
+            </select>
+          </div>
+        </div>
+
+        {/* Format hint */}
+        <div style={{
+          padding: 8, background: "#1a1a2e", borderRadius: 4,
+          fontSize: 11, color: "#888", marginBottom: 14,
+        }}>
+          支持格式：trade_date, open, high, low, close, volume[, amount, turnover]
+          <br />
+          日期格式：YYYY-MM-DD，编码：UTF-8 或 GBK
+        </div>
+
+        {/* Result */}
+        {result && (
+          <div style={{
+            padding: 10, background: "#1a3a2e", borderRadius: 4,
+            fontSize: 12, marginBottom: 14,
+          }}>
+            <div style={{ color: "#22c55e", fontWeight: 600, marginBottom: 4 }}>
+              导入成功
+            </div>
+            <div>股票：{result.stock_count}只，数据行：{result.row_count}条</div>
+            {result.skipped > 0 && (
+              <div style={{ color: "#fbbf24" }}>跳过重复行：{result.skipped}条</div>
+            )}
+            {result.date_range && (
+              <div style={{ color: "#888" }}>
+                日期范围：{result.date_range[0]} ~ {result.date_range[1]}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <div style={{
+            padding: 10, background: "#3a1a2e", borderRadius: 4,
+            color: "#ef4444", fontSize: 12, marginBottom: 14,
+          }}>
+            {error}
+          </div>
+        )}
+
+        {/* Actions */}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+          <button onClick={onClose} style={{
+            background: "transparent", border: "1px solid #3a3a5a",
+            color: "#ccc", padding: "6px 16px", borderRadius: 4,
+            cursor: "pointer", fontSize: 12,
+          }}>
+            关闭
+          </button>
+          <button onClick={handleImport} disabled={loading || !filePath.trim() || !stockCode.trim()}
+            style={{
+              background: loading ? "#8a7a3a" : "#fbbf24",
+              color: "#000", border: "none",
+              padding: "6px 16px", borderRadius: 4,
+              cursor: loading ? "not-allowed" : "pointer",
+              fontSize: 12, fontWeight: 600,
+            }}>
+            {loading ? "导入中..." : "开始导入"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: "100%", background: "#1a1a2e", border: "1px solid #3a3a5a",
+  color: "#fff", padding: "6px 8px", borderRadius: 4, fontSize: 12,
+  fontFamily: "monospace", outline: "none", boxSizing: "border-box",
+};
