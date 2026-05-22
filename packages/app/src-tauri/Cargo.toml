@@ -2,8 +2,8 @@
 name = "moneyearning"
 version = "0.6.0"
 edition = "2021"
-description = "本地量化分析工作站 — 完全离线的A股量化分析桌面工具"
-authors = ["MoneyEarning Team"]
+description = "QuantVault — 本地量化分析工作站，完全离线的A股量化分析桌面工具"
+authors = ["QuantVault Team"]
 license = "MIT"
 
 [lib]

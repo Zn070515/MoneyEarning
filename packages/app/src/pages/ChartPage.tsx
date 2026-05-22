@@ -216,7 +216,7 @@ export default function ChartPage() {
       >
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
           <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: 15 }}>
-            MoneyEarning
+            QuantVault
           </span>
           {license && (
             <span

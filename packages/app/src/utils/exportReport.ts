@@ -87,7 +87,7 @@ export function generateBacktestReportMarkdown(
   lines.push("---");
   lines.push("");
   lines.push(
-    "*本报告由 MoneyEarning 本地量化分析工作站自动生成。过往业绩不代表未来表现，投资有风险，入市需谨慎。*",
+    "*本报告由 QuantVault 本地量化分析工作站自动生成。过往业绩不代表未来表现，投资有风险，入市需谨慎。*",
   );
   lines.push("");
 

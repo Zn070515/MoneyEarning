@@ -173,7 +173,7 @@ export default function SettingsPage() {
           关于
         </h3>
         <div style={{ fontSize: 12, color: "#888", lineHeight: 1.8 }}>
-          <div>MoneyEarning v0.6.0</div>
+          <div>QuantVault v0.7.0</div>
           <div>本地量化分析工作站</div>
           <div>Tauri 2.x + Rust + React/TypeScript</div>
         </div>

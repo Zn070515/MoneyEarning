@@ -52,10 +52,10 @@ export default function DashboardPage() {
       }}
     >
       <h1 style={{ color: "#fbbf24", marginBottom: 8, fontSize: 24 }}>
-        MoneyEarning
+        QuantVault
       </h1>
       <p style={{ color: "#888", marginBottom: 32, fontSize: 13 }}>
-        本地量化分析工作站 v0.6.0
+        本地量化分析工作站 v0.7.0
       </p>
 
       {/* Quick actions */}
