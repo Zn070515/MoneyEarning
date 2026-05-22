@@ -4,6 +4,7 @@ use serde::{Serialize, Deserialize};
 mod db;
 mod license;
 mod import;
+mod download;
 
 // ── License ──
 
@@ -364,6 +365,121 @@ struct ScanResultItem {
     signals: Vec<String>,
 }
 
+// ── Search Algorithms: CAPS / CGPC / MARS / MetaSearcher ──
+
+/// Load daily returns for a list of stock IDs from the DB
+fn load_returns_batch(
+    guard: &std::sync::MutexGuard<'_, Option<rusqlite::Connection>>,
+    stock_ids: &[i64],
+) -> Result<Vec<Vec<f64>>, String> {
+    let mut all_returns: Vec<Vec<f64>> = Vec::new();
+    for stock_id in stock_ids {
+        let prices = db::query_daily(guard, *stock_id, "2020-01-01", "2099-12-31")
+            .map_err(|e| e.to_string())?;
+        if prices.len() < 20 { continue; }
+        let returns: Vec<f64> = prices.windows(2)
+            .map(|w| (w[1].close - w[0].close) / w[0].close.max(0.0001))
+            .collect();
+        all_returns.push(returns);
+    }
+    Ok(all_returns)
+}
+
+#[tauri::command]
+fn run_caps_search(
+    stock_ids: Vec<i64>,
+    app: tauri::AppHandle,
+) -> Result<Vec<wasm_scanner::CapsResult>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let returns = load_returns_batch(&db, &stock_ids)?;
+    if returns.is_empty() {
+        return Err("No stocks with sufficient data".into());
+    }
+
+    let pool_name = format!("Pool_{}_stocks", returns.len());
+    let pools = vec![(pool_name, returns)];
+    let strategies = vec![
+        "risk_parity".to_string(),
+        "min_variance".to_string(),
+        "hierarchical_rp".to_string(),
+    ];
+    let params = std::collections::HashMap::new();
+
+    Ok(wasm_scanner::run_caps(&pools, &strategies, &params))
+}
+
+#[tauri::command]
+fn run_cgpc_search(
+    stock_ids: Vec<i64>,
+    n_pools: usize,
+    pool_size: usize,
+    app: tauri::AppHandle,
+) -> Result<Vec<wasm_scanner::CgpcPool>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let returns = load_returns_batch(&db, &stock_ids)?;
+    if returns.len() < 3 {
+        return Err("Need at least 3 stocks with sufficient data".into());
+    }
+
+    Ok(wasm_scanner::build_diverse_pools(&returns, n_pools, pool_size))
+}
+
+#[tauri::command]
+fn run_mars_search(
+    stock_ids: Vec<i64>,
+    n_regimes: usize,
+    app: tauri::AppHandle,
+) -> Result<wasm_scanner::MarsResult, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let returns = load_returns_batch(&db, &stock_ids)?;
+    if returns.len() < 5 {
+        return Err("Need at least 5 stocks with sufficient data".into());
+    }
+
+    // Build strategy returns as HashMap: each strategy → daily returns
+    let n = returns[0].len();
+    let mut strategy_returns: std::collections::HashMap<String, Vec<f64>> = std::collections::HashMap::new();
+
+    // Momentum strategy: equal-weighted average of all stock returns
+    let momentum: Vec<f64> = (0..n).map(|d| {
+        returns.iter().map(|r| r[d]).sum::<f64>() / returns.len() as f64
+    }).collect();
+    strategy_returns.insert("momentum".to_string(), momentum);
+
+    Ok(wasm_scanner::run_mars(&returns, &strategy_returns, n_regimes))
+}
+
+fn get_meta() -> &'static std::sync::Mutex<wasm_scanner::MetaSearcher> {
+    use std::sync::{Mutex, OnceLock};
+    static META: OnceLock<Mutex<wasm_scanner::MetaSearcher>> = OnceLock::new();
+    META.get_or_init(|| Mutex::new(wasm_scanner::MetaSearcher::new()))
+}
+
+#[tauri::command]
+fn run_metasearcher_select() -> Result<Option<wasm_scanner::SearchNode>, String> {
+    Ok(get_meta().lock().map_err(|e| e.to_string())?.select_next())
+}
+
+#[tauri::command]
+fn run_metasearcher_record(
+    node: wasm_scanner::SearchNode,
+    sharpe: f64,
+    round: usize,
+) -> Result<(), String> {
+    get_meta().lock().map_err(|e| e.to_string())?.record(&node, sharpe, round);
+    Ok(())
+}
+
+#[tauri::command]
+fn get_metasearcher_best() -> Result<Option<wasm_scanner::SearchNode>, String> {
+    Ok(get_meta().lock().map_err(|e| e.to_string())?.best_node().cloned())
+}
+
+#[tauri::command]
+fn get_metasearcher_count() -> Result<usize, String> {
+    Ok(get_meta().lock().map_err(|e| e.to_string())?.explored_count())
+}
+
 // ── Distribution ──
 
 #[tauri::command]
@@ -417,6 +533,100 @@ fn compute_sr_levels(stock_id: i64, num_levels: Option<usize>,
     Ok(wasm_distribution::volume_sr_levels(&df, num_levels.unwrap_or(50)))
 }
 
+// ── Distribution (extended) ──
+
+#[tauri::command]
+fn compute_concentration(stock_id: i64,
+                         app: tauri::AppHandle) -> Result<ConcentrationOutput, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+        .map_err(|e| e.to_string())?;
+    let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
+        open: dp.open, high: dp.high, low: dp.low, close: dp.close,
+        volume: dp.volume, amount: Some(dp.amount), turnover: dp.turnover,
+        trade_date: dp.trade_date.clone(),
+    }).collect();
+    let df = wasm_core::DataFrame::new(&ohlcv);
+    let c = wasm_distribution::concentration_analysis(&df);
+    Ok(ConcentrationOutput {
+        cr5: c.cr5, cr10: c.cr10, cr20: c.cr20,
+        trend: c.trend, description: c.description,
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ConcentrationOutput {
+    cr5: f64,
+    cr10: f64,
+    cr20: f64,
+    trend: f64,
+    description: String,
+}
+
+#[tauri::command]
+fn compute_profit_loss_ratio(stock_id: i64,
+                             app: tauri::AppHandle) -> Result<ProfitLossOutput, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+        .map_err(|e| e.to_string())?;
+    let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
+        open: dp.open, high: dp.high, low: dp.low, close: dp.close,
+        volume: dp.volume, amount: Some(dp.amount), turnover: dp.turnover,
+        trade_date: dp.trade_date.clone(),
+    }).collect();
+    let df = wasm_core::DataFrame::new(&ohlcv);
+    let pl = wasm_distribution::profit_loss_ratio(&df);
+    Ok(ProfitLossOutput {
+        profit_pct: pl.profit_pct,
+        loss_pct: pl.loss_pct,
+        avg_cost: pl.avg_cost,
+        weighted_avg_cost: pl.weighted_avg_cost,
+        last_price: pl.last_price,
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ProfitLossOutput {
+    profit_pct: f64,
+    loss_pct: f64,
+    avg_cost: f64,
+    weighted_avg_cost: f64,
+    last_price: f64,
+}
+
+#[tauri::command]
+fn compute_historical_frames(stock_id: i64, frame_count: Option<usize>,
+                             app: tauri::AppHandle) -> Result<Vec<FrameOutput>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+        .map_err(|e| e.to_string())?;
+    let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
+        open: dp.open, high: dp.high, low: dp.low, close: dp.close,
+        volume: dp.volume, amount: Some(dp.amount), turnover: dp.turnover,
+        trade_date: dp.trade_date.clone(),
+    }).collect();
+    let df = wasm_core::DataFrame::new(&ohlcv);
+    let frames = wasm_distribution::historical_frames(&df, frame_count.unwrap_or(30));
+    Ok(frames.iter().map(|f| FrameOutput {
+        date: f.date.clone(),
+        price_levels: f.price_levels.clone(),
+        chip_volume: f.chip_volume.clone(),
+        avg_cost: f.avg_cost,
+        profit_pct: f.profit_pct,
+        loss_pct: f.loss_pct,
+    }).collect())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct FrameOutput {
+    date: String,
+    price_levels: Vec<f64>,
+    chip_volume: Vec<f64>,
+    avg_cost: f64,
+    profit_pct: f64,
+    loss_pct: f64,
+}
+
 // ── Indicators ──
 
 /// Input OHLCV from frontend (matches chart data format)
@@ -436,6 +646,16 @@ struct IndicatorInput {
 fn compute_indicator(name: String, data: Vec<IndicatorInput>,
                      params: std::collections::HashMap<String, f64>)
                      -> Result<Vec<wasm_core::IndicatorOutput>, String> {
+    // Check license for PRO indicators
+    let meta = wasm_indicators::metadata(&name);
+    if meta.as_ref().map_or(false, |m| !m.is_free) {
+        let ls = license::check().map_err(|e| e.to_string())?;
+        if ls.tier != "pro" {
+            return Err(format!("「{}」为专业版指标，需要PRO授权。当前授权: {}",
+                meta.unwrap().name_cn, if ls.tier == "trial" { "试用版" } else { "免费版" }));
+        }
+    }
+
     let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
         open: d.open, high: d.high, low: d.low, close: d.close,
         volume: d.volume, amount: d.amount, turnover: d.turnover,
@@ -582,6 +802,52 @@ struct ScriptResult {
     errors: Vec<String>,
 }
 
+// ── Data Download ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DownloadSummary {
+    code: String,
+    name: String,
+    rows_inserted: usize,
+    date_range: Option<(String, String)>,
+}
+
+#[tauri::command]
+fn download_stock_list() -> Result<Vec<download::StockListItem>, String> {
+    download::download_stock_list().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn download_stock_data(code: String, name: Option<String>,
+                       app: tauri::AppHandle) -> Result<DownloadSummary, String> {
+    let guard = db::get_db(&app).map_err(|e| e.to_string())?;
+    let summary = download::download_and_import(
+        &guard,
+        &code,
+        name.as_deref(),
+    ).map_err(|e| e.to_string())?;
+    Ok(DownloadSummary {
+        code: summary.code,
+        name: summary.name,
+        rows_inserted: summary.rows_inserted,
+        date_range: summary.date_range,
+    })
+}
+
+#[tauri::command]
+fn check_for_app_update(_app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
+    // This will be implemented when the update server is deployed
+    // For now, returns None indicating no update available
+    Ok(None)
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct UpdateInfo {
+    version: String,
+    notes: String,
+    download_url: String,
+}
+
 // ── File System ──
 
 #[tauri::command]
@@ -594,6 +860,7 @@ fn get_app_data_dir(app: tauri::AppHandle) -> Result<String, String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let db_path = app.path().app_data_dir()
                 .map(|p| p.join("moneyearning.db"))?;
@@ -618,10 +885,16 @@ pub fn run() {
             compute_indicator, list_indicators,
             run_backtest,
             run_scanner,
+            run_caps_search, run_cgpc_search, run_mars_search,
+            run_metasearcher_select, run_metasearcher_record,
+            get_metasearcher_best, get_metasearcher_count,
             compute_volume_profile, compute_chip_distribution, compute_sr_levels,
+            compute_concentration, compute_profit_loss_ratio, compute_historical_frames,
             list_patterns, scan_all_patterns,
             compute_risk,
             execute_custom_script,
+            download_stock_list, download_stock_data,
+            check_for_app_update,
             get_app_data_dir,
         ])
         .run(tauri::generate_context!())
