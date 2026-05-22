@@ -1,0 +1,307 @@
+{
+  "packageVersion": "1.4.2",
+  "installedAt": "2026-05-22T12:19:09.436Z",
+  "skills": {
+    "genskills--accessibility-audit": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "7e708b9d7b1aaca7",
+      "installedAt": "2026-05-22T12:19:08.605Z",
+      "source": "genskills"
+    },
+    "genskills--code-review": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "d25da3ede021a884",
+      "installedAt": "2026-05-22T12:19:08.611Z",
+      "source": "genskills"
+    },
+    "genskills--codemod": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "40c748507fccc539",
+      "installedAt": "2026-05-22T12:19:08.616Z",
+      "source": "genskills"
+    },
+    "genskills--dead-code": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "ed6c774f02d13133",
+      "installedAt": "2026-05-22T12:19:08.624Z",
+      "source": "genskills"
+    },
+    "genskills--dependency-audit": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "4fcd77ffbf2b490e",
+      "installedAt": "2026-05-22T12:19:08.630Z",
+      "source": "genskills"
+    },
+    "genskills--error-boundary": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "dc6c7b0a2f24e485",
+      "installedAt": "2026-05-22T12:19:08.635Z",
+      "source": "genskills"
+    },
+    "genskills--lint-fix": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "717c011d9d9690c7",
+      "installedAt": "2026-05-22T12:19:08.640Z",
+      "source": "genskills"
+    },
+    "genskills--refactor": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "c1f85a330443da06",
+      "installedAt": "2026-05-22T12:19:08.645Z",
+      "source": "genskills"
+    },
+    "genskills--security-audit": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "a5f8bcff0190b6b1",
+      "installedAt": "2026-05-22T12:19:08.652Z",
+      "source": "genskills"
+    },
+    "genskills--test-generator": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "b5d903020039f760",
+      "installedAt": "2026-05-22T12:19:08.659Z",
+      "source": "genskills"
+    },
+    "genskills--type-check": {
+      "version": "1.4.2",
+      "category": "code-quality",
+      "checksum": "6c4edf90febe7006",
+      "installedAt": "2026-05-22T12:19:08.665Z",
+      "source": "genskills"
+    },
+    "genskills--api-client-gen": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "afe904ed89776a3f",
+      "installedAt": "2026-05-22T12:19:08.790Z",
+      "source": "genskills"
+    },
+    "genskills--config-gen": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "8abdfbb337d807fd",
+      "installedAt": "2026-05-22T12:19:08.878Z",
+      "source": "genskills"
+    },
+    "genskills--db-migrate": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "2e468d295025f0ba",
+      "installedAt": "2026-05-22T12:19:08.961Z",
+      "source": "genskills"
+    },
+    "genskills--debug": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "46a1c8d22535b3b2",
+      "installedAt": "2026-05-22T12:19:08.975Z",
+      "source": "genskills"
+    },
+    "genskills--docker-gen": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "d614acca4059b9c4",
+      "installedAt": "2026-05-22T12:19:09.010Z",
+      "source": "genskills"
+    },
+    "genskills--env-setup": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "9dc68581446ef7da",
+      "installedAt": "2026-05-22T12:19:09.031Z",
+      "source": "genskills"
+    },
+    "genskills--i18n": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "ed8a5967963e94e8",
+      "installedAt": "2026-05-22T12:19:09.048Z",
+      "source": "genskills"
+    },
+    "genskills--migrate": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "844728d798372995",
+      "installedAt": "2026-05-22T12:19:09.138Z",
+      "source": "genskills"
+    },
+    "genskills--mock-data": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "9340156957ba93ac",
+      "installedAt": "2026-05-22T12:19:09.170Z",
+      "source": "genskills"
+    },
+    "genskills--perf-optimize": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "87ec1eb0141016b0",
+      "installedAt": "2026-05-22T12:19:09.223Z",
+      "source": "genskills"
+    },
+    "genskills--project-starter": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "d547905dcde1a1cf",
+      "installedAt": "2026-05-22T12:19:09.312Z",
+      "source": "genskills"
+    },
+    "genskills--scaffold": {
+      "version": "1.4.2",
+      "category": "development",
+      "checksum": "6bfadf5a181a9055",
+      "installedAt": "2026-05-22T12:19:09.324Z",
+      "source": "genskills"
+    },
+    "genskills--github-actions": {
+      "version": "1.4.2",
+      "category": "devops",
+      "checksum": "c47407fda7b62a49",
+      "installedAt": "2026-05-22T12:19:09.329Z",
+      "source": "genskills"
+    },
+    "genskills--infra-gen": {
+      "version": "1.4.2",
+      "category": "devops",
+      "checksum": "ff89f0a65ca4d7cf",
+      "installedAt": "2026-05-22T12:19:09.334Z",
+      "source": "genskills"
+    },
+    "genskills--k8s-gen": {
+      "version": "1.4.2",
+      "category": "devops",
+      "checksum": "e7af7c5ab68429a6",
+      "installedAt": "2026-05-22T12:19:09.340Z",
+      "source": "genskills"
+    },
+    "genskills--api-docs": {
+      "version": "1.4.2",
+      "category": "documentation",
+      "checksum": "061cb54f6d440d6d",
+      "installedAt": "2026-05-22T12:19:09.346Z",
+      "source": "genskills"
+    },
+    "genskills--architecture-diagram": {
+      "version": "1.4.2",
+      "category": "documentation",
+      "checksum": "656c3a5839d4d1e0",
+      "installedAt": "2026-05-22T12:19:09.351Z",
+      "source": "genskills"
+    },
+    "genskills--doc-gen": {
+      "version": "1.4.2",
+      "category": "documentation",
+      "checksum": "c0c134b8d37c3684",
+      "installedAt": "2026-05-22T12:19:09.358Z",
+      "source": "genskills"
+    },
+    "genskills--readme-gen": {
+      "version": "1.4.2",
+      "category": "documentation",
+      "checksum": "513e0ae7dfccc6b9",
+      "installedAt": "2026-05-22T12:19:09.363Z",
+      "source": "genskills"
+    },
+    "genskills--storybook": {
+      "version": "1.4.2",
+      "category": "documentation",
+      "checksum": "66e541513da49adf",
+      "installedAt": "2026-05-22T12:19:09.367Z",
+      "source": "genskills"
+    },
+    "genskills--changelog-gen": {
+      "version": "1.4.2",
+      "category": "project-management",
+      "checksum": "0866c08d3a993cac",
+      "installedAt": "2026-05-22T12:19:09.375Z",
+      "source": "genskills"
+    },
+    "genskills--release-notes": {
+      "version": "1.4.2",
+      "category": "project-management",
+      "checksum": "eb125ce655dd6a26",
+      "installedAt": "2026-05-22T12:19:09.380Z",
+      "source": "genskills"
+    },
+    "genskills--task-tracker": {
+      "version": "1.4.2",
+      "category": "project-management",
+      "checksum": "289b3b8645ea7372",
+      "installedAt": "2026-05-22T12:19:09.386Z",
+      "source": "genskills"
+    },
+    "genskills--branch-manager": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "fceaeb62b8286753",
+      "installedAt": "2026-05-22T12:19:09.392Z",
+      "source": "genskills"
+    },
+    "genskills--ci-fix": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "1214fc7fd8a836a6",
+      "installedAt": "2026-05-22T12:19:09.396Z",
+      "source": "genskills"
+    },
+    "genskills--deploy": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "9d0024c2bc026860",
+      "installedAt": "2026-05-22T12:19:09.402Z",
+      "source": "genskills"
+    },
+    "genskills--git-commit": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "7c311064886753ec",
+      "installedAt": "2026-05-22T12:19:09.407Z",
+      "source": "genskills"
+    },
+    "genskills--git-hooks": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "0c5cb9dca5c06217",
+      "installedAt": "2026-05-22T12:19:09.413Z",
+      "source": "genskills"
+    },
+    "genskills--monorepo": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "8bcdc5d0ee911fad",
+      "installedAt": "2026-05-22T12:19:09.417Z",
+      "source": "genskills"
+    },
+    "genskills--pr-create": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "340be11913c4204a",
+      "installedAt": "2026-05-22T12:19:09.423Z",
+      "source": "genskills"
+    },
+    "genskills--pr-review": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "7d654bc5951bb1f4",
+      "installedAt": "2026-05-22T12:19:09.430Z",
+      "source": "genskills"
+    },
+    "genskills--release": {
+      "version": "1.4.2",
+      "category": "workflow",
+      "checksum": "71bb1a7760f4c959",
+      "installedAt": "2026-05-22T12:19:09.436Z",
+      "source": "genskills"
+    }
+  }
+}
