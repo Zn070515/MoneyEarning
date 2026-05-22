@@ -82,6 +82,7 @@ export class ChartEngine {
   removeDrawing(id: string): void { this.drawingRenderer.remove(id); this.draw(); }
   clearDrawings(): void { this.drawingRenderer.clear(); this.draw(); }
   selectDrawing(id: string | null): void { this.drawingRenderer.select(id); this.draw(); }
+  getSelectedDrawingId(): string | null { return this.drawingRenderer.getSelectedId(); }
   hitTestDrawing(x: number, y: number): DrawingObject | null { return this.drawingRenderer.hitTest(x, y); }
 
   // --- Coordinate conversion ---

@@ -16,18 +16,20 @@ interface KLineChartProps {
   drawings?: DrawingObject[];
   onDrawingAdd?: (obj: DrawingObject) => void;
   onDrawingDelete?: (id: string) => void;
+  onDrawingSelect?: (id: string | null) => void;
   onToolCancel?: () => void;
   className?: string;
 }
 
 export function KLineChart({
   data, indicators = [], chartType = "candlestick",
-  activeTool = null, drawings = [], onDrawingAdd, onDrawingDelete, onToolCancel, className,
+  activeTool = null, drawings = [], onDrawingAdd, onDrawingDelete, onDrawingSelect, onToolCancel, className,
 }: KLineChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<ChartEngine | null>(null);
   const [pending, setPending] = useState<PendingDraw | null>(null);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const pendingRef = useRef<PendingDraw | null>(null);
 
   // Init engine
@@ -66,11 +68,16 @@ export function KLineChart({
 
     const handleClick = (e: MouseEvent) => {
       if (!activeTool) {
-        // Check if clicking on existing drawing
         const { px, py } = getPixelPos(e);
         const hit = engine.hitTestDrawing(px, py);
         if (hit) {
           engine.selectDrawing(hit.id);
+          setSelectedDrawingId(hit.id);
+          onDrawingSelect?.(hit.id);
+        } else {
+          engine.selectDrawing(null);
+          setSelectedDrawingId(null);
+          onDrawingSelect?.(null);
         }
         return;
       }
@@ -121,6 +128,12 @@ export function KLineChart({
         setPending(null);
         onToolCancel?.();
       }
+      if ((e.key === "Delete" || e.key === "Backspace") && selectedDrawingId) {
+        engine.removeDrawing(selectedDrawingId);
+        onDrawingDelete?.(selectedDrawingId);
+        setSelectedDrawingId(null);
+        onDrawingSelect?.(null);
+      }
     };
 
     const handleContextMenu = (e: MouseEvent) => {
@@ -141,7 +154,7 @@ export function KLineChart({
       canvas.removeEventListener("contextmenu", handleContextMenu);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [activeTool, onDrawingAdd, onToolCancel]);
+  }, [activeTool, selectedDrawingId, onDrawingAdd, onDrawingDelete, onDrawingSelect, onToolCancel]);
 
   // Update cursor based on active tool
   useEffect(() => {
@@ -164,6 +177,18 @@ export function KLineChart({
           zIndex: 10,
         }}>
           {drawingToolLabel(activeTool)} — 点击图表放置 {pending ? "第二个点" : "第一个点"} · 右键/Esc 取消
+        </div>
+      )}
+      {!activeTool && selectedDrawingId && (
+        <div style={{
+          position: "absolute", top: 8, right: 12,
+          background: "rgba(255,215,0,0.12)", color: "#ffd700",
+          padding: "4px 10px", borderRadius: 4, fontSize: 12,
+          fontFamily: "monospace", pointerEvents: "none",
+          border: "1px solid rgba(255,215,0,0.25)",
+          zIndex: 10,
+        }}>
+          已选图形 · Delete 删除
         </div>
       )}
     </div>

@@ -30,6 +30,7 @@ export class DrawingRenderer {
   clear(): void { this.objects = []; }
   getAll(): DrawingObject[] { return [...this.objects]; }
   select(id: string | null): void { this.selectedId = id; }
+  getSelectedId(): string | null { return this.selectedId; }
 
   draw(mainRect: ViewRect, minPrice: number, maxPrice: number, transform: XYPrice): void {
     const ctx = this.ctx;

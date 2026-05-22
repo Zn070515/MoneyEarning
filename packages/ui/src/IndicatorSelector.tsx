@@ -69,6 +69,7 @@ export function IndicatorSelector({
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [params, setParams] = useState<Record<string, Record<string, number>>>({});
   const [computing, setComputing] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   useEffect(() => {
     invoke<IndicatorMeta[]>("list_indicators").then(setIndicators).catch(console.error);
@@ -103,6 +104,8 @@ export function IndicatorSelector({
       onChange([...activeIndicators, ...indicatorData]);
     } catch (e) {
       console.error("Compute indicator failed:", e);
+      setErrorMsg(String(e));
+      setTimeout(() => setErrorMsg(null), 4000);
     }
     setComputing(false);
   };
@@ -137,6 +140,16 @@ export function IndicatorSelector({
           ({indicators.length})
         </span>
       </div>
+
+      {errorMsg && (
+        <div style={{
+          margin: "0 12px", padding: "6px 10px", borderRadius: 4,
+          background: "#2a1a1a", border: "1px solid #5a3a3a",
+          color: "#ef4444", fontSize: 11, lineHeight: "16px",
+        }}>
+          {errorMsg}
+        </div>
+      )}
 
       {/* Category tabs */}
       <div style={{
