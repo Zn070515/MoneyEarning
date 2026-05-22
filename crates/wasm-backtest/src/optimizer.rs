@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use rand::Rng;
+use serde::{Serialize, Deserialize};
 use wasm_core::{DataFrame, BtResult};
 
 use crate::BacktestConfig;
@@ -38,7 +39,7 @@ impl Default for OptimizerConfig {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OptimizerResult {
     pub best_params: HashMap<String, f64>,
     pub best_score: f64,

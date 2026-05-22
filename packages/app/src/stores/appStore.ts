@@ -7,6 +7,10 @@ export interface AppState {
   licenseExpiry: string | null;
   setLicense: (valid: boolean, expiry: string | null) => void;
 
+  // License tier
+  licenseTier: string;
+  setLicenseTier: (tier: string) => void;
+
   // Accessibility
   largeFont: boolean;
   highContrast: boolean;
@@ -33,18 +37,28 @@ export const useAppStore = create<AppState>()(
 
       largeFont: false,
       highContrast: false,
+      licenseTier: "free",
       toggleLargeFont: () =>
         set((s) => {
           const next = !s.largeFont;
-          document.documentElement.setAttribute("data-large-font", next ? "true" : "false");
+          if (next) {
+            document.documentElement.setAttribute("data-large-font", "true");
+          } else {
+            document.documentElement.removeAttribute("data-large-font");
+          }
           return { largeFont: next };
         }),
       toggleHighContrast: () =>
         set((s) => {
           const next = !s.highContrast;
-          document.documentElement.setAttribute("data-high-contrast", next ? "true" : "false");
+          if (next) {
+            document.documentElement.setAttribute("data-high-contrast", "true");
+          } else {
+            document.documentElement.removeAttribute("data-high-contrast");
+          }
           return { highContrast: next };
         }),
+      setLicenseTier: (tier) => set({ licenseTier: tier }),
 
       currentPage: "/",
       navigate: (page) => set({ currentPage: page }),
@@ -60,6 +74,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         largeFont: state.largeFont,
         highContrast: state.highContrast,
+        licenseTier: state.licenseTier,
         licenseValid: state.licenseValid,
         licenseExpiry: state.licenseExpiry,
       }),

@@ -9,6 +9,25 @@ interface LicenseStatus {
   trial_days_left: number | null;
 }
 
+interface DataSummary {
+  total_stocks: number;
+  total_rows: number;
+  db_size_mb: number;
+}
+
+interface PnLSummary {
+  total_trades: number;
+  winning_trades: number;
+  losing_trades: number;
+  win_rate: number;
+  total_pnl: number;
+  avg_win: number;
+  avg_loss: number;
+  max_win: number;
+  max_loss: number;
+  profit_factor: number;
+}
+
 function tierLabel(t: string) {
   switch (t) {
     case "pro":
@@ -22,20 +41,38 @@ function tierLabel(t: string) {
 
 export default function DashboardPage() {
   const navigateTo = useAppStore((s) => s.navigate);
+  const setLicenseTier = useAppStore((s) => s.setLicenseTier);
   const [license, setLicense] = useState<LicenseStatus | null>(null);
+  const [dataSummary, setDataSummary] = useState<DataSummary | null>(null);
+  const [pnl, setPnl] = useState<PnLSummary | null>(null);
 
   const loadLicense = useCallback(async () => {
     try {
       const s = await invoke<LicenseStatus>("check_license");
       setLicense(s);
+      setLicenseTier(s.tier);
     } catch {
       // license check unavailable
+    }
+  }, [setLicenseTier]);
+
+  const loadStats = useCallback(async () => {
+    try {
+      const [ds, p] = await Promise.all([
+        invoke<DataSummary>("get_data_summary"),
+        invoke<PnLSummary>("trade_pnl", { stockId: null }),
+      ]);
+      setDataSummary(ds);
+      setPnl(p);
+    } catch {
+      // stats unavailable
     }
   }, []);
 
   useEffect(() => {
     loadLicense();
-  }, [loadLicense]);
+    loadStats();
+  }, [loadLicense, loadStats]);
 
   return (
     <div
@@ -133,6 +170,58 @@ export default function DashboardPage() {
                   : "未激活"}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Live data stats */}
+      {dataSummary && (
+        <div
+          style={{
+            display: "flex",
+            gap: 16,
+            flexWrap: "wrap",
+            marginBottom: 28,
+          }}
+        >
+          <StatBox
+            label="数据库股票数"
+            value={String(dataSummary.total_stocks)}
+            sub={`${(dataSummary.total_rows / 10000).toFixed(1)}万条日线`}
+            color="#fbbf24"
+          />
+          <StatBox
+            label="数据库大小"
+            value={
+              dataSummary.db_size_mb < 1
+                ? `${(dataSummary.db_size_mb * 1024).toFixed(0)} KB`
+                : `${dataSummary.db_size_mb.toFixed(1)} MB`
+            }
+            color="#60a5fa"
+          />
+          {pnl && (
+            <>
+              <StatBox
+                label="交易总笔数"
+                value={String(pnl.total_trades)}
+                sub={
+                  pnl.total_trades > 0
+                    ? `胜率 ${(pnl.win_rate * 100).toFixed(0)}%`
+                    : undefined
+                }
+                color="#c084fc"
+              />
+              <StatBox
+                label="总盈亏"
+                value={`¥${pnl.total_pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                sub={
+                  pnl.total_trades > 0
+                    ? `盈亏比 ${pnl.profit_factor.toFixed(2)}`
+                    : undefined
+                }
+                color={pnl.total_pnl >= 0 ? "#22c55e" : "#ef4444"}
+              />
+            </>
+          )}
         </div>
       )}
 
@@ -273,6 +362,51 @@ function WorkflowStep({
         </span>
       </div>
       <p style={{ color: "#888", fontSize: 11, lineHeight: 1.7 }}>{desc}</p>
+    </div>
+  );
+}
+
+function StatBox({
+  label,
+  value,
+  sub,
+  color,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        flex: "1 1 160px",
+        minWidth: 140,
+        padding: "14px 16px",
+        background: "#16213e",
+        borderRadius: 8,
+        border: "1px solid #2a2a4a",
+      }}
+    >
+      <div style={{ color: "#888", fontSize: 11, fontFamily: "monospace", marginBottom: 4 }}>
+        {label}
+      </div>
+      <div
+        style={{
+          color,
+          fontSize: 18,
+          fontFamily: "monospace",
+          fontWeight: 700,
+          marginBottom: sub ? 4 : 0,
+        }}
+      >
+        {value}
+      </div>
+      {sub && (
+        <div style={{ color: "#666", fontSize: 11, fontFamily: "monospace" }}>
+          {sub}
+        </div>
+      )}
     </div>
   );
 }

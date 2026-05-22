@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppStore } from "../stores/appStore";
-import { LicensePanel } from "@me/ui";
+import { LicensePanel, DataPanel } from "@me/ui";
 
 interface LicenseStatus {
   valid: boolean;
@@ -24,6 +24,7 @@ function tierLabel(t: string) {
 export default function SettingsPage() {
   const largeFont = useAppStore((s) => s.largeFont);
   const highContrast = useAppStore((s) => s.highContrast);
+  const setLicenseTier = useAppStore((s) => s.setLicenseTier);
   const toggleLargeFont = useAppStore((s) => s.toggleLargeFont);
   const toggleHighContrast = useAppStore((s) => s.toggleHighContrast);
   const [license, setLicense] = useState<LicenseStatus | null>(null);
@@ -32,10 +33,11 @@ export default function SettingsPage() {
     try {
       const s = await invoke<LicenseStatus>("check_license");
       setLicense(s);
+      setLicenseTier(s.tier);
     } catch {
       // unavailable
     }
-  }, []);
+  }, [setLicenseTier]);
 
   useEffect(() => {
     loadLicense();
@@ -157,6 +159,24 @@ export default function SettingsPage() {
           </div>
         )}
         <LicensePanel onActivated={loadLicense} />
+      </section>
+
+      {/* Data Management */}
+      <section style={{ marginBottom: 32 }}>
+        <h3
+          style={{
+            color: "#aaa",
+            fontSize: 13,
+            marginBottom: 12,
+            borderBottom: "1px solid #2a2a4a",
+            paddingBottom: 8,
+          }}
+        >
+          数据管理
+        </h3>
+        <div style={{ height: 400, border: "1px solid #2a2a4a", borderRadius: 8, overflow: "hidden" }}>
+          <DataPanel />
+        </div>
       </section>
 
       {/* About */}

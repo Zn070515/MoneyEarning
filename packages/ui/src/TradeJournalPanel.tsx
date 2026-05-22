@@ -13,9 +13,21 @@ interface Trade {
   commission: number;
   stamp_tax: number;
   strategy_name: string | null;
+  emotion_tag: string | null;
   notes: string | null;
   created_at: string;
 }
+
+const EMOTION_TAGS = [
+  { value: "理性建仓", color: "#22c55e" },
+  { value: "冲动追高", color: "#ef4444" },
+  { value: "恐慌割肉", color: "#f87171" },
+  { value: "盲目跟风", color: "#fb923c" },
+  { value: "纪律止盈", color: "#4ade80" },
+  { value: "纪律止损", color: "#a78bfa" },
+  { value: "犹豫错过", color: "#94a3b8" },
+  { value: "躺平持有", color: "#60a5fa" },
+];
 
 interface PnLSummary {
   total_trades: number;
@@ -54,7 +66,9 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
   const [formCommission, setFormCommission] = useState("0");
   const [formStampTax, setFormStampTax] = useState("0");
   const [formStrategy, setFormStrategy] = useState("");
+  const [formEmotion, setFormEmotion] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [emotionFilter, setEmotionFilter] = useState("");
 
   const loadTrades = useCallback(async () => {
     try {
@@ -94,6 +108,7 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
         commission: parseFloat(formCommission) || 0,
         stampTax: parseFloat(formStampTax) || 0,
         strategyName: formStrategy || null,
+        emotionTag: formEmotion || null,
         notes: formNotes || null,
       });
       setShowForm(false);
@@ -113,6 +128,7 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
     setFormCommission("0");
     setFormStampTax("0");
     setFormStrategy("");
+    setFormEmotion("");
     setFormNotes("");
   };
 
@@ -198,6 +214,30 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
               placeholder="使用的策略名称..." style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
           </div>
           <div style={{ marginBottom: 8 }}>
+            <label style={{ fontSize: 11, color: "#888" }}>情绪标签</label>
+            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+              {EMOTION_TAGS.map((tag) => (
+                <button
+                  key={tag.value}
+                  type="button"
+                  onClick={() => setFormEmotion(formEmotion === tag.value ? "" : tag.value)}
+                  style={{
+                    padding: "2px 8px",
+                    background: formEmotion === tag.value ? tag.color : "#0f0f23",
+                    color: formEmotion === tag.value ? "#000" : tag.color,
+                    border: `1px solid ${tag.color}`,
+                    borderRadius: 10,
+                    cursor: "pointer",
+                    fontFamily: "monospace",
+                    fontSize: 10,
+                  }}
+                >
+                  {tag.value}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div style={{ marginBottom: 8 }}>
             <label style={{ fontSize: 11, color: "#888" }}>备注</label>
             <input value={formNotes} onChange={e => setFormNotes(e.target.value)}
               placeholder="交易理由、心得..." style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
@@ -212,6 +252,31 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
         </div>
       )}
 
+      {/* Emotion filter bar */}
+      <div style={{
+        padding: "4px 12px", borderBottom: "1px solid #1a1a2e",
+        display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center",
+      }}>
+        <span style={{ color: "#888", fontSize: 10, marginRight: 4 }}>筛选:</span>
+        <button onClick={() => setEmotionFilter("")} style={{
+          ...filterChipStyle, background: !emotionFilter ? "#fbbf24" : "#1a1a2e",
+          color: !emotionFilter ? "#000" : "#888",
+        }}>全部</button>
+        {EMOTION_TAGS.map((tag) => {
+          const count = trades.filter(t => t.emotion_tag === tag.value).length;
+          if (!count) return null;
+          return (
+            <button key={tag.value} onClick={() => setEmotionFilter(emotionFilter === tag.value ? "" : tag.value)} style={{
+              ...filterChipStyle, background: emotionFilter === tag.value ? tag.color : "#1a1a2e",
+              color: emotionFilter === tag.value ? "#000" : tag.color,
+              border: `1px solid ${tag.color}`,
+            }}>
+              {tag.value} ({count})
+            </button>
+          );
+        })}
+      </div>
+
       {/* Trade List */}
       <div style={{ flex: 1, overflow: "auto" }}>
         {trades.length === 0 ? (
@@ -219,7 +284,9 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
             暂无交易记录
           </div>
         ) : (
-          trades.map(t => (
+          trades.filter(t => !emotionFilter || t.emotion_tag === emotionFilter).map(t => {
+            const emotion = EMOTION_TAGS.find(e => e.value === t.emotion_tag);
+            return (
             <div key={t.id} style={{
               padding: "6px 12px", borderBottom: "1px solid #1a1a2e",
               display: "flex", justifyContent: "space-between", alignItems: "center",
@@ -231,6 +298,12 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
                 </span>
                 <span style={{ color: "#888" }}>{t.trade_date}</span>
                 {t.stock_code && <span style={{ color: "#fbbf24" }}>{t.stock_code}</span>}
+                {emotion && (
+                  <span style={{ fontSize: 10, color: emotion.color, background: "rgba(255,255,255,0.05)", padding: "1px 6px", borderRadius: 8 }}>
+                    {emotion.value}
+                  </span>
+                )}
+                {t.strategy_name && <span style={{ color: "#666", fontSize: 10 }}>{t.strategy_name}</span>}
               </span>
               <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
                 <span>{t.price.toFixed(2)}</span>
@@ -240,7 +313,8 @@ export function TradeJournalPanel({ selectedStockId, compact }: TradeJournalPane
                 </span>
               </span>
             </div>
-          ))
+            );
+          })
         )}
       </div>
     </div>
@@ -260,4 +334,9 @@ const inputStyle: React.CSSProperties = {
   background: "#0f0f23", border: "1px solid #3a3a5a",
   color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12,
   fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box",
+};
+
+const filterChipStyle: React.CSSProperties = {
+  padding: "2px 8px", borderRadius: 10, border: "1px solid #3a3a5a",
+  cursor: "pointer", fontFamily: "monospace", fontSize: 10,
 };

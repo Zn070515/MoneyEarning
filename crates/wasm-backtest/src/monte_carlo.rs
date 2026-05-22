@@ -1,4 +1,5 @@
 use rand::Rng;
+use serde::{Serialize, Deserialize};
 use wasm_core::DataFrame;
 
 use crate::strategies::Signal;
@@ -33,7 +34,7 @@ impl Default for MonteCarloConfig {
 }
 
 /// Results from Monte Carlo simulation
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MonteCarloResult {
     /// All simulated terminal equity values
     pub terminal_equities: Vec<f64>,

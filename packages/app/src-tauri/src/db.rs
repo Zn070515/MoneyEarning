@@ -60,9 +60,13 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             commission REAL DEFAULT 0,
             stamp_tax REAL DEFAULT 0,
             strategy_name TEXT,
+            emotion_tag TEXT,
             notes TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
+
+        -- Migration: add emotion_tag to existing trades table
+        ALTER TABLE trades ADD COLUMN emotion_tag TEXT;
 
         CREATE TABLE IF NOT EXISTS strategies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,6 +76,21 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             template_type TEXT,
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
+
+        CREATE TABLE IF NOT EXISTS minute_prices (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            stock_id INTEGER NOT NULL REFERENCES stocks(id) ON DELETE CASCADE,
+            trade_time TEXT NOT NULL,
+            open REAL NOT NULL,
+            high REAL NOT NULL,
+            low REAL NOT NULL,
+            close REAL NOT NULL,
+            volume REAL NOT NULL DEFAULT 0,
+            amount REAL NOT NULL DEFAULT 0,
+            UNIQUE(stock_id, trade_time)
+        );
+        CREATE INDEX IF NOT EXISTS idx_minute_stock ON minute_prices(stock_id);
+        CREATE INDEX IF NOT EXISTS idx_minute_time ON minute_prices(trade_time);
     ")?;
     Ok(())
 }
@@ -314,12 +333,13 @@ pub fn strategy_delete(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 pub fn trade_create(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                     stock_id: i64, trade_date: &str, direction: &str,
                     price: f64, quantity: f64, commission: f64, stamp_tax: f64,
-                    strategy_name: Option<&str>, notes: Option<&str>) -> Result<i64> {
+                    strategy_name: Option<&str>, emotion_tag: Option<&str>,
+                    notes: Option<&str>) -> Result<i64> {
     let conn = guard.as_ref().expect("DB not initialized");
     conn.execute(
-        "INSERT INTO trades (stock_id, trade_date, direction, price, quantity, commission, stamp_tax, strategy_name, notes)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        params![stock_id, trade_date, direction, price, quantity, commission, stamp_tax, strategy_name, notes],
+        "INSERT INTO trades (stock_id, trade_date, direction, price, quantity, commission, stamp_tax, strategy_name, emotion_tag, notes)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![stock_id, trade_date, direction, price, quantity, commission, stamp_tax, strategy_name, emotion_tag, notes],
     )?;
     Ok(conn.last_insert_rowid())
 }
@@ -330,14 +350,14 @@ pub fn trade_list(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
     let sql = if stock_id.map_or(false, |id| id > 0) {
         "SELECT t.id, t.stock_id, s.code, s.name, t.trade_date, t.direction,
                 t.price, t.quantity, t.commission, t.stamp_tax,
-                t.strategy_name, t.notes, t.created_at
+                t.strategy_name, t.emotion_tag, t.notes, t.created_at
          FROM trades t LEFT JOIN stocks s ON t.stock_id = s.id
          WHERE t.stock_id = ?1
          ORDER BY t.trade_date DESC, t.id DESC"
     } else {
         "SELECT t.id, t.stock_id, s.code, s.name, t.trade_date, t.direction,
                 t.price, t.quantity, t.commission, t.stamp_tax,
-                t.strategy_name, t.notes, t.created_at
+                t.strategy_name, t.emotion_tag, t.notes, t.created_at
          FROM trades t LEFT JOIN stocks s ON t.stock_id = s.id
          ORDER BY t.trade_date DESC, t.id DESC"
     };
@@ -357,8 +377,8 @@ fn map_trade(row: &rusqlite::Row) -> rusqlite::Result<super::Trade> {
         trade_date: row.get(4)?, direction: row.get(5)?,
         price: row.get(6)?, quantity: row.get(7)?,
         commission: row.get(8)?, stamp_tax: row.get(9)?,
-        strategy_name: row.get(10)?, notes: row.get(11)?,
-        created_at: row.get(12)?,
+        strategy_name: row.get(10)?, emotion_tag: row.get(11)?,
+        notes: row.get(12)?, created_at: row.get(13)?,
     })
 }
 
@@ -440,4 +460,73 @@ pub fn trade_pnl(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
         max_loss,
         profit_factor,
     })
+}
+
+// ── Minute prices ──
+
+pub fn query_minute_prices(
+    guard: &std::sync::MutexGuard<'_, Option<Connection>>,
+    stock_id: i64, start: &str, end: &str,
+) -> Result<Vec<MinutePrice>> {
+    let conn = guard.as_ref().expect("DB not initialized");
+    let mut stmt = conn.prepare(
+        "SELECT id, stock_id, trade_time, open, high, low, close, volume, amount
+         FROM minute_prices WHERE stock_id = ?1 AND trade_time >= ?2 AND trade_time <= ?3
+         ORDER BY trade_time LIMIT 50000"
+    )?;
+    let rows = stmt.query_map(params![stock_id, start, end], |row| {
+        Ok(MinutePrice {
+            id: row.get(0)?,
+            stock_id: row.get(1)?,
+            trade_time: row.get(2)?,
+            open: row.get(3)?,
+            high: row.get(4)?,
+            low: row.get(5)?,
+            close: row.get(6)?,
+            volume: row.get(7)?,
+            amount: row.get(8)?,
+        })
+    })?;
+    rows.collect()
+}
+
+pub fn bulk_insert_minute(
+    guard: &std::sync::MutexGuard<'_, Option<Connection>>,
+    stock_id: i64, rows: &[MinuteRow],
+) -> Result<usize> {
+    let conn = guard.as_ref().expect("DB not initialized");
+    let mut count = 0;
+    for row in rows {
+        let result = conn.execute(
+            "INSERT OR IGNORE INTO minute_prices (stock_id, trade_time, open, high, low, close, volume, amount)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            params![stock_id, row.trade_time, row.open, row.high, row.low, row.close, row.volume, row.amount],
+        );
+        if let Ok(c) = result { count += c; }
+    }
+    Ok(count)
+}
+
+#[derive(Debug, Clone)]
+pub struct MinuteRow {
+    pub trade_time: String,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+    pub amount: f64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct MinutePrice {
+    pub id: i64,
+    pub stock_id: i64,
+    pub trade_time: String,
+    pub open: f64,
+    pub high: f64,
+    pub low: f64,
+    pub close: f64,
+    pub volume: f64,
+    pub amount: f64,
 }

@@ -1,10 +1,23 @@
+import { useState, useEffect, useCallback } from "react";
 import { BacktestPanel } from "@me/ui";
 import { useBacktestStore } from "../stores/backtestStore";
 import { useAppStore } from "../stores/appStore";
+import { invoke } from "@tauri-apps/api/core";
 import {
   generateBacktestReportMarkdown,
   downloadMarkdownReport,
 } from "../utils/exportReport";
+
+interface StrategyTemplate {
+  name: string;
+  name_cn: string;
+  category: string;
+  is_free: boolean;
+  params: Record<string, number>;
+  description: string;
+}
+
+const CATEGORY_ORDER = ["趋势跟踪", "均值回归", "动量", "突破", "复合"];
 
 export default function BacktestPage() {
   const config = useBacktestStore((s) => s.config);
@@ -15,198 +28,128 @@ export default function BacktestPage() {
   const setRunning = useBacktestStore((s) => s.setRunning);
   const selectedStockId = useAppStore((s) => s.selectedStockId);
   const selectedStockCode = useAppStore((s) => s.selectedStockCode);
+  const licenseTier = useAppStore((s) => s.licenseTier);
+
+  const [templates, setTemplates] = useState<StrategyTemplate[]>([]);
+
+  const loadTemplates = useCallback(async () => {
+    try {
+      const data = await invoke<StrategyTemplate[]>("list_strategy_templates");
+      setTemplates(data);
+    } catch (_) {}
+  }, []);
+
+  useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  const grouped: Record<string, StrategyTemplate[]> = {};
+  templates.forEach((t) => {
+    if (!grouped[t.category]) grouped[t.category] = [];
+    grouped[t.category].push(t);
+  });
 
   return (
-    <div
-      style={{
-        flex: 1,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
+    <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Page header */}
-      <div
-        style={{
-          padding: "12px 20px",
-          background: "#16213e",
-          borderBottom: "1px solid #2a2a4a",
-          display: "flex",
-          alignItems: "center",
-          gap: 16,
-          flexShrink: 0,
-        }}
-      >
-        <h2
-          style={{
-            color: "#fbbf24",
-            fontSize: 16,
-            fontFamily: "monospace",
-            margin: 0,
-          }}
-        >
+      <div style={{
+        padding: "12px 20px", background: "#16213e",
+        borderBottom: "1px solid #2a2a4a", display: "flex",
+        alignItems: "center", gap: 16, flexShrink: 0,
+      }}>
+        <h2 style={{ color: "#fbbf24", fontSize: 16, fontFamily: "monospace", margin: 0 }}>
           策略回测
         </h2>
         {selectedStockCode && (
-          <span
-            style={{
-              color: "#888",
-              fontSize: 12,
-              fontFamily: "monospace",
-            }}
-          >
+          <span style={{ color: "#888", fontSize: 12, fontFamily: "monospace" }}>
             当前标的: {selectedStockCode}
           </span>
         )}
       </div>
 
       {/* Configuration bar */}
-      <div
-        style={{
-          padding: "8px 20px",
-          background: "#1a1a2e",
-          borderBottom: "1px solid #2a2a4a",
-          display: "flex",
-          gap: 16,
-          alignItems: "center",
-          flexWrap: "wrap",
-          fontSize: 12,
-          fontFamily: "monospace",
-          color: "#aaa",
-          flexShrink: 0,
-        }}
-      >
+      <div style={{
+        padding: "8px 20px", background: "#1a1a2e",
+        borderBottom: "1px solid #2a2a4a", display: "flex",
+        gap: 16, alignItems: "center", flexWrap: "wrap",
+        fontSize: 12, fontFamily: "monospace", color: "#aaa", flexShrink: 0,
+      }}>
         <label>
           模板:
-          <select
-            value={config.template}
-            onChange={(e) => updateConfig({ template: e.target.value })}
-            style={selectStyle}
-          >
-            <option value="ma_cross">MA 双均线</option>
-            <option value="macd_signal">MACD 信号</option>
-            <option value="rsi_mean_reversion">RSI 均值回归</option>
-            <option value="bollinger_breakout">布林带突破</option>
-            <option value="turtle_trend">海龟趋势</option>
+          <select value={config.template} onChange={(e) => updateConfig({ template: e.target.value })}
+            style={selectStyle}>
+            {CATEGORY_ORDER.map((cat) => {
+              const group = grouped[cat];
+              if (!group) return null;
+              return (
+                <optgroup key={cat} label={`── ${cat} ──`}>
+                  {group.map((s) => (
+                    <option key={s.name} value={s.name} disabled={!s.is_free && licenseTier !== "pro"}>
+                      {s.is_free ? "▸" : "★"} {s.name_cn}
+                    </option>
+                  ))}
+                </optgroup>
+              );
+            })}
           </select>
         </label>
         <label>
           初始资金:
-          <input
-            type="number"
-            value={config.initialCapital}
-            onChange={(e) =>
-              updateConfig({ initialCapital: Number(e.target.value) })
-            }
-            style={inputStyle}
-          />
+          <input type="number" value={config.initialCapital}
+            onChange={(e) => updateConfig({ initialCapital: Number(e.target.value) })}
+            style={inputStyle} />
         </label>
         <label>
           佣金:
-          <input
-            type="number"
-            step="0.0001"
-            value={config.commissionRate}
-            onChange={(e) =>
-              updateConfig({ commissionRate: Number(e.target.value) })
-            }
-            style={{ ...inputStyle, width: 70 }}
-          />
+          <input type="number" step="0.0001" value={config.commissionRate}
+            onChange={(e) => updateConfig({ commissionRate: Number(e.target.value) })}
+            style={{ ...inputStyle, width: 70 }} />
         </label>
         <label>
           滑点:
-          <input
-            type="number"
-            step="0.0001"
-            value={config.slippage}
-            onChange={(e) =>
-              updateConfig({ slippage: Number(e.target.value) })
-            }
-            style={{ ...inputStyle, width: 70 }}
-          />
+          <input type="number" step="0.0001" value={config.slippage}
+            onChange={(e) => updateConfig({ slippage: Number(e.target.value) })}
+            style={{ ...inputStyle, width: 70 }} />
         </label>
         <button
           disabled={running || !selectedStockId}
-          onClick={() => {
-            setRunning(true);
-            // BacktestPanel handles the actual run internally
-          }}
+          onClick={() => setRunning(true)}
           style={{
             padding: "4px 16px",
-            background:
-              running || !selectedStockId ? "#3a3a5a" : "#fbbf24",
+            background: running || !selectedStockId ? "#3a3a5a" : "#fbbf24",
             color: running || !selectedStockId ? "#888" : "#000",
-            border: "none",
-            borderRadius: 4,
-            cursor:
-              running || !selectedStockId ? "not-allowed" : "pointer",
-            fontFamily: "monospace",
-            fontSize: 12,
-            fontWeight: 600,
+            border: "none", borderRadius: 4,
+            cursor: running || !selectedStockId ? "not-allowed" : "pointer",
+            fontFamily: "monospace", fontSize: 12, fontWeight: 600,
           }}
         >
           {running ? "运行中..." : "▶ 运行回测"}
         </button>
         {result && (
-          <button
-            onClick={() => {
-              const md = generateBacktestReportMarkdown(
-                config,
-                result,
-                selectedStockCode,
-              );
-              downloadMarkdownReport(
-                md,
-                `backtest-${config.template}-${Date.now()}.md`,
-              );
-            }}
-            style={{
-              padding: "4px 16px",
-              background: "#22c55e",
-              color: "#000",
-              border: "none",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontFamily: "monospace",
-              fontSize: 12,
-              fontWeight: 600,
-            }}
-          >
+          <button onClick={() => {
+            const md = generateBacktestReportMarkdown(config, result, selectedStockCode);
+            downloadMarkdownReport(md, `backtest-${config.template}-${Date.now()}.md`);
+          }} style={{
+            padding: "4px 16px", background: "#22c55e", color: "#000",
+            border: "none", borderRadius: 4, cursor: "pointer",
+            fontFamily: "monospace", fontSize: 12, fontWeight: 600,
+          }}>
             导出报告 .md
           </button>
         )}
         {!selectedStockId && (
-          <span style={{ color: "#666", fontSize: 11 }}>
-            请先在图表页面选择股票
-          </span>
+          <span style={{ color: "#666", fontSize: 11 }}>请先在图表页面选择股票</span>
         )}
       </div>
 
       {/* Results summary */}
       {result && (
-        <div
-          style={{
-            padding: "10px 20px",
-            background: "#0f0f23",
-            borderBottom: "1px solid #2a2a4a",
-            display: "flex",
-            gap: 24,
-            flexWrap: "wrap",
-            fontSize: 12,
-            fontFamily: "monospace",
-            flexShrink: 0,
-          }}
-        >
-          <Metric
-            label="总收益"
-            value={`${(result.totalReturn * 100).toFixed(2)}%`}
-            positive={result.totalReturn > 0}
-          />
-          <Metric
-            label="年化收益"
-            value={`${(result.annualReturn * 100).toFixed(2)}%`}
-            positive={result.annualReturn > 0}
-          />
+        <div style={{
+          padding: "10px 20px", background: "#0f0f23",
+          borderBottom: "1px solid #2a2a4a", display: "flex",
+          gap: 24, flexWrap: "wrap", fontSize: 12,
+          fontFamily: "monospace", flexShrink: 0,
+        }}>
+          <Metric label="总收益" value={`${(result.totalReturn * 100).toFixed(2)}%`} positive={result.totalReturn > 0} />
+          <Metric label="年化收益" value={`${(result.annualReturn * 100).toFixed(2)}%`} positive={result.annualReturn > 0} />
           <Metric label="最大回撤" value={`${(result.maxDrawdown * 100).toFixed(2)}%`} />
           <Metric label="夏普比率" value={result.sharpeRatio.toFixed(2)} />
           <Metric label="胜率" value={`${(result.winRate * 100).toFixed(1)}%`} />
@@ -215,23 +158,17 @@ export default function BacktestPage() {
       )}
 
       {error && (
-        <div
-          style={{
-            padding: "8px 20px",
-            background: "#3a1a1a",
-            color: "#f87171",
-            fontSize: 12,
-            fontFamily: "monospace",
-            flexShrink: 0,
-          }}
-        >
+        <div style={{
+          padding: "8px 20px", background: "#3a1a1a", color: "#f87171",
+          fontSize: 12, fontFamily: "monospace", flexShrink: 0,
+        }}>
           {error}
         </div>
       )}
 
       {/* Main content */}
       <div style={{ flex: 1, overflow: "hidden" }}>
-        <BacktestPanel data={[]} />
+        <BacktestPanel data={[]} isPro={licenseTier === "pro"} />
       </div>
     </div>
   );

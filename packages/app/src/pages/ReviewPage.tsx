@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { TradeJournalPanel } from "@me/ui";
 import { StrategyPanel } from "@me/ui";
 import { useAppStore } from "../stores/appStore";
@@ -135,122 +135,211 @@ const EMOTION_TAGS = [
   { value: "躺平持有", label: "躺平持有", color: "#60a5fa" },
 ];
 
+interface ReviewRecord {
+  date: string;
+  emotion: string;
+  answers: Record<string, string>;
+}
+
 function ReviewTemplatePanel() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedEmotion, setSelectedEmotion] = useState("");
   const [saved, setSaved] = useState(false);
+  const [history, setHistory] = useState<ReviewRecord[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    try {
+      const data = JSON.parse(localStorage.getItem("me-reviews") || "[]");
+      setHistory(data);
+    } catch {}
+  }, [saved]);
 
   const handleSave = () => {
-    const reviewData = {
+    const reviewData: ReviewRecord = {
       date: new Date().toISOString(),
       emotion: selectedEmotion,
       answers,
     };
-    const existing = JSON.parse(localStorage.getItem("me-reviews") || "[]");
+    const existing: ReviewRecord[] = JSON.parse(localStorage.getItem("me-reviews") || "[]");
     existing.push(reviewData);
     localStorage.setItem("me-reviews", JSON.stringify(existing));
     setSaved(true);
+    setAnswers({});
+    setSelectedEmotion("");
     setTimeout(() => setSaved(false), 2000);
   };
 
+  // Emotion distribution from history
+  const emotionDist: Record<string, number> = {};
+  history.forEach((r) => {
+    if (r.emotion) emotionDist[r.emotion] = (emotionDist[r.emotion] || 0) + 1;
+  });
+  const maxCount = Math.max(1, ...Object.values(emotionDist));
+
   return (
-    <div style={{ padding: 16, overflow: "auto", height: "100%" }}>
-      {/* Emotion tag selector */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>
-          本次交易情绪标签
+    <div style={{ padding: 16, overflow: "auto", height: "100%", maxWidth: 800 }}>
+      {/* Emotion analytics from history */}
+      {history.length > 0 && (
+        <div style={{
+          marginBottom: 20, padding: 14,
+          background: "#1a1a2e", borderRadius: 8, border: "1px solid #2a2a4a",
+        }}>
+          <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
+            复盘情绪分布 ({history.length} 条记录)
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {EMOTION_TAGS.map((tag) => {
+              const count = emotionDist[tag.value] || 0;
+              if (!count) return null;
+              const pct = (count / history.length * 100).toFixed(0);
+              return (
+                <div key={tag.value} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ color: tag.color, fontSize: 11, fontFamily: "monospace", width: 72, textAlign: "right" }}>
+                    {tag.label}
+                  </span>
+                  <div style={{ flex: 1, background: "#0f0f23", borderRadius: 4, height: 14, overflow: "hidden" }}>
+                    <div style={{
+                      width: `${(count / maxCount) * 100}%`, height: "100%",
+                      background: tag.color, borderRadius: 4, opacity: 0.7,
+                      transition: "width 0.5s",
+                    }} />
+                  </div>
+                  <span style={{ color: "#888", fontSize: 10, fontFamily: "monospace", width: 40 }}>
+                    {count} ({pct}%)
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ color: "#666", fontSize: 10, fontFamily: "monospace", marginTop: 8 }}>
+            提示：观察情绪分布，找出导致亏损的主要情绪模式。纪律性交易（理性建仓 + 纪律止盈/止损）占比越高，长期盈利概率越大。
+          </div>
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {EMOTION_TAGS.map((tag) => (
-            <button
-              key={tag.value}
-              onClick={() => setSelectedEmotion(tag.value)}
-              style={{
-                padding: "4px 12px",
-                background: selectedEmotion === tag.value ? tag.color : "#1a1a2e",
-                color: selectedEmotion === tag.value ? "#000" : tag.color,
-                border: `1px solid ${tag.color}`,
-                borderRadius: 12,
-                cursor: "pointer",
-                fontFamily: "monospace",
-                fontSize: 11,
-              }}
-            >
-              {tag.label}
-            </button>
-          ))}
+      )}
+
+      {/* New review form */}
+      <div style={{
+        marginBottom: 16, padding: 14,
+        background: "#16213e", borderRadius: 8, border: "1px solid #2a2a4a",
+      }}>
+        <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
+          新建复盘记录
         </div>
+
+        {/* Emotion tag selector */}
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ color: "#888", fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>
+            本次交易情绪标签
+          </div>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            {EMOTION_TAGS.map((tag) => (
+              <button
+                key={tag.value}
+                onClick={() => setSelectedEmotion(tag.value)}
+                style={{
+                  padding: "4px 10px",
+                  background: selectedEmotion === tag.value ? tag.color : "#1a1a2e",
+                  color: selectedEmotion === tag.value ? "#000" : tag.color,
+                  border: `1px solid ${tag.color}`,
+                  borderRadius: 12,
+                  cursor: "pointer",
+                  fontFamily: "monospace",
+                  fontSize: 11,
+                }}
+              >
+                {tag.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Review questions */}
+        {REVIEW_QUESTIONS.map((section) => (
+          <div key={section.category} style={{ marginBottom: 16 }}>
+            <div style={{
+              color: "#fbbf24", fontSize: 12, fontFamily: "monospace",
+              marginBottom: 6, borderBottom: "1px solid #2a2a4a", paddingBottom: 4,
+            }}>
+              {section.category}
+            </div>
+            {section.questions.map((q) => (
+              <div key={q} style={{ marginBottom: 8 }}>
+                <div style={{ color: "#aaa", fontSize: 11, fontFamily: "monospace", marginBottom: 3 }}>
+                  {q}
+                </div>
+                <textarea
+                  value={answers[q] || ""}
+                  onChange={(e) => setAnswers({ ...answers, [q]: e.target.value })}
+                  rows={2}
+                  style={{
+                    width: "100%", maxWidth: 600, padding: "6px 8px",
+                    background: "#0f0f23", color: "#ccc", border: "1px solid #2a2a4a",
+                    borderRadius: 4, fontFamily: "monospace", fontSize: 12, resize: "vertical",
+                    boxSizing: "border-box",
+                  }}
+                />
+              </div>
+            ))}
+          </div>
+        ))}
+
+        <button onClick={handleSave} style={{
+          padding: "8px 24px", background: saved ? "#22c55e" : "#fbbf24",
+          color: "#000", border: "none", borderRadius: 4, cursor: "pointer",
+          fontFamily: "monospace", fontSize: 13, fontWeight: 600,
+        }}>
+          {saved ? "已保存" : "保存复盘记录"}
+        </button>
       </div>
 
-      {/* Review questions */}
-      {REVIEW_QUESTIONS.map((section) => (
-        <div key={section.category} style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              color: "#fbbf24",
-              fontSize: 13,
-              fontFamily: "monospace",
-              marginBottom: 8,
-              borderBottom: "1px solid #2a2a4a",
-              paddingBottom: 4,
-            }}
-          >
-            {section.category}
+      {/* Review history toggle */}
+      {history.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <button onClick={() => setShowHistory(!showHistory)} style={{
+            background: "transparent", color: "#888", border: "1px solid #2a2a4a",
+            padding: "6px 16px", borderRadius: 4, cursor: "pointer",
+            fontFamily: "monospace", fontSize: 12,
+          }}>
+            {showHistory ? "收起历史记录" : `查看历史记录 (${history.length})`}
+          </button>
+        </div>
+      )}
+
+      {showHistory && history.slice().reverse().map((r, i) => (
+        <div key={i} style={{
+          marginBottom: 8, padding: "10px 14px",
+          background: "#16213e", borderRadius: 6, border: "1px solid #2a2a4a",
+        }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
+            <span style={{ color: "#888", fontSize: 11, fontFamily: "monospace" }}>
+              {new Date(r.date).toLocaleDateString("zh-CN")}
+            </span>
+            {r.emotion && (
+              <span style={{
+                fontSize: 10, fontFamily: "monospace",
+                color: EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#888",
+                padding: "1px 8px", borderRadius: 8,
+                border: `1px solid ${EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#888"}`,
+              }}>
+                {r.emotion}
+              </span>
+            )}
           </div>
-          {section.questions.map((q) => (
-            <div key={q} style={{ marginBottom: 10 }}>
-              <div style={{ color: "#aaa", fontSize: 12, fontFamily: "monospace", marginBottom: 4 }}>
-                {q}
-              </div>
-              <textarea
-                value={answers[q] || ""}
-                onChange={(e) => setAnswers({ ...answers, [q]: e.target.value })}
-                rows={2}
-                style={{
-                  width: "100%",
-                  maxWidth: 600,
-                  padding: "6px 8px",
-                  background: "#0f0f23",
-                  color: "#ccc",
-                  border: "1px solid #2a2a4a",
-                  borderRadius: 4,
-                  fontFamily: "monospace",
-                  fontSize: 12,
-                  resize: "vertical",
-                }}
-              />
+          {Object.entries(r.answers).filter(([, v]) => v).slice(0, 3).map(([q, a]) => (
+            <div key={q} style={{ marginBottom: 3, fontSize: 11, fontFamily: "monospace" }}>
+              <span style={{ color: "#666" }}>{q.slice(0, 20)}...: </span>
+              <span style={{ color: "#aaa" }}>{a.slice(0, 80)}{a.length > 80 ? "..." : ""}</span>
             </div>
           ))}
         </div>
       ))}
 
-      <button
-        onClick={handleSave}
-        style={{
-          padding: "8px 24px",
-          background: saved ? "#22c55e" : "#fbbf24",
-          color: "#000",
-          border: "none",
-          borderRadius: 4,
-          cursor: "pointer",
-          fontFamily: "monospace",
-          fontSize: 13,
-          fontWeight: 600,
-        }}
-      >
-        {saved ? "已保存 ✓" : "保存复盘记录"}
-      </button>
-
       {/* Training mode placeholder */}
-      <div
-        style={{
-          marginTop: 32,
-          padding: 16,
-          background: "#1a1a2e",
-          border: "1px solid #2a2a4a",
-          borderRadius: 8,
-        }}
-      >
+      <div style={{
+        marginTop: 24, padding: 16, background: "#1a1a2e",
+        border: "1px solid #2a2a4a", borderRadius: 8,
+      }}>
         <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>
           训练模式（付费功能）
         </div>
@@ -258,20 +347,11 @@ function ReviewTemplatePanel() {
           使用历史数据逐根K线判断买卖点，隐藏后续走势，完成后对照实际走势检验判断准确性。
           帮助训练盘感，改善入场/离场时机把握。
         </div>
-        <button
-          disabled
-          style={{
-            marginTop: 12,
-            padding: "4px 16px",
-            background: "#3a3a5a",
-            color: "#888",
-            border: "none",
-            borderRadius: 4,
-            cursor: "not-allowed",
-            fontFamily: "monospace",
-            fontSize: 12,
-          }}
-        >
+        <button disabled style={{
+          marginTop: 12, padding: "4px 16px", background: "#3a3a5a",
+          color: "#888", border: "none", borderRadius: 4,
+          cursor: "not-allowed", fontFamily: "monospace", fontSize: 12,
+        }}>
           升级专业版解锁
         </button>
       </div>

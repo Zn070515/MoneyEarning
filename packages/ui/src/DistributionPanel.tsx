@@ -27,28 +27,64 @@ interface DistributionResult {
   weighted_avg_cost: number;
 }
 
-type SubTab = "profile" | "chip" | "sr";
+interface ConcentrationOutput {
+  cr5: number;
+  cr10: number;
+  cr20: number;
+  trend: number;
+  description: string;
+}
+
+interface ProfitLossOutput {
+  profit_pct: number;
+  loss_pct: number;
+  avg_cost: number;
+  weighted_avg_cost: number;
+  last_price: number;
+}
+
+interface FrameOutput {
+  date: string;
+  price_levels: number[];
+  chip_volume: number[];
+  avg_cost: number;
+  profit_pct: number;
+  loss_pct: number;
+}
+
+type SubTab = "profile" | "chip" | "sr" | "concentration" | "plratio" | "history";
 
 export function DistributionPanel({ stockId }: { stockId: number | null }) {
   const [subTab, setSubTab] = useState<SubTab>("profile");
   const [profile, setProfile] = useState<VolumeProfileResult | null>(null);
   const [chipDist, setChipDist] = useState<DistributionResult | null>(null);
   const [srLevels, setSrLevels] = useState<[number, number, string][]>([]);
+  const [concentration, setConcentration] = useState<ConcentrationOutput | null>(null);
+  const [plRatio, setPlRatio] = useState<ProfitLossOutput | null>(null);
+  const [frames, setFrames] = useState<FrameOutput[]>([]);
+  const [frameIdx, setFrameIdx] = useState(0);
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState("");
 
-  const loadProfile = useCallback(async (sid: number) => {
+  const loadAll = useCallback(async (sid: number) => {
     setLoading(true);
-    setStatus("计算成交量分布...");
+    setStatus("计算中...");
     try {
-      const [vp, cd, sr] = await Promise.all([
+      const [vp, cd, sr, conc, pl, hist] = await Promise.all([
         invoke<VolumeProfileResult>("compute_volume_profile", { stockId: sid, numBuckets: 100 }),
         invoke<DistributionResult>("compute_chip_distribution", { stockId: sid }),
         invoke<[number, number, string][]>("compute_sr_levels", { stockId: sid, numLevels: 50 }),
+        invoke<ConcentrationOutput>("compute_concentration", { stockId: sid }),
+        invoke<ProfitLossOutput>("compute_profit_loss_ratio", { stockId: sid }),
+        invoke<FrameOutput[]>("compute_historical_frames", { stockId: sid, frameCount: 50 }),
       ]);
       setProfile(vp);
       setChipDist(cd);
       setSrLevels(sr);
+      setConcentration(conc);
+      setPlRatio(pl);
+      setFrames(hist);
+      setFrameIdx(hist.length > 0 ? hist.length - 1 : 0);
       setStatus("");
     } catch (e) {
       console.error("Distribution error:", e);
@@ -59,13 +95,16 @@ export function DistributionPanel({ stockId }: { stockId: number | null }) {
 
   useEffect(() => {
     if (stockId) {
-      loadProfile(stockId);
+      loadAll(stockId);
     } else {
       setProfile(null);
       setChipDist(null);
       setSrLevels([]);
+      setConcentration(null);
+      setPlRatio(null);
+      setFrames([]);
     }
-  }, [stockId, loadProfile]);
+  }, [stockId, loadAll]);
 
   if (!stockId) {
     return (
@@ -89,9 +128,12 @@ export function DistributionPanel({ stockId }: { stockId: number | null }) {
         background: "#16213e", flexShrink: 0,
       }}>
         {([
-          ["profile", "成交量分布"],
-          ["chip", "筹码分布"],
+          ["profile", "成交量"],
+          ["chip", "筹码"],
           ["sr", "支撑/阻力"],
+          ["concentration", "集中度"],
+          ["plratio", "盈亏比"],
+          ["history", "历史"],
         ] as [SubTab, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setSubTab(k)} style={{
             flex: 1, padding: "8px 12px", border: "none",
@@ -114,6 +156,11 @@ export function DistributionPanel({ stockId }: { stockId: number | null }) {
         {subTab === "profile" && profile && <VolumeProfileChart profile={profile} />}
         {subTab === "chip" && chipDist && <ChipDistChart dist={chipDist} />}
         {subTab === "sr" && <SRLevelsList levels={srLevels} />}
+        {subTab === "concentration" && concentration && <ConcentrationView data={concentration} />}
+        {subTab === "plratio" && plRatio && <PLRatioView data={plRatio} />}
+        {subTab === "history" && frames.length > 0 && (
+          <HistoryFramesView frames={frames} frameIdx={frameIdx} onFrameChange={setFrameIdx} />
+        )}
       </div>
     </div>
   );
@@ -285,6 +332,194 @@ function SRLevelsList({ levels }: { levels: [number, number, string][] }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function ConcentrationView({ data }: { data: ConcentrationOutput }) {
+  const barW = 180;
+  const maxCR = Math.max(data.cr5, data.cr10, data.cr20, 1);
+  const bars: [string, number, string][] = [
+    ["CR5 (前5)", data.cr5, "#ef4444"],
+    ["CR10 (前10)", data.cr10, "#fbbf24"],
+    ["CR20 (前20)", data.cr20, "#22c55e"],
+  ];
+
+  return (
+    <div>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#fbbf24" }}>
+        筹码集中度分析
+      </div>
+      <div style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>
+        趋势: <span style={{
+          color: data.trend < 0 ? "#22c55e" : "#ef4444",
+          fontWeight: 600,
+        }}>
+          {data.trend < 0 ? "集中" : "分散"}{" "}
+          ({data.trend > 0 ? "+" : ""}{(data.trend * 100).toFixed(1)}%)
+        </span>
+        <span style={{ marginLeft: 12 }}>
+          说明: {data.description}
+        </span>
+      </div>
+      {bars.map(([label, val, color]) => (
+        <div key={label} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ color: "#aaa", fontSize: 11, width: 90 }}>{label}</span>
+          <div style={{ flex: 1, background: "#0f0f23", borderRadius: 4, height: 18, overflow: "hidden" }}>
+            <div style={{
+              width: `${(val / maxCR) * 100}%`, height: "100%",
+              background: color, borderRadius: 4, opacity: 0.7,
+              transition: "width 0.5s",
+            }} />
+          </div>
+          <span style={{ color, fontSize: 12, fontWeight: 600, width: 45, textAlign: "right" }}>
+            {(val * 100).toFixed(1)}%
+          </span>
+        </div>
+      ))}
+      <div style={{ fontSize: 11, color: "#666", marginTop: 8 }}>
+        CR集中度 = 前N大持仓占总市值的比例。集中度高表示筹码集中于少数持有者，筹码锁定性好。
+      </div>
+    </div>
+  );
+}
+
+function PLRatioView({ data }: { data: ProfitLossOutput }) {
+  const total = data.profit_pct + data.loss_pct || 1;
+  const profitW = (data.profit_pct / total) * 200;
+  const lossW = (data.loss_pct / total) * 200;
+
+  return (
+    <div>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#fbbf24" }}>
+        盈亏分布
+      </div>
+
+      {/* Profit/Loss bar */}
+      <div style={{ marginBottom: 16 }}>
+        <div style={{ fontSize: 12, color: "#888", marginBottom: 4 }}>
+          持仓盈亏比例
+        </div>
+        <div style={{ display: "flex", height: 24, borderRadius: 4, overflow: "hidden" }}>
+          <div style={{
+            width: `${profitW}px`, height: "100%",
+            background: "#ef4444", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 600,
+          }}>
+            {data.profit_pct > 1 ? `盈利 ${data.profit_pct.toFixed(0)}%` : ""}
+          </div>
+          <div style={{
+            width: `${lossW}px`, height: "100%",
+            background: "#22c55e", display: "flex", alignItems: "center",
+            justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 600,
+          }}>
+            {data.loss_pct > 1 ? `亏损 ${data.loss_pct.toFixed(0)}%` : ""}
+          </div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#888", marginTop: 4 }}>
+          <span>盈利: {data.profit_pct.toFixed(1)}%</span>
+          <span>亏损: {data.loss_pct.toFixed(1)}%</span>
+        </div>
+      </div>
+
+      {/* Cost info */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, fontSize: 12 }}>
+        <CostField label="平均成本" value={data.avg_cost.toFixed(2)} />
+        <CostField label="加权均价" value={data.weighted_avg_cost.toFixed(2)} />
+        <CostField label="最新价格" value={data.last_price.toFixed(2)} color={
+          data.last_price > data.avg_cost ? "#ef4444" : "#22c55e"
+        } />
+        <CostField label="盈亏幅度" value={
+          ((data.last_price / data.avg_cost - 1) * 100).toFixed(2) + "%"
+        } color={
+          data.last_price > data.avg_cost ? "#ef4444" : "#22c55e"
+        } />
+      </div>
+    </div>
+  );
+}
+
+function CostField({ label, value, color }: { label: string; value: string; color?: string }) {
+  return (
+    <div style={{ padding: "6px 8px", background: "#16213e", borderRadius: 4 }}>
+      <div style={{ color: "#888", fontSize: 10, marginBottom: 2 }}>{label}</div>
+      <div style={{ color: color ?? "#ccc", fontSize: 13, fontWeight: 600 }}>{value}</div>
+    </div>
+  );
+}
+
+function HistoryFramesView({
+  frames,
+  frameIdx,
+  onFrameChange,
+}: {
+  frames: FrameOutput[];
+  frameIdx: number;
+  onFrameChange: (i: number) => void;
+}) {
+  const frame = frames[frameIdx];
+  if (!frame) return <div style={{ color: "#555" }}>无历史帧数据</div>;
+
+  const maxChip = Math.max(...frame.chip_volume, 1);
+  const h = 180;
+  const w = 260;
+  const priceRange = frame.price_levels[frame.price_levels.length - 1] - frame.price_levels[0] || 1;
+
+  return (
+    <div>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#fbbf24" }}>
+        历史筹码分布
+      </div>
+
+      {/* Frame slider */}
+      <div style={{ marginBottom: 8 }}>
+        <input
+          type="range"
+          min={0}
+          max={frames.length - 1}
+          value={frameIdx}
+          onChange={(e) => onFrameChange(parseInt(e.target.value))}
+          style={{ width: "100%", accentColor: "#fbbf24" }}
+        />
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#888" }}>
+          <span>{frames[0]?.date || ""}</span>
+          <span style={{ color: "#fbbf24", fontSize: 11 }}>{frame.date}</span>
+          <span>{frames[frames.length - 1]?.date || ""}</span>
+        </div>
+      </div>
+
+      {/* Frame info */}
+      <div style={{ fontSize: 12, color: "#888", marginBottom: 8, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <span>平均成本: <span style={{ color: "#fbbf24" }}>{frame.avg_cost.toFixed(2)}</span></span>
+        <span>盈利占比: <span style={{ color: "#ef4444" }}>{frame.profit_pct.toFixed(1)}%</span></span>
+        <span>亏损占比: <span style={{ color: "#22c55e" }}>{frame.loss_pct.toFixed(1)}%</span></span>
+      </div>
+
+      {/* Frame distribution chart */}
+      <svg width={w + 40} height={h + 20} style={{ background: "#0f0f23" }}>
+        {frame.price_levels.map((p, i) => {
+          const bh = maxChip > 0 ? (frame.chip_volume[i] / maxChip) * h : 0;
+          const x = (i / frame.price_levels.length) * w + 20;
+          const barW = (w / frame.price_levels.length) * 0.9;
+          const isCost = Math.abs(p - frame.avg_cost) / frame.avg_cost < 0.02;
+          return (
+            <rect key={i} x={x - barW / 2} y={h - bh + 10} width={barW} height={bh}
+              fill={isCost ? "#fbbf24" : "#3b82f6"} opacity={0.7} rx={1} />
+          );
+        })}
+        {/* Avg cost line */}
+        {(() => {
+          const costY = h - ((frame.avg_cost - frame.price_levels[0]) / priceRange) * h + 10;
+          return (
+            <line x1={20} y1={costY} x2={w + 20} y2={costY}
+              stroke="#fbbf24" strokeDasharray="4 2" strokeWidth={1} />
+          );
+        })()}
+      </svg>
+
+      <div style={{ fontSize: 11, color: "#666", marginTop: 8 }}>
+        拖动滑块查看不同时间点的筹码分布变化。盈利占比越高，价格越在平均成本线上方。
+      </div>
     </div>
   );
 }

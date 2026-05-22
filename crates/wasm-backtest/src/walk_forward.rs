@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use serde::{Serialize, Deserialize};
 use wasm_core::{DataFrame, BtResult};
 
 
@@ -29,7 +30,7 @@ impl Default for WalkForwardConfig {
 }
 
 /// Result from a single Walk-Forward window
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WfWindowResult {
     pub window_idx: usize,
     pub is_start: usize,
@@ -46,7 +47,7 @@ pub struct WfWindowResult {
 }
 
 /// Complete Walk-Forward analysis result
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WalkForwardResult {
     pub windows: Vec<WfWindowResult>,
     pub avg_oos_return: f64,

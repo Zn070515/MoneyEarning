@@ -15,5 +15,7 @@ export { ScannerPanel } from "./ScannerPanel";
 export { DistributionPanel } from "./DistributionPanel";
 export { ChartToolbar } from "./ChartToolbar";
 export { RiskPanel } from "./RiskPanel";
+export { PatternPanel } from "./PatternPanel";
+export { DownloadPanel } from "./DownloadPanel";
 
 export const version = "0.6.0";

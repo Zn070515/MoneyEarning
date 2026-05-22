@@ -7,6 +7,7 @@ import BacktestPage from "./pages/BacktestPage";
 import ScannerPage from "./pages/ScannerPage";
 import PortfolioPage from "./pages/PortfolioPage";
 import ReviewPage from "./pages/ReviewPage";
+import MEScriptPage from "./pages/MEScriptPage";
 import SettingsPage from "./pages/SettingsPage";
 
 function Layout() {
@@ -45,6 +46,7 @@ export default function App() {
         <Route path="/scanner" element={<ScannerPage />} />
         <Route path="/portfolio" element={<PortfolioPage />} />
         <Route path="/review" element={<ReviewPage />} />
+        <Route path="/editor" element={<MEScriptPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>

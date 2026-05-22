@@ -14,6 +14,8 @@ import {
   DistributionPanel,
   ChartToolbar,
   RiskPanel,
+  PatternPanel,
+  DownloadPanel,
 } from "@me/ui";
 import { OHLCV, IndicatorData, ChartType, DrawingObject } from "@me/chart-engine";
 import { useAppStore } from "../stores/appStore";
@@ -57,7 +59,9 @@ type RightPanelTab =
   | "backtest"
   | "scanner"
   | "distribution"
+  | "patterns"
   | "risk"
+  | "download"
   | "license";
 
 function tierLabel(t: string) {
@@ -397,8 +401,14 @@ export default function ChartPage() {
             <TabBtn active={rightTab === "distribution"} onClick={() => setRightTab("distribution")}>
               筹码
             </TabBtn>
+            <TabBtn active={rightTab === "patterns"} onClick={() => setRightTab("patterns")}>
+              形态
+            </TabBtn>
             <TabBtn active={rightTab === "risk"} onClick={() => setRightTab("risk")}>
               风控
+            </TabBtn>
+            <TabBtn active={rightTab === "download"} onClick={() => setRightTab("download")}>
+              下载
             </TabBtn>
             <TabBtn active={rightTab === "license"} onClick={() => setRightTab("license")}>
               授权
@@ -411,12 +421,16 @@ export default function ChartPage() {
             {rightTab === "strategies" && (
               <StrategyPanel selectedStockId={selectedStockId} />
             )}
-            {rightTab === "backtest" && <BacktestPanel data={chartData} />}
+            {rightTab === "backtest" && <BacktestPanel data={chartData} isPro={license?.tier === "pro"} />}
             {rightTab === "scanner" && <ScannerPanel />}
             {rightTab === "distribution" && (
               <DistributionPanel stockId={selectedStockId} />
             )}
+            {rightTab === "patterns" && (
+              <PatternPanel stockId={selectedStockId} />
+            )}
             {rightTab === "risk" && <RiskPanel stockId={selectedStockId} />}
+            {rightTab === "download" && <DownloadPanel />}
             {rightTab === "license" && <LicensePanel onActivated={loadLicense} />}
           </div>
         </div>

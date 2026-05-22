@@ -14,6 +14,7 @@ const navItems: NavItem[] = [
   { path: "/scanner", label: "扫描", icon: "🔍" },
   { path: "/portfolio", label: "组合", icon: "📊" },
   { path: "/review", label: "复盘", icon: "📝" },
+  { path: "/editor", label: "脚本", icon: "⌨" },
   { path: "/settings", label: "设置", icon: "⚙" },
 ];
 

@@ -118,43 +118,168 @@ interface PortfolioHolding {
 
 function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: string | null }) {
   const [holdings, setHoldings] = useState<PortfolioHolding[]>(() => {
-    try {
-      return JSON.parse(localStorage.getItem("me-portfolio") || "[]");
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem("me-portfolio") || "[]"); }
+    catch { return []; }
   });
+  const [showForm, setShowForm] = useState(false);
+  const [editIdx, setEditIdx] = useState(-1);
+  const [simAmount, setSimAmount] = useState("");
+  const [simPrice, setSimPrice] = useState("");
+  const [simResult, setSimResult] = useState<string | null>(null);
+
+  // Form state
+  const [formCode, setFormCode] = useState(selectedStockCode || "");
+  const [formName, setFormName] = useState("");
+  const [formShares, setFormShares] = useState("");
+  const [formCost, setFormCost] = useState("");
+  const [formPrice, setFormPrice] = useState("");
 
   const totalValue = holdings.reduce((s, h) => s + h.marketValue, 0);
   const totalPnl = holdings.reduce((s, h) => s + h.pnl, 0);
   const totalCost = holdings.reduce((s, h) => s + h.avgCost * h.shares, 0);
   const totalPnlPct = totalCost > 0 ? (totalPnl / totalCost) * 100 : 0;
+  const maxWeight = Math.max(...holdings.map((h) => h.weight).concat([0]));
+
+  const saveHoldings = (h: PortfolioHolding[]) => {
+    setHoldings(h);
+    localStorage.setItem("me-portfolio", JSON.stringify(h));
+  };
+
+  const addHolding = () => {
+    if (!formCode || !formShares || !formCost || !formPrice) return;
+    const shares = parseFloat(formShares);
+    const avgCost = parseFloat(formCost);
+    const currentPrice = parseFloat(formPrice);
+    const marketValue = shares * currentPrice;
+    const pnl = (currentPrice - avgCost) * shares;
+    const pnlPct = avgCost > 0 ? ((currentPrice - avgCost) / avgCost) * 100 : 0;
+    const h: PortfolioHolding = {
+      code: formCode, name: formName || formCode, shares, avgCost,
+      currentPrice, marketValue, pnl, pnlPct, weight: 0,
+    };
+    const newList = [...holdings, h];
+    // Recalculate weights
+    const tv = newList.reduce((s, x) => s + x.marketValue, 0);
+    newList.forEach((x) => { x.weight = tv > 0 ? (x.marketValue / tv) * 100 : 0; });
+    saveHoldings(newList);
+    resetForm();
+  };
+
+  const removeHolding = (idx: number) => {
+    const newList = holdings.filter((_, i) => i !== idx);
+    const tv = newList.reduce((s, x) => s + x.marketValue, 0);
+    newList.forEach((x) => { x.weight = tv > 0 ? (x.marketValue / tv) * 100 : 0; });
+    saveHoldings(newList);
+  };
+
+  const resetForm = () => {
+    setFormCode(""); setFormName(""); setFormShares(""); setFormCost(""); setFormPrice("");
+    setShowForm(false); setEditIdx(-1);
+  };
+
+  const runSim = () => {
+    const amt = parseFloat(simAmount);
+    const price = parseFloat(simPrice);
+    if (!amt || !price) return;
+    const shares = amt / price;
+    const newTV = totalValue + amt;
+    const newCost = totalCost + amt;
+    setSimResult(`买入 ¥${amt.toLocaleString()}（约${shares.toFixed(0)}股@${price.toFixed(2)}），持仓市值→¥${newTV.toLocaleString(undefined, { maximumFractionDigits: 0 })}，成本→¥${newCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
+  };
 
   return (
     <div style={{ padding: 16 }}>
       {/* Summary cards */}
-      <div
-        style={{
-          display: "flex",
-          gap: 16,
-          flexWrap: "wrap",
-          marginBottom: 20,
-        }}
-      >
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginBottom: 20 }}>
         <SummaryCard label="持仓总市值" value={`¥${totalValue.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} />
         <SummaryCard label="总盈亏" value={`¥${totalPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}`} positive={totalPnl >= 0} />
         <SummaryCard label="收益率" value={`${totalPnlPct.toFixed(2)}%`} positive={totalPnl >= 0} />
         <SummaryCard label="持仓数量" value={`${holdings.length} 只`} />
       </div>
 
+      {/* Weight distribution bar */}
+      {holdings.length > 0 && (
+        <div style={{ marginBottom: 20, padding: "12px 16px", background: "#1a1a2e", borderRadius: 8, border: "1px solid #2a2a4a" }}>
+          <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
+            仓位分布
+          </div>
+          {holdings.map((h, i) => (
+            <div key={i} style={{ marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#ccc", fontSize: 11, fontFamily: "monospace", width: 70 }}>
+                {h.code}
+              </span>
+              <div style={{ flex: 1, background: "#0f0f23", borderRadius: 4, height: 16, overflow: "hidden" }}>
+                <div style={{
+                  width: `${(h.weight / Math.max(maxWeight, 1)) * 100}%`, height: "100%",
+                  background: h.weight > 30 ? "#ef4444" : h.weight > 15 ? "#fbbf24" : "#22c55e",
+                  borderRadius: 4, opacity: 0.8, transition: "width 0.3s",
+                }} />
+              </div>
+              <span style={{ color: h.weight > 30 ? "#ef4444" : "#888", fontSize: 11, fontFamily: "monospace", width: 45, textAlign: "right" }}>
+                {h.weight.toFixed(1)}%
+              </span>
+              <button onClick={() => removeHolding(i)} style={{
+                background: "transparent", color: "#f87171", border: "none",
+                cursor: "pointer", fontSize: 11, padding: "0 4px",
+              }}>✕</button>
+            </div>
+          ))}
+          {/* Concentration warning */}
+          {maxWeight > 30 && (
+            <div style={{ marginTop: 8, padding: "4px 8px", background: "rgba(239,68,68,0.1)", borderRadius: 4, color: "#ef4444", fontSize: 10, fontFamily: "monospace" }}>
+              ⚠ 单只股票仓位超过30%，存在集中风险，建议分散配置
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Add holding button */}
+      {!showForm ? (
+        <button onClick={() => setShowForm(true)} style={{
+          padding: "6px 16px", background: "#fbbf24", color: "#000",
+          border: "none", borderRadius: 4, cursor: "pointer",
+          fontFamily: "monospace", fontSize: 12, fontWeight: 600, marginBottom: 16,
+        }}>
+          + 添加持仓
+        </button>
+      ) : (
+        <div style={{ marginBottom: 16, padding: 12, background: "#1a1a2e", borderRadius: 8, border: "1px solid #2a2a4a" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
+            <div>
+              <label style={labelStyle}>代码</label>
+              <input value={formCode} onChange={e => setFormCode(e.target.value)} style={miniInput} placeholder="000001.SZ" />
+            </div>
+            <div>
+              <label style={labelStyle}>名称</label>
+              <input value={formName} onChange={e => setFormName(e.target.value)} style={miniInput} placeholder="平安银行" />
+            </div>
+            <div>
+              <label style={labelStyle}>持仓(股)</label>
+              <input type="number" value={formShares} onChange={e => setFormShares(e.target.value)} style={miniInput} placeholder="1000" />
+            </div>
+            <div>
+              <label style={labelStyle}>成本价</label>
+              <input type="number" step="0.01" value={formCost} onChange={e => setFormCost(e.target.value)} style={miniInput} placeholder="10.00" />
+            </div>
+            <div>
+              <label style={labelStyle}>现价</label>
+              <input type="number" step="0.01" value={formPrice} onChange={e => setFormPrice(e.target.value)} style={miniInput} placeholder="11.00" />
+            </div>
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+              <button onClick={addHolding} style={actionBtn("#fbbf24")}>添加</button>
+              <button onClick={resetForm} style={actionBtn("#3a3a5a")}>取消</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Holdings table */}
-      {holdings.length > 0 ? (
-        <div style={{ overflow: "auto" }}>
+      {holdings.length > 0 && (
+        <div style={{ overflow: "auto", marginBottom: 20 }}>
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>代码</th>
-                <th style={thStyle}>名称</th>
+                <th style={thStyle}>代码</th><th style={thStyle}>名称</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>持仓(股)</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>成本</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>现价</th>
@@ -167,8 +292,7 @@ function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: stri
             <tbody>
               {holdings.map((h, i) => (
                 <tr key={i}>
-                  <td style={tdStyle}>{h.code}</td>
-                  <td style={tdStyle}>{h.name}</td>
+                  <td style={tdStyle}>{h.code}</td><td style={tdStyle}>{h.name}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>{h.shares.toLocaleString()}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>{h.avgCost.toFixed(3)}</td>
                   <td style={{ ...tdStyle, textAlign: "right" }}>{h.currentPrice.toFixed(3)}</td>
@@ -185,19 +309,56 @@ function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: stri
             </tbody>
           </table>
         </div>
-      ) : (
-        <EmptyState message="暂无持仓记录，请在交易复盘页面记录交易" />
       )}
 
+      {/* What-if sandbox */}
+      <div style={{ marginBottom: 16, padding: "12px 16px", background: "#1a1a2e", borderRadius: 8, border: "1px solid #2a2a4a" }}>
+        <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>
+          沙盘推演
+        </div>
+        <div style={{ color: "#888", fontSize: 11, fontFamily: "monospace", marginBottom: 8 }}>
+          输入计划买入的金额和价格，预览对组合的影响
+        </div>
+        <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+          <input type="number" value={simAmount} onChange={e => setSimAmount(e.target.value)}
+            placeholder="计划买入金额" style={miniInput} />
+          <input type="number" step="0.01" value={simPrice} onChange={e => setSimPrice(e.target.value)}
+            placeholder="预期买入价格" style={miniInput} />
+          <button onClick={runSim} style={actionBtn("#fbbf24")}>模拟</button>
+        </div>
+        {simResult && (
+          <div style={{ marginTop: 8, padding: "6px 10px", background: "#0f0f23", borderRadius: 4, color: "#aaa", fontSize: 11, fontFamily: "monospace" }}>
+            {simResult}
+          </div>
+        )}
+      </div>
+
       {/* Pro feature placeholders */}
-      <div style={{ marginTop: 24, display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
         <ProPlaceholder title="相关性矩阵" desc="跨持仓相关性分析，识别集中风险" />
         <ProPlaceholder title="行业集中度" desc="按行业维度分析持仓分布" />
         <ProPlaceholder title="VaR 风险价值" desc="95%/99%置信度VaR和CVaR估算" />
-        <ProPlaceholder title="沙盘推演" desc="'假如我在X日以Y价买入...' 情景模拟" />
+        <ProPlaceholder title="收益归因" desc="按策略/行业/时段的盈亏归因分析" />
       </div>
     </div>
   );
+}
+
+const labelStyle: React.CSSProperties = {
+  fontSize: 10, color: "#888", fontFamily: "monospace", display: "block", marginBottom: 2,
+};
+
+const miniInput: React.CSSProperties = {
+  background: "#0f0f23", border: "1px solid #3a3a5a", color: "#fff",
+  padding: "4px 8px", borderRadius: 4, fontSize: 12,
+  fontFamily: "monospace", outline: "none", width: "100%", boxSizing: "border-box",
+};
+
+function actionBtn(bg: string): React.CSSProperties {
+  return {
+    padding: "4px 12px", background: bg, color: bg === "#fbbf24" ? "#000" : "#fff",
+    border: "none", borderRadius: 4, cursor: "pointer", fontFamily: "monospace", fontSize: 12,
+  };
 }
 
 function SummaryCard({

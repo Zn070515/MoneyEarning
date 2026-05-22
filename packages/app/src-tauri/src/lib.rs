@@ -178,6 +178,7 @@ struct Trade {
     commission: f64,
     stamp_tax: f64,
     strategy_name: Option<String>,
+    emotion_tag: Option<String>,
     notes: Option<String>,
     created_at: String,
 }
@@ -199,12 +200,14 @@ struct PnLSummary {
 #[tauri::command]
 fn trade_create(stock_id: i64, trade_date: String, direction: String,
                 price: f64, quantity: f64, commission: f64, stamp_tax: f64,
-                strategy_name: Option<String>, notes: Option<String>,
+                strategy_name: Option<String>, emotion_tag: Option<String>,
+                notes: Option<String>,
                 app: tauri::AppHandle) -> Result<i64, String> {
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
     db::trade_create(&db, stock_id, &trade_date, &direction,
         price, quantity, commission, stamp_tax,
-        strategy_name.as_deref(), notes.as_deref())
+        strategy_name.as_deref(), emotion_tag.as_deref(),
+        notes.as_deref())
         .map_err(|e| e.to_string())
 }
 
@@ -229,6 +232,31 @@ fn delete_stock(id: i64, app: tauri::AppHandle) -> Result<(), String> {
 }
 
 // ── Strategies ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct StrategyTemplate {
+    name: String,
+    name_cn: String,
+    category: String,
+    is_free: bool,
+    params: std::collections::HashMap<String, f64>,
+    description: String,
+}
+
+#[tauri::command]
+fn list_strategy_templates() -> Vec<StrategyTemplate> {
+    wasm_backtest::list_strategies()
+        .iter()
+        .map(|m| StrategyTemplate {
+            name: m.name.to_string(),
+            name_cn: m.name_cn.to_string(),
+            category: m.category.to_string(),
+            is_free: m.is_free,
+            params: m.params.iter().map(|(k, v)| (k.to_string(), *v)).collect(),
+            description: m.description.to_string(),
+        })
+        .collect()
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Strategy {
@@ -319,6 +347,108 @@ fn run_backtest(data: Vec<IndicatorInput>, template: String,
     let df = wasm_core::DataFrame::new(&ohlcv);
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
     Ok(wasm_backtest::run_with_template(&df, &template, &params, &bt_config))
+}
+
+// ── Walk-Forward ──
+
+#[tauri::command]
+fn run_walk_forward(
+    data: Vec<IndicatorInput>, template: String,
+    param_grid: std::collections::HashMap<String, Vec<f64>>,
+    in_sample: usize, out_sample: usize, step_size: usize,
+    anchor_mode: String,
+    config: Option<BtConfig>,
+) -> Result<wasm_backtest::WalkForwardResult, String> {
+    let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
+        open: d.open, high: d.high, low: d.low, close: d.close,
+        volume: d.volume, amount: d.amount, turnover: d.turnover,
+        trade_date: d.time.to_string(),
+    }).collect();
+    let df = wasm_core::DataFrame::new(&ohlcv);
+    let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
+    let wf_config = wasm_backtest::WalkForwardConfig {
+        in_sample_size: in_sample.max(1),
+        out_sample_size: out_sample.max(1),
+        anchor_mode: match anchor_mode.as_str() {
+            "anchored" => wasm_backtest::AnchorMode::Anchored,
+            _ => wasm_backtest::AnchorMode::Rolling,
+        },
+        step_size: step_size.max(1),
+    };
+    Ok(wasm_backtest::walk_forward_analysis(&df, &template, &param_grid, &wf_config, &bt_config))
+}
+
+// ── Monte Carlo ──
+
+#[tauri::command]
+fn run_monte_carlo(
+    data: Vec<IndicatorInput>, template: String,
+    params: std::collections::HashMap<String, f64>,
+    num_simulations: usize, method: String,
+    confidence_level: Option<f64>,
+    config: Option<BtConfig>,
+) -> Result<wasm_backtest::MonteCarloResult, String> {
+    let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
+        open: d.open, high: d.high, low: d.low, close: d.close,
+        volume: d.volume, amount: d.amount, turnover: d.turnover,
+        trade_date: d.time.to_string(),
+    }).collect();
+    let df = wasm_core::DataFrame::new(&ohlcv);
+    let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
+    let signals = wasm_backtest::generate_signals(&df, &template, &params);
+    let mc_config = wasm_backtest::MonteCarloConfig {
+        num_simulations: num_simulations.max(100).min(5000),
+        method: match method.as_str() {
+            "return_bootstrap" => wasm_backtest::McMethod::ReturnBootstrap,
+            "parametric" => wasm_backtest::McMethod::Parametric,
+            _ => wasm_backtest::McMethod::TradeShuffle,
+        },
+        confidence_level: confidence_level.unwrap_or(0.95),
+    };
+    Ok(wasm_backtest::monte_carlo_simulate(&df, &signals, &bt_config, &mc_config))
+}
+
+// ── Parameter Optimization ──
+
+#[tauri::command]
+fn run_optimization(
+    data: Vec<IndicatorInput>, template: String,
+    param_grid: std::collections::HashMap<String, Vec<f64>>,
+    method: String, target_metric: String,
+    max_iterations: Option<usize>,
+    config: Option<BtConfig>,
+) -> Result<wasm_backtest::OptimizerResult, String> {
+    let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
+        open: d.open, high: d.high, low: d.low, close: d.close,
+        volume: d.volume, amount: d.amount, turnover: d.turnover,
+        trade_date: d.time.to_string(),
+    }).collect();
+    let df = wasm_core::DataFrame::new(&ohlcv);
+    let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
+
+    // Convert Vec<f64> grid to (min, max, step) tuples
+    let grid: std::collections::HashMap<String, (f64, f64, f64)> = param_grid.iter().map(|(k, v)| {
+        let min = v.first().copied().unwrap_or(0.0);
+        let max = v.get(1).copied().unwrap_or(100.0);
+        let step = v.get(2).copied().unwrap_or(1.0);
+        (k.clone(), (min, max, step.max(0.001)))
+    }).collect();
+
+    let opt_config = wasm_backtest::OptimizerConfig {
+        method: match method.as_str() {
+            "genetic_algorithm" => wasm_backtest::OptimizerMethod::GeneticAlgorithm,
+            _ => wasm_backtest::OptimizerMethod::GridSearch,
+        },
+        max_iterations: max_iterations.unwrap_or(5000).min(10000),
+        target_metric: match target_metric.as_str() {
+            "total_return" => wasm_backtest::TargetMetric::TotalReturn,
+            "calmar_ratio" => wasm_backtest::TargetMetric::CalmarRatio,
+            "sortino_ratio" => wasm_backtest::TargetMetric::SortinoRatio,
+            _ => wasm_backtest::TargetMetric::SharpeRatio,
+        },
+        early_stop_rounds: 50,
+    };
+    Ok(wasm_backtest::optimize(&df, &template, &grid, &opt_config, &bt_config))
 }
 
 // ── Scanner ──
@@ -834,6 +964,23 @@ fn download_stock_data(code: String, name: Option<String>,
     })
 }
 
+// ── Minute Data ──
+
+#[tauri::command]
+fn query_minute_prices(stock_id: i64, start: String, end: String,
+                       app: tauri::AppHandle) -> Result<Vec<db::MinutePrice>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    db::query_minute_prices(&db, stock_id, &start, &end).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn download_minute_data(code: String, klt: Option<u32>,
+                        app: tauri::AppHandle) -> Result<download::MinuteImportSummary, String> {
+    let guard = db::get_db(&app).map_err(|e| e.to_string())?;
+    download::download_minute_and_import(&guard, &code, klt.unwrap_or(5))
+        .map_err(|e| e.to_string())
+}
+
 #[tauri::command]
 fn check_for_app_update(_app: tauri::AppHandle) -> Result<Option<UpdateInfo>, String> {
     // This will be implemented when the update server is deployed
@@ -882,8 +1029,10 @@ pub fn run() {
             trade_create, trade_list, trade_pnl,
             delete_stock,
             strategy_list, strategy_create, strategy_update, strategy_delete,
+            list_strategy_templates,
             compute_indicator, list_indicators,
             run_backtest,
+            run_walk_forward, run_monte_carlo, run_optimization,
             run_scanner,
             run_caps_search, run_cgpc_search, run_mars_search,
             run_metasearcher_select, run_metasearcher_record,
@@ -894,6 +1043,7 @@ pub fn run() {
             compute_risk,
             execute_custom_script,
             download_stock_list, download_stock_data,
+            query_minute_prices, download_minute_data,
             check_for_app_update,
             get_app_data_dir,
         ])
