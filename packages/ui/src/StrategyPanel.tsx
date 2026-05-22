@@ -55,9 +55,10 @@ rule sell:
 
 interface StrategyPanelProps {
   onSelectStrategy?: (s: Strategy) => void;
+  selectedStockId?: number | null;
 }
 
-export function StrategyPanel({ onSelectStrategy }: StrategyPanelProps) {
+export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPanelProps) {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [editing, setEditing] = useState<Strategy | null>(null);
@@ -68,6 +69,40 @@ export function StrategyPanel({ onSelectStrategy }: StrategyPanelProps) {
   const [formTemplate, setFormTemplate] = useState("custom");
   const [formScript, setFormScript] = useState("");
   const [formParams, setFormParams] = useState("{}");
+  const [validateResult, setValidateResult] = useState<string | null>(null);
+  const [validating, setValidating] = useState(false);
+
+  const handleValidate = async () => {
+    if (!formScript.trim() || !selectedStockId) return;
+    setValidating(true);
+    setValidateResult(null);
+    try {
+      const result = await invoke<{
+        buy_count: number;
+        sell_count: number;
+        params: Record<string, number>;
+        errors: string[];
+      }>("execute_custom_script", {
+        script: formScript,
+        stockId: selectedStockId,
+      });
+      const parts: string[] = [];
+      if (result.errors.length > 0) {
+        parts.push("解析错误:\n" + result.errors.map(e => "  ✗ " + e).join("\n"));
+      } else {
+        parts.push("脚本验证通过");
+      }
+      parts.push(`买入信号: ${result.buy_count} 次`);
+      parts.push(`卖出信号: ${result.sell_count} 次`);
+      if (Object.keys(result.params).length > 0) {
+        parts.push("参数: " + JSON.stringify(result.params));
+      }
+      setValidateResult(parts.join("\n"));
+    } catch (e) {
+      setValidateResult("验证失败: " + String(e));
+    }
+    setValidating(false);
+  };
 
   const load = useCallback(async () => {
     try {
@@ -212,9 +247,36 @@ export function StrategyPanel({ onSelectStrategy }: StrategyPanelProps) {
               style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
           </div>
 
+          {/* Validate */}
+          {selectedStockId && (
+            <div style={{ marginBottom: 12 }}>
+              <button onClick={handleValidate} disabled={validating || !formScript.trim()}
+                style={{
+                  background: validating ? "#555" : "#3b82f6",
+                  color: "#fff", border: "none", padding: "5px 14px",
+                  borderRadius: 4, cursor: "pointer", fontSize: 12,
+                  fontFamily: "monospace", fontWeight: 600,
+                  opacity: validating ? 0.6 : 1,
+                }}>
+                {validating ? "验证中..." : "验证脚本"}
+              </button>
+              {validateResult !== null && (
+                <div style={{
+                  marginTop: 8, padding: 8, borderRadius: 4,
+                  background: validateResult.startsWith("脚本验证通过") ? "#0a2a1a" : "#2a1a1a",
+                  border: "1px solid #3a3a5a",
+                  color: validateResult.startsWith("脚本验证通过") ? "#22c55e" : "#ef4444",
+                  fontSize: 11, whiteSpace: "pre-wrap", lineHeight: "18px",
+                }}>
+                  {validateResult}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Actions */}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-            <button onClick={() => { setShowNew(false); setEditing(null); }} style={{
+            <button onClick={() => { setShowNew(false); setEditing(null); setValidateResult(null); }} style={{
               background: "transparent", border: "1px solid #3a3a5a",
               color: "#ccc", padding: "6px 16px", borderRadius: 4,
               cursor: "pointer", fontSize: 12,

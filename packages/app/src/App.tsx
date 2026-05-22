@@ -284,7 +284,7 @@ function Home() {
               />
             )}
             {rightTab === "strategies" && (
-              <StrategyPanel />
+              <StrategyPanel selectedStockId={selectedStock?.id ?? null} />
             )}
             {rightTab === "backtest" && (
               <BacktestPanel data={chartData} />
