@@ -5,9 +5,10 @@ import {
   KLineChart, WatchlistPanel, StockListPanel,
   TradeJournalPanel, ImportDialog, LicensePanel,
   IndicatorSelector, StrategyPanel, BacktestPanel,
-  ScannerPanel, DistributionPanel,
+  ScannerPanel, DistributionPanel, ChartToolbar,
 } from "@me/ui";
-import { OHLCV, IndicatorData } from "@me/chart-engine";
+import type { DrawingTool } from "@me/ui";
+import { OHLCV, IndicatorData, ChartType, DrawingObject } from "@me/chart-engine";
 
 interface StockInfo {
   id: number;
@@ -63,7 +64,9 @@ function Home() {
   const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [indicators, setIndicators] = useState<IndicatorData[]>([]);
-  const [showIndicators, setShowIndicators] = useState(false);
+  const [chartType, setChartType] = useState<ChartType>("candlestick");
+  const [activeTool, setActiveTool] = useState<DrawingTool | null>(null);
+  const [drawings, setDrawings] = useState<DrawingObject[]>([]);
 
   const loadLicense = useCallback(async () => {
     try {
@@ -170,6 +173,16 @@ function Home() {
         </div>
       </header>
 
+      {/* Chart Toolbar */}
+      <ChartToolbar
+        chartType={chartType}
+        onChartTypeChange={setChartType}
+        activeTool={activeTool}
+        onToolChange={setActiveTool}
+        onClearDrawings={() => setDrawings([])}
+        drawingCount={drawings.length}
+      />
+
       {/* Body */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
         {/* Left Sidebar */}
@@ -221,7 +234,15 @@ function Home() {
         {/* Main Chart */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {chartData.length > 0 ? (
-            <KLineChart data={chartData} indicators={indicators} />
+            <KLineChart
+              data={chartData}
+              indicators={indicators}
+              chartType={chartType}
+              activeTool={activeTool}
+              drawings={drawings}
+              onDrawingAdd={(obj) => setDrawings(prev => [...prev, obj])}
+              onToolCancel={() => setActiveTool(null)}
+            />
           ) : (
             <EmptyChart onImport={() => setShowImport(true)} />
           )}

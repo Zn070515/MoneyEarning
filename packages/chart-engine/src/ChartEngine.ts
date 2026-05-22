@@ -82,6 +82,39 @@ export class ChartEngine {
   removeDrawing(id: string): void { this.drawingRenderer.remove(id); this.draw(); }
   clearDrawings(): void { this.drawingRenderer.clear(); this.draw(); }
   selectDrawing(id: string | null): void { this.drawingRenderer.select(id); this.draw(); }
+  hitTestDrawing(x: number, y: number): DrawingObject | null { return this.drawingRenderer.hitTest(x, y); }
+
+  // --- Coordinate conversion ---
+
+  /// Convert canvas pixel X to data index (for placing vertical tools)
+  pixelToIndex(px: number): number {
+    return this.viewport.xToIndex(px);
+  }
+
+  /// Convert canvas pixel Y to price (for placing horizontal tools)
+  /// Returns [price, minPrice, maxPrice]
+  pixelToPrice(py: number): [number, number, number] {
+    let minP = Infinity, maxP = -Infinity;
+    const { from, to } = this.viewport.visibleRange;
+    const src = this.chartType === "heikin_ashi"
+      ? this.haRenderer.getBars()
+      : this.data;
+    for (let i = from; i <= to && i < src.length; i++) {
+      const d = src[i];
+      const low = this.chartType === "heikin_ashi" ? (d as any).haLow : d.low;
+      const high = this.chartType === "heikin_ashi" ? (d as any).haHigh : d.high;
+      if (isFinite(low) && low < minP) minP = low;
+      if (isFinite(high) && high > maxP) maxP = high;
+    }
+    if (!isFinite(minP)) { minP = 0; maxP = 100; }
+    const price = this.viewport.yToPrice(py, minP, maxP);
+    return [price, minP, maxP];
+  }
+
+  /// Get main chart rect
+  getMainRect(): ViewRect {
+    return this.getLayout().main;
+  }
 
   // --- Layout ---
 

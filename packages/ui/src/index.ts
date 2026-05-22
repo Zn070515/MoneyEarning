@@ -1,6 +1,7 @@
 // @me/ui — UI组件库
 
-export { KLineChart } from "./KLineChart";
+export { KLineChart, drawingToolLabel } from "./KLineChart";
+export type { DrawingTool } from "./KLineChart";
 export { WatchlistPanel } from "./WatchlistPanel";
 export { StockListPanel } from "./StockListPanel";
 export { TradeJournalPanel } from "./TradeJournalPanel";
@@ -12,5 +13,6 @@ export { StrategyPanel } from "./StrategyPanel";
 export { BacktestPanel } from "./BacktestPanel";
 export { ScannerPanel } from "./ScannerPanel";
 export { DistributionPanel } from "./DistributionPanel";
+export { ChartToolbar } from "./ChartToolbar";
 
 export const version = "0.6.0";
