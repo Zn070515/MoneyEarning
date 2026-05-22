@@ -48,7 +48,8 @@ pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<Indi
 
     let dea = calc_ema(&dif.iter().skip(slow - 1).copied().collect::<Vec<_>>(), signal);
     let mut dea_full = vec![f64::NAN; n];
-    for i in 0..dea.len() {
+    let max_i = dea.len().min(n.saturating_sub(slow + signal - 2));
+    for i in 0..max_i {
         dea_full[slow + signal - 2 + i] = dea[i];
     }
 

@@ -1,5 +1,14 @@
+pub mod search;
+
 use std::collections::HashMap;
 use wasm_core::{DataFrame, ScanExpr};
+
+pub use search::{
+    CapsResult, CgpcPool, MarsResult, MetaSearcher, SearchNode,
+    RegimeFeatures, compute_strategy_weight, projected_sharpe, run_caps,
+    build_pool_cgpc, build_diverse_pools, extract_regime_features,
+    kmeans_cluster, run_mars,
+};
 
 /// Scan result for one stock
 #[derive(Debug, Clone)]

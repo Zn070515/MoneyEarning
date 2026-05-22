@@ -9,6 +9,8 @@ pub mod cycle;
 pub mod composite;
 pub mod custom;
 pub mod candles;
+pub mod pro;
+pub mod benches;
 
 pub fn compute(name: &str, df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
     match name {
@@ -102,6 +104,7 @@ pub fn compute(name: &str, df: &DataFrame, params: &HashMap<String, f64>) -> Res
         "fib_retracement" => custom::fib_retracement::compute(df, params),
         "sr_detect" => custom::sr_detect::compute(df, params),
         "correlation" => custom::correlation::compute(df, params),
+        "range_stats" => custom::range_stats::compute(df, params),
 
         // Candles
         "cdl_doji" => candles::cdl_doji(df, params),
@@ -120,7 +123,8 @@ pub fn compute(name: &str, df: &DataFrame, params: &HashMap<String, f64>) -> Res
         "cdl_marubozu" => candles::cdl_marubozu(df, params),
         "cdl_inside" => candles::cdl_inside(df, params),
 
-        _ => Err(IndError::InvalidName),
+        // PRO indicators — try them before returning InvalidName
+        _ => pro::compute(name, df, params),
     }
 }
 
@@ -327,6 +331,9 @@ pub fn list_all() -> Vec<IndicatorMeta> {
         meta!("correlation", "简单相关性", "特色工具类",
             vec![p_def("period",20.0,5.0,200.0), p_def("col",0.0,0.0,99.0)],
             true, None, "两只股票价格走势的N周期Pearson r"),
+        meta!("range_stats", "区间统计", "特色工具类",
+            vec![p_def("start",0.0,0.0,99999.0), p_def("end",100.0,1.0,99999.0)],
+            true, None, "指定区间涨跌幅+最大回撤+均值ATR"),
 
         // === Candles K线形态识别 (Free 15) ===
         meta!("cdl_doji", "十字星", "K线形态识别", vec![], true, None, "实体极小，多空力量均衡"),
@@ -344,6 +351,159 @@ pub fn list_all() -> Vec<IndicatorMeta> {
         meta!("cdl_three_black_crows", "三乌鸦", "K线形态识别", vec![], true, None, "连续三阴且重心下移，强看跌"),
         meta!("cdl_marubozu", "光头光脚", "K线形态识别", vec![], true, None, "几乎没有影线的饱满实体"),
         meta!("cdl_inside", "内含线", "K线形态识别", vec![], true, None, "整根K线被前一K线高低价包含"),
+
+        // ═══════════════════════════════════════════════
+        // PRO 专业版指标 (is_free = false, 需授权)
+        // ═══════════════════════════════════════════════
+
+        // === PRO 均线/叠加类 ===
+        meta!("kama", "Kaufman自适应均线", "均线/叠加类",
+            vec![p_def("period",10.0,2.0,200.0), p_def("fast",2.0,2.0,50.0), p_def("slow",30.0,2.0,200.0)],
+            false, None, "Kaufman AMA，基于效率比ER的自适应平滑"),
+        meta!("hma", "Hull移动均线", "均线/叠加类",
+            vec![p_def("period",20.0,2.0,200.0)],
+            false, None, "Alan Hull的HMA，极低滞后性移动均线"),
+        meta!("t3", "T3移动均线", "均线/叠加类",
+            vec![p_def("period",10.0,2.0,100.0), p_def("v",0.7,0.1,1.0)],
+            false, None, "Ehler的T3，6重EMA平滑+体量因数"),
+        meta!("vidya", "动态自适应均线", "均线/叠加类",
+            vec![p_def("period",9.0,2.0,100.0)],
+            false, Some("VIDYA".into()), "Chande的VIDYA，用CMO绝对值做平滑常数"),
+        meta!("alma", "ALMA均线", "均线/叠加类",
+            vec![p_def("period",9.0,2.0,200.0), p_def("offset",0.85,0.0,1.0), p_def("sigma",6.0,1.0,20.0)],
+            false, None, "Arnaud Legoux MA，高斯分布加权+偏移"),
+        meta!("lsma", "最小二乘均线", "均线/叠加类",
+            vec![p_def("period",25.0,2.0,200.0)],
+            false, None, "OLS线性回归终点线，专业趋势分析"),
+        meta!("frama", "分形自适应均线", "均线/叠加类",
+            vec![p_def("period",16.0,4.0,200.0)],
+            false, None, "Ehler的FRAMA，分形维数自适应"),
+        meta!("chandelier_exit", "吊灯止损", "均线/叠加类",
+            vec![p_def("period",22.0,5.0,100.0), p_def("atr_period",22.0,2.0,100.0), p_def("multiplier",3.0,1.0,5.0)],
+            false, None, "LeBeau吊灯止损，做多/做空双轨"),
+        meta!("jma", "Jurik移动均线", "均线/叠加类",
+            vec![p_def("period",14.0,2.0,200.0), p_def("phase",0.0,-100.0,100.0)],
+            false, None, "Jurik自适应低滞后平滑线"),
+        meta!("gmma", "顾比多均线", "均线/叠加类",
+            vec![],
+            false, None, "Guppy MMA 6+6=12条，短/长期组交叉分析"),
+
+        // === PRO 趋势/方向类 ===
+        meta!("ichimoku", "一目均衡表", "趋势/方向类",
+            vec![p_def("tenkan",9.0,2.0,100.0), p_def("kijun",26.0,2.0,200.0), p_def("senkou_b",52.0,2.0,300.0)],
+            false, Some("ICHIMOKU".into()), "日式一目均衡5线+云层系统"),
+        meta!("alligator", "鳄鱼线", "趋势/方向类",
+            vec![p_def("jaw",13.0,2.0,100.0), p_def("teeth",8.0,2.0,100.0), p_def("lips",5.0,2.0,100.0)],
+            false, None, "Williams鳄鱼线，jaw/teeth/lips三线"),
+        meta!("fractals", "分形标记", "趋势/方向类",
+            vec![p_def("period",2.0,1.0,5.0)],
+            false, None, "Williams五柱分形，上/下分形突破点"),
+        meta!("rainbow_ma", "彩虹均线", "趋势/方向类",
+            vec![],
+            false, None, "10条EMA从2到20同时显示"),
+        meta!("ao", "动量震荡器", "趋势/方向类",
+            vec![],
+            false, Some("AO".into()), "Williams AO，5-34柱状图动量"),
+        meta!("ac", "加速度震荡器", "趋势/方向类",
+            vec![],
+            false, Some("AC".into()), "Williams AC，AO的加速度指标"),
+
+        // === PRO 动量/振荡类 ===
+        meta!("tsi", "真实强度指数", "动量/振荡类",
+            vec![p_def("long",25.0,2.0,100.0), p_def("short",13.0,2.0,50.0), p_def("signal",7.0,2.0,30.0)],
+            false, None, "Blau的TSI，双平滑动量归一化"),
+        meta!("smi", "随机动量指数", "动量/振荡类",
+            vec![p_def("k_period",5.0,2.0,50.0), p_def("k_smooth",3.0,1.0,20.0), p_def("d_period",3.0,1.0,20.0), p_def("signal",5.0,1.0,30.0)],
+            false, None, "Blau的SMI，闭合区间内随机振荡"),
+        meta!("stoch_rsi", "随机RSI", "动量/振荡类",
+            vec![p_def("period",14.0,2.0,100.0), p_def("k",3.0,1.0,20.0), p_def("d",3.0,1.0,20.0)],
+            false, None, "RSI的Stochastic转换，更敏感"),
+        meta!("trix", "三重指数振荡器", "动量/振荡类",
+            vec![p_def("period",15.0,2.0,100.0), p_def("signal",9.0,2.0,50.0)],
+            false, Some("TRIX".into()), "TRIX+信号线，三重平滑去噪"),
+        meta!("elder_ray", "Elder射线", "动量/振荡类",
+            vec![p_def("period",13.0,2.0,200.0)],
+            false, None, "Elder多空力，牛力+熊力双线"),
+        meta!("ultimate_osc", "终极振荡器", "动量/振荡类",
+            vec![p_def("short",7.0,2.0,50.0), p_def("mid",14.0,2.0,100.0), p_def("long",28.0,2.0,200.0)],
+            false, Some("UOS".into()), "Williams三时框加权振荡器"),
+        meta!("rmi", "相对动量指数", "动量/振荡类",
+            vec![p_def("period",14.0,2.0,100.0), p_def("momentum_period",5.0,1.0,20.0)],
+            false, None, "RSI的动量增强版，Momentum替代差值"),
+        meta!("ergotic", "Ergotic振荡器", "动量/振荡类",
+            vec![p_def("period",20.0,2.0,100.0), p_def("signal",5.0,1.0,50.0)],
+            false, None, "Chande的CSI，循环/趋势自适应"),
+
+        // === PRO 波动/通道类 ===
+        meta!("hist_vol", "历史波动率", "波动/通道类",
+            vec![p_def("period",21.0,5.0,252.0), p_def("annualize",252.0,1.0,365.0)],
+            false, None, "收盘价对数收益率年化波动率"),
+        meta!("gk_vol", "Garman-Klass波动率", "波动/通道类",
+            vec![p_def("period",21.0,5.0,252.0), p_def("annualize",252.0,1.0,365.0)],
+            false, None, "OHLC全信息波动率估计"),
+        meta!("parkinson_vol", "Parkinson波动率", "波动/通道类",
+            vec![p_def("period",21.0,5.0,252.0), p_def("annualize",252.0,1.0,365.0)],
+            false, None, "仅用最高最低价的波动率估计"),
+        meta!("rs_vol", "Rogers-Satchell波动率", "波动/通道类",
+            vec![p_def("period",21.0,5.0,252.0), p_def("annualize",252.0,1.0,365.0)],
+            false, None, "消除漂移偏差的OHLC波动率"),
+        meta!("yz_vol", "Yang-Zhang波动率", "波动/通道类",
+            vec![p_def("period",21.0,5.0,252.0), p_def("annualize",252.0,1.0,365.0)],
+            false, None, "最全面OHLC波动率，跳空兼容"),
+        meta!("hurst", "Hurst指数", "波动/通道类",
+            vec![p_def("period",100.0,20.0,500.0)],
+            false, None, "R/S分析法Hurst指数，>0.5趋势/<0.5均值回归"),
+        meta!("threshold_bands", "波动阈值带", "波动/通道类",
+            vec![p_def("period",20.0,5.0,100.0), p_def("multiplier",2.0,1.0,5.0)],
+            false, None, "基于波动率形态的动态支撑阻力"),
+        meta!("regression_channel", "回归通道", "波动/通道类",
+            vec![p_def("period",20.0,5.0,200.0), p_def("deviation",2.0,1.0,4.0)],
+            false, None, "OLS回归带，±N标准误通道"),
+
+        // === PRO 成交量类 ===
+        meta!("kvo", "Klinger成交量振荡器", "成交量类",
+            vec![p_def("fast",34.0,10.0,100.0), p_def("slow",55.0,20.0,200.0), p_def("signal",13.0,2.0,50.0)],
+            false, None, "Klinger VF+信号线，量价背离"),
+        meta!("vfi", "量流指数", "成交量类",
+            vec![p_def("period",130.0,20.0,300.0), p_def("coef",0.2,0.05,0.5), p_def("vcoef",2.5,1.0,5.0)],
+            false, None, "Katsanos的VFI，成交量方向流"),
+        meta!("force_index", "强力指数", "成交量类",
+            vec![p_def("period",13.0,1.0,100.0)],
+            false, Some("FI".into()), "Elder的FI，价差×成交量平滑"),
+        meta!("mfi2", "市场促进指数", "成交量类",
+            vec![],
+            false, None, "Williams MFI，量价效率(非资金流指数)"),
+        meta!("volume_osc", "成交量振荡器", "成交量类",
+            vec![p_def("fast",5.0,2.0,50.0), p_def("slow",10.0,5.0,100.0)],
+            false, None, "量MACD，快慢量均线差值百分比"),
+        meta!("emv_v2", "增强易动性", "成交量类",
+            vec![p_def("period",14.0,2.0,100.0)],
+            false, Some("EMV_P".into()), "增强Ease of Movement，量价效率"),
+        meta!("volume_regime", "量能形态", "成交量类",
+            vec![p_def("period",20.0,10.0,100.0), p_def("threshold",1.5,1.0,3.0)],
+            false, None, "高/低量能形态检测，Z-score分类"),
+
+        // === PRO 周期/傅里叶类 ===
+        meta!("hilbert_sine", "Hilbert正弦波", "周期/傅里叶类",
+            vec![p_def("period",7.0,2.0,50.0)],
+            false, None, "Ehler主导周期检测+正弦/超前正弦"),
+        meta!("mesa_sine", "MESA正弦波", "周期/傅里叶类",
+            vec![p_def("period",14.0,5.0,100.0)],
+            false, None, "MESA自适应正弦/余弦波"),
+        meta!("cg", "重心指标", "周期/傅里叶类",
+            vec![p_def("period",10.0,2.0,50.0)],
+            false, None, "Ehler的重心指标，近乎零滞后"),
+        meta!("phasor", "相位计", "周期/傅里叶类",
+            vec![p_def("period",14.0,5.0,100.0)],
+            false, None, "Ehler相位计，判断趋势/循环状态"),
+
+        // === PRO 特色工具类 ===
+        meta!("pivots", "地板交易枢轴", "特色工具类",
+            vec![p_def("period",1.0,1.0,10.0)],
+            false, None, "经典P-S1/S2/S3-R1/R2/R3七线系统"),
+        meta!("decision_point", "决策点评分", "特色工具类",
+            vec![p_def("rsi_period",14.0,2.0,100.0), p_def("macd_fast",12.0,2.0,200.0), p_def("macd_slow",26.0,2.0,200.0), p_def("bb_period",20.0,2.0,200.0)],
+            false, None, "RSI+MACD+BB三合一信号评分-100~+100"),
     ]
 }
 
