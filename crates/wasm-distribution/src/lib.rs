@@ -205,3 +205,137 @@ pub fn volume_sr_levels(df: &DataFrame, num_levels: usize) -> Vec<(f64, f64, Str
     levels.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap_or(std::cmp::Ordering::Equal));
     levels
 }
+
+/// Concentration analysis: CR5, CR10, CR20 and concentration trend indicator
+pub fn concentration_analysis(df: &DataFrame) -> ConcentrationResult {
+    let dist = cost_distribution(df);
+    let n = dist.chip_volume.len();
+    if n == 0 {
+        return ConcentrationResult { cr5: 0.0, cr10: 0.0, cr20: 0.0, trend: 0.0, description: "无数据".into() };
+    }
+
+    // Sort price levels by chip volume descending
+    let mut indexed: Vec<(usize, f64)> = dist.chip_volume.iter().enumerate()
+        .map(|(i, &v)| (i, v)).collect();
+    indexed.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    let total: f64 = dist.chip_volume.iter().sum();
+    if total <= 0.0 {
+        return ConcentrationResult { cr5: 0.0, cr10: 0.0, cr20: 0.0, trend: 0.0, description: "无成交".into() };
+    }
+
+    let top5: f64 = indexed.iter().take(5).map(|(_, v)| v).sum();
+    let top10: f64 = indexed.iter().take(10).map(|(_, v)| v).sum();
+    let top20: f64 = indexed.iter().take(20).map(|(_, v)| v).sum();
+
+    let cr5 = top5 / total * 100.0;
+    let cr10 = top10 / total * 100.0;
+    let cr20 = top20 / total * 100.0;
+
+    // Concentration trend: higher = more concentrated
+    // Uses Herfindahl-style measure normalized to 0-100
+    let hhi: f64 = dist.chip_volume.iter().map(|&v| (v / total * 100.0).powi(2)).sum();
+    let trend = (hhi / 10000.0 * 100.0).min(100.0);
+
+    let description = if trend > 60.0 {
+        "高度集中".into()
+    } else if trend > 35.0 {
+        "中度集中".into()
+    } else if trend > 15.0 {
+        "相对分散".into()
+    } else {
+        "高度分散".into()
+    };
+
+    ConcentrationResult { cr5, cr10, cr20, trend, description }
+}
+
+/// Profit/loss ratio: percentage of chips above/below current price
+pub fn profit_loss_ratio(df: &DataFrame) -> ProfitLossResult {
+    let dist = cost_distribution(df);
+    let last_price = df.column("close")
+        .and_then(|c| c.f64_values())
+        .and_then(|v| v.last().copied())
+        .unwrap_or(0.0);
+
+    let mut profit_vol = 0.0f64;
+    let mut loss_vol = 0.0f64;
+
+    for (i, price) in dist.price_levels.iter().enumerate() {
+        if *price < last_price {
+            profit_vol += dist.chip_volume[i];
+        } else {
+            loss_vol += dist.chip_volume[i];
+        }
+    }
+
+    let total = profit_vol + loss_vol;
+    let profit_pct = if total > 0.0 { profit_vol / total * 100.0 } else { 50.0 };
+    let loss_pct = 100.0 - profit_pct;
+
+    ProfitLossResult {
+        profit_pct,
+        loss_pct,
+        avg_cost: dist.avg_cost,
+        weighted_avg_cost: dist.weighted_avg_cost,
+        last_price,
+    }
+}
+
+/// Generate historical distribution frames for animation
+/// Returns snapshots of chip distribution at regular intervals
+pub fn historical_frames(df: &DataFrame, frame_count: usize) -> Vec<DistributionFrame> {
+    let n = df.len();
+    if n < 20 || frame_count == 0 {
+        return vec![];
+    }
+
+    let step = (n / frame_count).max(1);
+    let mut frames = Vec::with_capacity(frame_count);
+
+    for f in 0..frame_count {
+        let end_idx = ((f + 1) * step).min(n);
+        let slice = df.slice(0, end_idx);
+        let dist = cost_distribution(&slice);
+        let pl = profit_loss_ratio(&slice);
+
+        frames.push(DistributionFrame {
+            date: format!("T-{}", n - end_idx),
+            price_levels: dist.price_levels,
+            chip_volume: dist.chip_volume,
+            avg_cost: dist.avg_cost,
+            profit_pct: pl.profit_pct,
+            loss_pct: pl.loss_pct,
+        });
+    }
+
+    frames
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ConcentrationResult {
+    pub cr5: f64,
+    pub cr10: f64,
+    pub cr20: f64,
+    pub trend: f64,
+    pub description: String,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct ProfitLossResult {
+    pub profit_pct: f64,
+    pub loss_pct: f64,
+    pub avg_cost: f64,
+    pub weighted_avg_cost: f64,
+    pub last_price: f64,
+}
+
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct DistributionFrame {
+    pub date: String,
+    pub price_levels: Vec<f64>,
+    pub chip_volume: Vec<f64>,
+    pub avg_cost: f64,
+    pub profit_pct: f64,
+    pub loss_pct: f64,
+}
