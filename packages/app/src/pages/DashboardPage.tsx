@@ -37,10 +37,6 @@ export default function DashboardPage() {
     loadLicense();
   }, [loadLicense]);
 
-  const handleEnterChart = () => {
-    navigateTo("/chart");
-  };
-
   return (
     <div
       style={{
@@ -51,44 +47,60 @@ export default function DashboardPage() {
         color: "#ccc",
       }}
     >
-      <h1 style={{ color: "#fbbf24", marginBottom: 8, fontSize: 24 }}>
-        QuantVault
-      </h1>
-      <p style={{ color: "#888", marginBottom: 32, fontSize: 13 }}>
-        本地量化分析工作站 v0.7.0
-      </p>
+      {/* Hero banner */}
+      <div
+        style={{
+          background: "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #1a1a2e 100%)",
+          borderRadius: 12,
+          padding: "28px 32px",
+          marginBottom: 28,
+          border: "1px solid #2a2a4a",
+        }}
+      >
+        <h1 style={{ color: "#fbbf24", marginBottom: 8, fontSize: 22, fontWeight: 700 }}>
+          QuantVault
+        </h1>
+        <p style={{ color: "#aaa", marginBottom: 4, fontSize: 14, fontWeight: 600 }}>
+          先回测，再实盘 — 用策略代替感觉，用纪律战胜情绪
+        </p>
+        <p style={{ color: "#888", fontSize: 12, lineHeight: 1.8 }}>
+          70% 的散户在亏钱，头号原因不是行情不好，而是缺乏交易系统。
+          回测验证策略 → 扫描锁定标的 → 纪律执行交易 → 复盘持续改进，一站式闭环。
+        </p>
+      </div>
 
-      {/* Quick actions */}
-      <div style={{ display: "flex", gap: 16, marginBottom: 32, flexWrap: "wrap" }}>
-        <QuickCard
-          icon="📈"
-          title="图表分析"
-          desc="K线图、技术指标、绘图工具"
-          onClick={() => handleEnterChart()}
-        />
+      {/* Quick actions — ordered: backtest first */}
+      <div style={{ display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" }}>
         <QuickCard
           icon="⚡"
           title="策略回测"
-          desc="20+策略模板，完整回测报告"
+          desc="20+策略模板，完整回测报告，参数优化"
+          primary
           onClick={() => navigateTo("/backtest")}
         />
         <QuickCard
           icon="🔍"
           title="股票扫描"
-          desc="CAPS/CGPC/MARS 智能选股"
+          desc="CAPS/CGPC/MARS 智能选股，锁定标的"
           onClick={() => navigateTo("/scanner")}
         />
         <QuickCard
-          icon="📊"
-          title="组合管理"
-          desc="持仓跟踪、收益分析"
-          onClick={() => navigateTo("/portfolio")}
+          icon="📈"
+          title="图表分析"
+          desc="K线图、316+技术指标、绘图工具"
+          onClick={() => navigateTo("/chart")}
         />
         <QuickCard
           icon="📝"
           title="交易复盘"
-          desc="交易记录、复盘模板、情绪标签"
+          desc="情绪标签、复盘模板，建立交易纪律"
           onClick={() => navigateTo("/review")}
+        />
+        <QuickCard
+          icon="📊"
+          title="组合管理"
+          desc="持仓跟踪、VaR风险、收益归因分析"
+          onClick={() => navigateTo("/portfolio")}
         />
       </div>
 
@@ -98,22 +110,22 @@ export default function DashboardPage() {
           style={{
             background: "#16213e",
             borderRadius: 8,
-            padding: "16px 20px",
+            padding: "14px 18px",
             marginBottom: 24,
             display: "flex",
             alignItems: "center",
-            gap: 16,
+            gap: 14,
             border: "1px solid #2a2a4a",
           }}
         >
-          <span style={{ fontSize: 24 }}>
+          <span style={{ fontSize: 22 }}>
             {license.tier === "pro" ? "⭐" : "🆓"}
           </span>
           <div>
-            <div style={{ color: "#fbbf24", fontWeight: 600 }}>
+            <div style={{ color: "#fbbf24", fontWeight: 600, fontSize: 13 }}>
               {tierLabel(license.tier)}
             </div>
-            <div style={{ color: "#888", fontSize: 12 }}>
+            <div style={{ color: "#888", fontSize: 11 }}>
               {license.expiry
                 ? `有效期至 ${license.expiry}`
                 : license.trial_days_left != null
@@ -124,7 +136,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Getting started */}
+      {/* Workflow: 建立你的交易系统 */}
       <div
         style={{
           background: "#1a1a2e",
@@ -133,23 +145,35 @@ export default function DashboardPage() {
           border: "1px solid #2a2a4a",
         }}
       >
-        <h3 style={{ color: "#aaa", marginBottom: 16, fontSize: 14 }}>
-          快速开始
+        <h3 style={{ color: "#aaa", marginBottom: 8, fontSize: 14 }}>
+          建立你的交易系统
         </h3>
-        <ol
-          style={{
-            color: "#888",
-            fontSize: 13,
-            lineHeight: 2,
-            paddingLeft: 20,
-          }}
-        >
-          <li>导入股票数据 — 点击&ldquo;导入数据&rdquo;按钮，支持 CSV 格式</li>
-          <li>选择股票 — 在图表页面左侧面板浏览和搜索股票</li>
-          <li>添加技术指标 — 从指标选择器添加 MA、MACD、RSI 等</li>
-          <li>运行策略回测 — 选择策略模板，配置参数，查看回测结果</li>
-          <li>使用扫描器 — 设定条件，批量筛选符合条件的股票</li>
-        </ol>
+        <p style={{ color: "#666", fontSize: 11, marginBottom: 16 }}>
+          专业交易员和散户之间最大的区别不是信息差，而是有没有一套可执行、可验证、
+          可复盘的交易系统。以下四步帮你从零搭建。
+        </p>
+        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+          <WorkflowStep
+            num="1"
+            title="回测验证"
+            desc="把你的交易想法放到历史数据里跑一遍。夏普比率、最大回撤、胜率、盈亏比——用数字代替感觉做决策。"
+          />
+          <WorkflowStep
+            num="2"
+            title="扫描选股"
+            desc="设定条件（趋势、动量、形态、筹码），全市场批量筛选，找到真正符合你策略的标的，不再靠消息炒股。"
+          />
+          <WorkflowStep
+            num="3"
+            title="纪律执行"
+            desc="制定买入/持仓/止损规则，图表分析辅助确认入场点。明确盈亏比，赚该赚的钱，亏可控的钱。"
+          />
+          <WorkflowStep
+            num="4"
+            title="复盘改进"
+            desc="记录每笔交易的情绪和逻辑，定期复盘归因。不是赚了就对、亏了就错——找到真正有效的模式。"
+          />
+        </div>
       </div>
     </div>
   );
@@ -160,11 +184,13 @@ function QuickCard({
   title,
   desc,
   onClick,
+  primary,
 }: {
   icon: string;
   title: string;
   desc: string;
   onClick: () => void;
+  primary?: boolean;
 }) {
   return (
     <button
@@ -172,8 +198,8 @@ function QuickCard({
       style={{
         width: 200,
         padding: "16px",
-        background: "#16213e",
-        border: "1px solid #2a2a4a",
+        background: primary ? "#1a1a2e" : "#16213e",
+        border: primary ? "1px solid rgba(251,191,36,0.3)" : "1px solid #2a2a4a",
         borderRadius: 8,
         cursor: "pointer",
         textAlign: "left",
@@ -182,8 +208,71 @@ function QuickCard({
       }}
     >
       <div style={{ fontSize: 28, marginBottom: 8 }}>{icon}</div>
-      <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>{title}</div>
+      <div
+        style={{
+          fontWeight: 600,
+          marginBottom: 4,
+          fontSize: 14,
+          color: primary ? "#fbbf24" : "#ccc",
+        }}
+      >
+        {title}
+      </div>
       <div style={{ color: "#888", fontSize: 12 }}>{desc}</div>
     </button>
+  );
+}
+
+function WorkflowStep({
+  num,
+  title,
+  desc,
+}: {
+  num: string;
+  title: string;
+  desc: string;
+}) {
+  return (
+    <div
+      style={{
+        flex: "1 1 220px",
+        minWidth: 200,
+        background: "#16213e",
+        borderRadius: 8,
+        padding: "16px",
+        border: "1px solid #2a2a4a",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 10,
+          marginBottom: 8,
+        }}
+      >
+        <span
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 24,
+            height: 24,
+            borderRadius: 6,
+            background: "rgba(251,191,36,0.15)",
+            color: "#fbbf24",
+            fontSize: 12,
+            fontWeight: 700,
+            fontFamily: "monospace",
+          }}
+        >
+          {num}
+        </span>
+        <span style={{ fontWeight: 600, fontSize: 13, color: "#ddd" }}>
+          {title}
+        </span>
+      </div>
+      <p style={{ color: "#888", fontSize: 11, lineHeight: 1.7 }}>{desc}</p>
+    </div>
   );
 }
