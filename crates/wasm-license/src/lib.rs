@@ -8,12 +8,18 @@ use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
 /// Embedded RSA-4096 public key in PKCS#8 PEM format
 const PUBLIC_KEY_PEM: &str = "\
 -----BEGIN PUBLIC KEY-----
-MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEA0QAAAP9/f39/f39/f39/
-f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f
-39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f3
-9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f3
-9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f3
-9/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f3//wIDAQAB
+MIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAroFFidKRCThaPahV05rK
+k3nz/NP4hgvJGD3xzjWK5xf7w+/canMNhdyLvzzi4AOhz4le293icbaK5lUYq1Hv
+4jE5ficnR69Htc6z9V1e6bYSV6lmD2j1qy/xHr1O5C3/KEYIUU2Q2NTGYhZh/GbP
+IcgPC+GyTVfSkytSKHW0rOd4QHKNKpSlSDGG2Nib7il3Tlwo8aJsDT2gXqgEjHTC
+BkuGXo1d2svymaJsiEgoIuToNXIgTsvPA7zsLf5A/ngunHUaTYA5OVwWwS/7ZHIV
+mZ4tbTfGHvWBohMn4QmmRnMeQLFdhGWSjbQr8wQbyltkk/HOSzneBhstU1ac8fAj
+tzoSurMoyvFbeK2p/3HTknwlhEqnhte8Rfbzv1xLVmh7QuFKW/qnhFoozo9IvzOb
+ikDWj0BGVurB0kMQ8+Eo5F/Fg83fA2RId0LqYmk5CMhRnQvYnjCrcUrh3LoBBhiX
+7b//gleh+Xd6DGjWyIuV+wWXAXncPGmup3znLhtoIsxOzvfbxlhLHlNGZHQvoAo0
+ik9zQ9s/w/UCttdERCqT63PkWPtmu7LffQJJAIg9I8pRy323aP9f+irk5gD7mQLZ
+AbJeNkxNdddllM4d5qPLrk1YY5yg12CpSsL/JWLRXr9bUCB8/xSICduNj4rdFkF5
+RVWLJQR/w3JCNAGTa2L8+B8CAwEAAQ==
 -----END PUBLIC KEY-----";
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -100,7 +106,29 @@ pub fn hash_fingerprint(mac: &str, hostname: &str, os_serial: &str) -> String {
     hex::encode(result)
 }
 
-/// Placeholder for code integrity checksum
-pub fn checksum_module() -> [u8; 32] {
-    [0u8; 32]
+/// Compute SHA-256 checksum of WASM binary for integrity verification.
+/// The result is compared against an expected hash embedded at build time.
+pub fn checksum_module(wasm_bytes: &[u8]) -> [u8; 32] {
+    use sha2::Digest;
+    let mut hasher = sha2::Sha256::new();
+    hasher.update(wasm_bytes);
+    let result = hasher.finalize();
+    let mut out = [0u8; 32];
+    out.copy_from_slice(&result);
+    out
+}
+
+/// Verify WASM module integrity by comparing checksum against expected value
+pub fn verify_integrity(wasm_bytes: &[u8], expected_hash: &[u8; 32]) -> bool {
+    let actual = checksum_module(wasm_bytes);
+    constant_time_eq(&actual, expected_hash)
+}
+
+/// Constant-time comparison to prevent timing attacks
+fn constant_time_eq(a: &[u8; 32], b: &[u8; 32]) -> bool {
+    let mut diff = 0u8;
+    for i in 0..32 {
+        diff |= a[i] ^ b[i];
+    }
+    diff == 0
 }
