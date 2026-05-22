@@ -5,7 +5,7 @@ import {
   KLineChart, WatchlistPanel, StockListPanel,
   TradeJournalPanel, ImportDialog, LicensePanel,
   IndicatorSelector, StrategyPanel, BacktestPanel,
-  ScannerPanel, DistributionPanel, ChartToolbar,
+  ScannerPanel, DistributionPanel, ChartToolbar, RiskPanel,
 } from "@me/ui";
 import type { DrawingTool } from "@me/ui";
 import { OHLCV, IndicatorData, ChartType, DrawingObject } from "@me/chart-engine";
@@ -42,7 +42,7 @@ interface LicenseStatus {
 }
 
 type SidebarTab = "stocks" | "watchlist" | "indicators";
-type RightPanelTab = "trades" | "strategies" | "backtest" | "scanner" | "distribution" | "license";
+type RightPanelTab = "trades" | "strategies" | "backtest" | "scanner" | "distribution" | "risk" | "license";
 
 function tierLabel(t: string) {
   switch (t) {
@@ -272,6 +272,9 @@ function Home() {
             <TabBtn active={rightTab === "distribution"} onClick={() => setRightTab("distribution")}>
               筹码
             </TabBtn>
+            <TabBtn active={rightTab === "risk"} onClick={() => setRightTab("risk")}>
+              风控
+            </TabBtn>
             <TabBtn active={rightTab === "license"} onClick={() => setRightTab("license")}>
               授权
             </TabBtn>
@@ -294,6 +297,9 @@ function Home() {
             )}
             {rightTab === "distribution" && (
               <DistributionPanel stockId={selectedStock?.id ?? null} />
+            )}
+            {rightTab === "risk" && (
+              <RiskPanel stockId={selectedStock?.id ?? null} />
             )}
             {rightTab === "license" && (
               <LicensePanel onActivated={loadLicense} />
