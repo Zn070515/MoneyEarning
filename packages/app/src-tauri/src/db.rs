@@ -65,9 +65,6 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             created_at TEXT DEFAULT (datetime('now','localtime'))
         );
 
-        -- Migration: add emotion_tag to existing trades table
-        ALTER TABLE trades ADD COLUMN emotion_tag TEXT;
-
         CREATE TABLE IF NOT EXISTS strategies (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
@@ -92,7 +89,26 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         CREATE INDEX IF NOT EXISTS idx_minute_stock ON minute_prices(stock_id);
         CREATE INDEX IF NOT EXISTS idx_minute_time ON minute_prices(trade_time);
     ")?;
+    add_column_if_missing(conn, "trades", "emotion_tag", "emotion_tag TEXT")?;
     Ok(())
+}
+
+fn add_column_if_missing(conn: &Connection, table: &str, column: &str, definition: &str) -> Result<()> {
+    if !column_exists(conn, table, column)? {
+        conn.execute(&format!("ALTER TABLE {table} ADD COLUMN {definition}"), [])?;
+    }
+    Ok(())
+}
+
+fn column_exists(conn: &Connection, table: &str, column: &str) -> Result<bool> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let columns = stmt.query_map([], |row| row.get::<_, String>(1))?;
+    for name in columns {
+        if name? == column {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 pub fn query_daily(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
@@ -516,6 +532,48 @@ pub struct MinuteRow {
     pub close: f64,
     pub volume: f64,
     pub amount: f64,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn migrations_are_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+
+        run_migrations(&conn).unwrap();
+        run_migrations(&conn).unwrap();
+
+        assert!(column_exists(&conn, "trades", "emotion_tag").unwrap());
+    }
+
+    #[test]
+    fn migrations_add_emotion_tag_to_existing_trades_table() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "
+            CREATE TABLE trades (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                stock_id INTEGER,
+                trade_date TEXT NOT NULL,
+                direction TEXT NOT NULL CHECK(direction IN ('buy','sell')),
+                price REAL NOT NULL,
+                quantity REAL NOT NULL,
+                commission REAL DEFAULT 0,
+                stamp_tax REAL DEFAULT 0,
+                strategy_name TEXT,
+                notes TEXT,
+                created_at TEXT DEFAULT (datetime('now','localtime'))
+            );
+            ",
+        )
+        .unwrap();
+
+        run_migrations(&conn).unwrap();
+
+        assert!(column_exists(&conn, "trades", "emotion_tag").unwrap());
+    }
 }
 
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
