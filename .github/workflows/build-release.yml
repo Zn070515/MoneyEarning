@@ -15,7 +15,7 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
+  build-and-release:
     runs-on: windows-latest
     steps:
       - name: Checkout
@@ -37,44 +37,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      - name: Build frontend (just vite)
+      - name: Build frontend
         run: pnpm --filter @me/app run build:web
 
       - name: Build Tauri app
         working-directory: packages/app
         run: pnpm tauri build
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY || '' }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD || '' }}
-
-      - name: Upload MSI artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: QuantVault-Windows-msi
-          path: packages/app/src-tauri/target/release/bundle/msi/*.msi
-          if-no-files-found: ignore
-
-      - name: Upload NSIS artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: QuantVault-Windows-exe
-          path: packages/app/src-tauri/target/release/bundle/nsis/*.exe
-          if-no-files-found: ignore
-
-  create-release:
-    needs: build-windows
-    runs-on: ubuntu-latest
-    if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
-    steps:
-      - name: Download MSI
-        uses: actions/download-artifact@v4
-        with:
-          name: QuantVault-Windows-msi
-
-      - name: Download NSIS
-        uses: actions/download-artifact@v4
-        with:
-          name: QuantVault-Windows-exe
 
       - name: Determine version
         id: version
@@ -90,14 +58,15 @@ jobs:
             echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
           fi
 
-      - name: Create/Update Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "QuantVault ${{ steps.version.outputs.tag }}"
           tag_name: ${{ steps.version.outputs.tag }}
           files: |
-            *.msi
-            *.exe
+            target/release/bundle/msi/*.msi
+            target/release/bundle/nsis/*.exe
           draft: false
           prerelease: ${{ steps.version.outputs.tag == 'latest' }}
           generate_release_notes: true
+          fail_on_unmatched_files: false
