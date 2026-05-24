@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { RiskPanel } from "@me/ui";
 import { useAppStore } from "../stores/appStore";
 
@@ -333,16 +334,424 @@ function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: stri
         )}
       </div>
 
-      {/* Pro feature placeholders */}
-      <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <ProPlaceholder title="相关性矩阵" desc="跨持仓相关性分析，识别集中风险" />
-        <ProPlaceholder title="行业集中度" desc="按行业维度分析持仓分布" />
-        <ProPlaceholder title="VaR 风险价值" desc="95%/99%置信度VaR和CVaR估算" />
-        <ProPlaceholder title="收益归因" desc="按策略/行业/时段的盈亏归因分析" />
+      {/* PRO Analysis Modules */}
+      <ProAnalysisSection holdings={holdings} />
+    </div>
+  );
+}
+
+// ── PRO Analysis Section ──
+
+interface StockIdMap {
+  [code: string]: number;
+}
+
+function ProAnalysisSection({ holdings }: { holdings: PortfolioHolding[] }) {
+  const [stockIds, setStockIds] = useState<StockIdMap>({});
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (holdings.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      const map: StockIdMap = {};
+      for (const h of holdings) {
+        try {
+          const stock: { id: number; code: string } | null = await invoke("query_stock_by_code", { code: h.code });
+          if (stock && !cancelled) {
+            map[h.code] = stock.id;
+          }
+        } catch { /* stock not imported yet */ }
+      }
+      if (!cancelled) setStockIds(map);
+    })();
+    return () => { cancelled = true; };
+  }, [holdings]);
+
+  const ids = holdings.map(h => stockIds[h.code]).filter(Boolean);
+  const weights = holdings.map(h => h.marketValue);
+
+  if (holdings.length === 0) {
+    return (
+      <div style={{ padding: 16, color: "#666666", fontSize: 12, fontFamily: "monospace", textAlign: "center" }}>
+        添加持仓后可查看专业组合分析
+      </div>
+    );
+  }
+
+  if (ids.length === 0) {
+    return (
+      <div style={{ padding: 16, color: "#666666", fontSize: 12, fontFamily: "monospace", textAlign: "center" }}>
+        请先导入对应股票数据以启用组合分析
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+      <CorrelationPanel stockIds={ids} codes={holdings.map(h => h.code)} />
+      <IndustryPanel stockIds={ids} weights={weights} codes={holdings.map(h => h.code)} holdings={holdings} stockIdMap={stockIds} />
+      <VaRPanel stockIds={ids} weights={weights} />
+      <AttributionPanel holdings={holdings} />
+    </div>
+  );
+}
+
+// ── 1. Correlation Matrix ──
+
+function CorrelationPanel({ stockIds, codes }: { stockIds: number[]; codes: string[] }) {
+  const [matrix, setMatrix] = useState<number[][] | null>(null);
+  const [labels, setLabels] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (stockIds.length < 2) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await invoke<{ codes: string[]; matrix: number[][] }>("portfolio_correlation", {
+          stockIds, days: 250,
+        });
+        if (!cancelled) {
+          setLabels(result.codes);
+          setMatrix(result.matrix);
+        }
+      } catch (e) {
+        console.error("相关性计算失败:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [stockIds]);
+
+  if (!matrix || labels.length < 2) {
+    return (
+      <div style={proPanelStyle}>
+        <div style={proTitleStyle}>相关性矩阵</div>
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace", textAlign: "center", padding: 20 }}>
+          {stockIds.length < 2 ? "需要至少2只股票" : "计算中..."}
+        </div>
+      </div>
+    );
+  }
+
+  const n = labels.length;
+  return (
+    <div style={proPanelStyle}>
+      <div style={proTitleStyle}>相关性矩阵</div>
+      <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 8 }}>
+        基于250日收益率 Pearson r，红色=正相关，绿色=负相关
+      </div>
+      <div style={{ overflow: "auto", maxHeight: 280 }}>
+        <table style={{ borderCollapse: "collapse", fontFamily: "monospace", fontSize: 11 }}>
+          <thead>
+            <tr>
+              <th style={{ ...cmTh }}></th>
+              {labels.map((l, i) => <th key={i} style={cmTh}>{l}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {matrix.map((row, ri) => (
+              <tr key={ri}>
+                <td style={{ ...cmTh, color: "#CCAA00" }}>{labels[ri]}</td>
+                {row.map((v, ci) => (
+                  <td key={ci} style={{
+                    padding: "4px 8px", textAlign: "center",
+                    background: ri === ci ? "#0C0C0C" : `rgba(${v > 0 ? "239,83,80" : "38,166,154"},${Math.abs(v) * 0.3})`,
+                    color: ri === ci ? "#858585" : v > 0.5 ? "#EF5350" : v < -0.3 ? "#26A69A" : "#D4D4D4",
+                  }}>
+                    {v.toFixed(2)}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
+
+const cmTh: React.CSSProperties = {
+  padding: "4px 8px", color: "#858585", borderBottom: "1px solid #2A2A2A",
+  textAlign: "center", position: "sticky", top: 0, background: "#121212",
+};
+
+// ── 2. Industry Concentration ──
+
+function IndustryPanel({ stockIds, weights, codes, holdings, stockIdMap }: {
+  stockIds: number[]; weights: number[]; codes: string[]; holdings: PortfolioHolding[];
+  stockIdMap: StockIdMap;
+}) {
+  const [items, setItems] = useState<{ industry: string; stock_count: number; weight: number }[]>([]);
+  const [editMode, setEditMode] = useState(false);
+
+  const loadData = useCallback(async () => {
+    if (stockIds.length === 0) return;
+    try {
+      const result = await invoke<{ industry: string; stock_count: number; weight: number }[]>(
+        "portfolio_concentration", { stockIds, weights }
+      );
+      setItems(result);
+    } catch (e) {
+      console.error("行业集中度计算失败:", e);
+    }
+  }, [stockIds, weights]);
+
+  useEffect(() => {
+    setEditMode(false);
+    loadData();
+  }, [loadData]);
+
+  const maxWeight = Math.max(...items.map(i => i.weight).concat([1]));
+
+  return (
+    <div style={proPanelStyle}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+        <div style={proTitleStyle}>行业集中度</div>
+        <button onClick={() => setEditMode(!editMode)} style={{
+          background: "transparent", color: "#CCAA00", border: "1px solid #2A2A2A",
+          borderRadius: 3, cursor: "pointer", fontSize: 10, fontFamily: "monospace", padding: "2px 8px",
+        }}>
+          {editMode ? "完成" : "编辑行业"}
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace", textAlign: "center", padding: 20 }}>
+          请在编辑模式中为持仓设置行业分类
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {items.map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#D4D4D4", fontSize: 11, fontFamily: "monospace", width: 70, flexShrink: 0 }}>
+                {item.industry}
+              </span>
+              <div style={{ flex: 1, background: "#0C0C0C", borderRadius: 3, height: 14, overflow: "hidden" }}>
+                <div style={{
+                  width: `${(item.weight / Math.max(maxWeight, 1)) * 100}%`,
+                  height: "100%",
+                  background: item.weight > 40 ? "#EF5350" : item.weight > 20 ? "#CCAA00" : "#26A69A",
+                  borderRadius: 3, transition: "width 0.3s",
+                }} />
+              </div>
+              <span style={{
+                color: item.weight > 40 ? "#EF5350" : "#858585",
+                fontSize: 11, fontFamily: "monospace", width: 40, textAlign: "right",
+              }}>
+                {item.weight.toFixed(0)}%
+              </span>
+              <span style={{ color: "#666666", fontSize: 10, fontFamily: "monospace" }}>
+                ({item.stock_count}只)
+              </span>
+            </div>
+          ))}
+        </div>
+      )}
+      {editMode && (
+        <div style={{ marginTop: 10, borderTop: "1px solid #2A2A2A", paddingTop: 8 }}>
+          {holdings.filter(h => stockIdMap[h.code]).map(h => {
+            const sid = stockIdMap[h.code];
+            return (
+              <div key={h.code} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                <span style={{ color: "#CCAA00", fontSize: 10, fontFamily: "monospace", width: 60 }}>
+                  {h.code}
+                </span>
+                <IndustryPicker sid={sid} code={h.code} onSet={loadData} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+const INDUSTRIES = [
+  "银行", "保险", "证券", "白酒", "医药", "新能源", "半导体",
+  "汽车", "家电", "房地产", "建筑", "钢铁", "煤炭", "有色",
+  "化工", "机械", "军工", "食品饮料", "纺织服装", "传媒",
+  "计算机", "通信", "电子", "电力", "交通运输", "农林牧渔",
+  "商贸零售", "社会服务", "未分类",
+];
+
+function IndustryPicker({ sid, code, onSet }: { sid: number; code: string; onSet: () => void }) {
+  const [selected, setSelected] = useState("");
+
+  const handleSet = async (industry: string) => {
+    try {
+      await invoke("stock_set_industry", { stockId: sid, industry });
+      setSelected(industry);
+      onSet();
+    } catch (e) {
+      console.error("设置行业失败:", e);
+    }
+  };
+
+  return (
+    <select value={selected} onChange={e => handleSet(e.target.value)}
+      style={{
+        background: "#0C0C0C", color: "#D4D4D4", border: "1px solid #2A2A2A",
+        borderRadius: 3, fontSize: 10, fontFamily: "monospace", padding: "2px 4px", width: 80,
+      }}>
+      <option value="">选择行业</option>
+      {INDUSTRIES.map(ind => <option key={ind} value={ind}>{ind}</option>)}
+    </select>
+  );
+}
+
+// ── 3. VaR Panel ──
+
+function VaRPanel({ stockIds, weights }: { stockIds: number[]; weights: number[] }) {
+  const [data, setData] = useState<{
+    var_95: number; var_99: number; cvar_95: number; cvar_99: number;
+    daily_volatility: number; period_days: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (stockIds.length === 0) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await invoke<{
+          var_95: number; var_99: number; cvar_95: number; cvar_99: number;
+          daily_volatility: number; period_days: number;
+        }>("portfolio_var", { stockIds, weights, days: 250 });
+        if (!cancelled) setData(result);
+      } catch (e) {
+        console.error("VaR计算失败:", e);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [stockIds, weights]);
+
+  if (!data) {
+    return (
+      <div style={proPanelStyle}>
+        <div style={proTitleStyle}>VaR 风险价值</div>
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace", textAlign: "center", padding: 20 }}>
+          计算中...
+        </div>
+      </div>
+    );
+  }
+
+  const totalWeight = weights.reduce((s, v) => s + v, 0);
+
+  return (
+    <div style={proPanelStyle}>
+      <div style={proTitleStyle}>VaR 风险价值</div>
+      <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 10 }}>
+        历史模拟法 · {data.period_days}个交易日 · 组合市值 ¥{totalWeight.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <VaRCard label="VaR 95%" value={data.var_95 * totalWeight} pct={data.var_95} />
+        <VaRCard label="VaR 99%" value={data.var_99 * totalWeight} pct={data.var_99} />
+        <VaRCard label="CVaR 95%" value={data.cvar_95 * totalWeight} pct={data.cvar_95} />
+        <VaRCard label="CVaR 99%" value={data.cvar_99 * totalWeight} pct={data.cvar_99} />
+      </div>
+      <div style={{
+        marginTop: 10, padding: "6px 10px", background: "#0C0C0C", borderRadius: 4,
+        color: "#858585", fontSize: 10, fontFamily: "monospace",
+      }}>
+        日波动率: {(data.daily_volatility * 100).toFixed(2)}%
+      </div>
+    </div>
+  );
+}
+
+function VaRCard({ label, value, pct }: { label: string; value: number; pct: number }) {
+  return (
+    <div style={{ padding: "8px 10px", background: "#0C0C0C", borderRadius: 4, border: "1px solid #1A1A1A" }}>
+      <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 2 }}>{label}</div>
+      <div style={{ color: "#EF5350", fontSize: 13, fontFamily: "monospace", fontWeight: 600 }}>
+        ¥{Math.abs(value).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+      </div>
+      <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace" }}>
+        {(pct * 100).toFixed(2)}% 日损失
+      </div>
+    </div>
+  );
+}
+
+// ── 4. Return Attribution ──
+
+function AttributionPanel({ holdings }: { holdings: PortfolioHolding[] }) {
+  const totalPnl = holdings.reduce((s, h) => s + h.pnl, 0);
+  const totalValue = holdings.reduce((s, h) => s + h.marketValue, 0);
+
+  const sorted = [...holdings].sort((a, b) => Math.abs(b.pnl) - Math.abs(a.pnl));
+
+  return (
+    <div style={proPanelStyle}>
+      <div style={proTitleStyle}>收益归因</div>
+      <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 10 }}>
+        持仓盈亏贡献度分析
+      </div>
+      {sorted.length === 0 ? (
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace", textAlign: "center", padding: 20 }}>
+          暂无持仓
+        </div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {sorted.map((h, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ color: "#CCAA00", fontSize: 11, fontFamily: "monospace", width: 60, flexShrink: 0 }}>
+                {h.code}
+              </span>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                  <span style={{ color: h.pnl >= 0 ? "#26A69A" : "#EF5350", fontSize: 12, fontFamily: "monospace" }}>
+                    ¥{h.pnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                  </span>
+                  <span style={{ color: "#858585", fontSize: 10, fontFamily: "monospace" }}>
+                    {totalPnl !== 0 ? ((h.pnl / totalPnl) * 100).toFixed(0) : "0"}%
+                  </span>
+                </div>
+                <div style={{ background: "#0C0C0C", borderRadius: 3, height: 6, overflow: "hidden" }}>
+                  <div style={{
+                    height: "100%",
+                    width: `${Math.min(Math.abs(h.pnl) / Math.max(Math.abs(totalPnl), 1) * 100, 100)}%`,
+                    background: h.pnl >= 0 ? "#26A69A" : "#EF5350",
+                    borderRadius: 3,
+                  }} />
+                </div>
+              </div>
+            </div>
+          ))}
+          <div style={{ borderTop: "1px solid #2A2A2A", paddingTop: 8, marginTop: 4 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#D4D4D4", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>总计</span>
+              <span style={{
+                color: totalPnl >= 0 ? "#26A69A" : "#EF5350",
+                fontSize: 13, fontFamily: "monospace", fontWeight: 600,
+              }}>
+                ¥{totalPnl.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            </div>
+            <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginTop: 2 }}>
+              最大贡献: {sorted.length > 0 ? sorted[0].code : "—"} ·
+              最大拖累: {sorted.length > 0 ? sorted[sorted.length - 1].code : "—"}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const proPanelStyle: React.CSSProperties = {
+  flex: "1 1 calc(50% - 8px)",
+  minWidth: 280,
+  padding: 12,
+  background: "#121212",
+  border: "1px solid #2A2A2A",
+  borderRadius: 6,
+};
+
+const proTitleStyle: React.CSSProperties = {
+  color: "#CCAA00", fontSize: 13, fontFamily: "monospace",
+  fontWeight: 600, marginBottom: 6,
+};
 
 const labelStyle: React.CSSProperties = {
   fontSize: 10, color: "#858585", fontFamily: "monospace", display: "block", marginBottom: 2,
@@ -398,44 +807,6 @@ function SummaryCard({
       >
         {value}
       </div>
-    </div>
-  );
-}
-
-function ProPlaceholder({ title, desc }: { title: string; desc: string }) {
-  return (
-    <div
-      title="功能开发中，敬请期待"
-      onClick={() => alert(`${title}为专业版功能，正在开发中，敬请期待。`)}
-      style={{
-        flex: "1 1 200px",
-        padding: 16,
-        background: "#121212",
-        border: "1px solid #2A2A2A",
-        borderRadius: 8,
-        opacity: 0.6,
-        cursor: "pointer",
-        transition: "border-color 0.2s",
-      }}
-    >
-      <div style={{ color: "#CCAA00", fontSize: 13, fontFamily: "monospace", marginBottom: 4 }}>
-        {title}
-      </div>
-      <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace", marginBottom: 8 }}>
-        {desc}
-      </div>
-      <span
-        style={{
-          padding: "2px 8px",
-          background: "#2A2210",
-          color: "#CCAA00",
-          borderRadius: 4,
-          fontSize: 10,
-          fontFamily: "monospace",
-        }}
-      >
-        专业版
-      </span>
     </div>
   );
 }

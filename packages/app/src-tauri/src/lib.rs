@@ -249,6 +249,184 @@ fn delete_stock(id: i64, app: tauri::AppHandle) -> Result<(), String> {
     db::delete_stock(&db, id).map_err(|e| e.to_string())
 }
 
+// ── Portfolio Analysis ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct CorrelationResult {
+    codes: Vec<String>,
+    matrix: Vec<Vec<f64>>,
+    date_range: String,
+}
+
+#[tauri::command]
+fn portfolio_correlation(app: tauri::AppHandle, stock_ids: Vec<i64>,
+                          days: Option<i64>) -> Result<CorrelationResult, String> {
+    require_pro_tier(&app)?;
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let end = recent_start_date(0);
+    let start = recent_start_date(days.unwrap_or(250));
+    let price_map = db::fetch_close_prices(&db, &stock_ids, &start, &end)
+        .map_err(|e| e.to_string())?;
+    let mut codes = Vec::new();
+    let mut series: Vec<(String, Vec<f64>)> = Vec::new();
+    for &sid in &stock_ids {
+        if let Some(closes) = price_map.get(&sid) {
+            let code = format!("#{}", sid);
+            codes.push(code.clone());
+            series.push((code, closes.clone()));
+        }
+    }
+    let n = series.len();
+    let mut matrix = vec![vec![0.0f64; n]; n];
+    for i in 0..n {
+        matrix[i][i] = 1.0;
+        for j in 0..i {
+            let r = pearson(&series[i].1, &series[j].1);
+            matrix[i][j] = r;
+            matrix[j][i] = r;
+        }
+    }
+    Ok(CorrelationResult {
+        codes: series.iter().map(|s| s.0.clone()).collect(),
+        matrix,
+        date_range: format!("{} → {}", start, end),
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct VaRResult {
+    var_95: f64,
+    var_99: f64,
+    cvar_95: f64,
+    cvar_99: f64,
+    portfolio_value: f64,
+    daily_volatility: f64,
+    period_days: usize,
+}
+
+#[tauri::command]
+fn portfolio_var(app: tauri::AppHandle, stock_ids: Vec<i64>,
+                  weights: Vec<f64>, days: Option<i64>) -> Result<VaRResult, String> {
+    require_pro_tier(&app)?;
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let end = recent_start_date(0);
+    let start = recent_start_date(days.unwrap_or(250));
+    let price_map = db::fetch_close_prices(&db, &stock_ids, &start, &end)
+        .map_err(|e| e.to_string())?;
+    if price_map.is_empty() {
+        return Err("无可用价格数据".into());
+    }
+    // Build aligned return matrix
+    let mut all_returns: Vec<Vec<f64>> = Vec::new();
+    for (i, &sid) in stock_ids.iter().enumerate() {
+        if let Some(closes) = price_map.get(&sid) {
+            if closes.len() < 2 { continue; }
+            let returns: Vec<f64> = closes.windows(2).map(|w| w[1]/w[0] - 1.0).collect();
+            if all_returns.is_empty() {
+                all_returns = vec![vec![0.0; returns.len()]; stock_ids.len()];
+            }
+            if returns.len() == all_returns[0].len() {
+                all_returns[i] = returns;
+            }
+        }
+    }
+    if all_returns.is_empty() || all_returns[0].is_empty() {
+        return Err("数据不足，无法计算VaR".into());
+    }
+    let n_days = all_returns[0].len();
+    let w: Vec<f64> = if weights.len() == stock_ids.len() && weights.iter().sum::<f64>() > 1e-9 {
+        let total: f64 = weights.iter().sum();
+        weights.iter().map(|x| x / total).collect()
+    } else {
+        let n = stock_ids.len() as f64;
+        vec![1.0 / n; stock_ids.len()]
+    };
+    // Portfolio daily returns
+    let mut portfolio_returns: Vec<f64> = (0..n_days).map(|t| {
+        (0..stock_ids.len()).map(|i| w[i] * all_returns[i][t]).sum()
+    }).collect();
+    portfolio_returns.sort_by(|a, b| a.partial_cmp(b).unwrap());
+    let var_95_idx = ((1.0 - 0.95) * n_days as f64) as usize;
+    let var_99_idx = ((1.0 - 0.99) * n_days as f64) as usize;
+    let var_95 = -portfolio_returns[var_95_idx.max(0)];
+    let var_99 = -portfolio_returns[var_99_idx.max(0)];
+    let cvar_95 = if var_95_idx > 0 {
+        -portfolio_returns[..var_95_idx].iter().sum::<f64>() / var_95_idx as f64
+    } else { var_95 };
+    let cvar_99 = if var_99_idx > 0 {
+        -portfolio_returns[..var_99_idx].iter().sum::<f64>() / var_99_idx as f64
+    } else { var_99 };
+    let mean_ret = portfolio_returns.iter().sum::<f64>() / n_days as f64;
+    let variance = portfolio_returns.iter().map(|r| (r - mean_ret).powi(2)).sum::<f64>() / n_days as f64;
+    Ok(VaRResult {
+        var_95, var_99, cvar_95, cvar_99,
+        portfolio_value: 0.0,
+        daily_volatility: variance.sqrt(),
+        period_days: n_days,
+    })
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ConcentrationItem {
+    industry: String,
+    stock_count: i64,
+    weight: f64,
+}
+
+#[tauri::command]
+fn portfolio_concentration(app: tauri::AppHandle, stock_ids: Vec<i64>,
+                            weights: Vec<f64>) -> Result<Vec<ConcentrationItem>, String> {
+    require_pro_tier(&app)?;
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let industries = db::fetch_stock_industries(&db, &stock_ids)
+        .map_err(|e| e.to_string())?;
+    let w: Vec<f64> = if weights.len() == stock_ids.len() && weights.iter().sum::<f64>() > 1e-9 {
+        let total: f64 = weights.iter().sum();
+        weights.iter().map(|x| x / total).collect()
+    } else {
+        let n = stock_ids.len() as f64;
+        vec![1.0 / n; stock_ids.len()]
+    };
+    let mut groups: std::collections::HashMap<String, (i64, f64)> = std::collections::HashMap::new();
+    for (i, &sid) in stock_ids.iter().enumerate() {
+        let industry = industries.get(&sid).cloned().unwrap_or_else(|| "未分类".to_string());
+        let entry = groups.entry(industry).or_insert((0, 0.0));
+        entry.0 += 1;
+        entry.1 += w[i];
+    }
+    let mut items: Vec<ConcentrationItem> = groups.into_iter().map(|(industry, (count, weight))| {
+        ConcentrationItem { industry, stock_count: count, weight: (weight * 100.0 * 100.0).round() / 100.0 }
+    }).collect();
+    items.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
+    Ok(items)
+}
+
+#[tauri::command]
+fn stock_set_industry(app: tauri::AppHandle, stock_id: i64,
+                       industry: String) -> Result<(), String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    db::set_stock_industry(&db, stock_id, &industry).map_err(|e| e.to_string())
+}
+
+fn pearson(a: &[f64], b: &[f64]) -> f64 {
+    let n = a.len().min(b.len()) as f64;
+    if n < 3.0 { return 0.0; }
+    let mean_a = a.iter().sum::<f64>() / n;
+    let mean_b = b.iter().sum::<f64>() / n;
+    let mut cov = 0.0;
+    let mut var_a = 0.0;
+    let mut var_b = 0.0;
+    for i in 0..(n as usize) {
+        let da = a[i] - mean_a;
+        let db = b[i] - mean_b;
+        cov += da * db;
+        var_a += da * da;
+        var_b += db * db;
+    }
+    let denom = (var_a * var_b).sqrt();
+    if denom < 1e-12 { 0.0 } else { cov / denom }
+}
+
 // ── Strategies ──
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -1159,6 +1337,9 @@ pub fn run() {
             query_minute_prices, download_minute_data,
             check_for_app_update,
             get_app_data_dir,
+            // Portfolio analysis (PRO)
+            portfolio_correlation, portfolio_var, portfolio_concentration,
+            stock_set_industry,
         ])
         .run(tauri::generate_context!());
     match result {

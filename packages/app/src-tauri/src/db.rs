@@ -122,6 +122,7 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         );
     ")?;
     add_column_if_missing(conn, "trades", "emotion_tag", "emotion_tag TEXT")?;
+    add_column_if_missing(conn, "stocks", "industry", "industry TEXT")?;
     // 首次运行记录安装日期（仅写入一次）
     conn.execute(
         "INSERT OR IGNORE INTO app_config (key, value, updated_at) VALUES ('install_date', date('now'), datetime('now','localtime'))",
@@ -720,6 +721,57 @@ pub struct MinuteRow {
     pub close: f64,
     pub volume: f64,
     pub amount: f64,
+}
+
+// ── Portfolio Analysis ──
+
+pub fn fetch_close_prices(
+    guard: &std::sync::MutexGuard<'_, Option<Connection>>,
+    stock_ids: &[i64], start_date: &str, end_date: &str,
+) -> Result<std::collections::HashMap<i64, Vec<f64>>> {
+    let conn = conn(guard)?;
+    let mut result: std::collections::HashMap<i64, Vec<f64>> = std::collections::HashMap::new();
+    for &sid in stock_ids {
+        let mut stmt = conn.prepare(
+            "SELECT close FROM daily_prices WHERE stock_id=?1 AND trade_date>=?2 AND trade_date<=?3 ORDER BY trade_date"
+        )?;
+        let closes: Vec<f64> = stmt.query_map(params![sid, start_date, end_date], |r| r.get(0))?
+            .filter_map(|v| v.ok())
+            .collect();
+        if closes.len() >= 20 {
+            result.insert(sid, closes);
+        }
+    }
+    Ok(result)
+}
+
+pub fn fetch_stock_industries(
+    guard: &std::sync::MutexGuard<'_, Option<Connection>>,
+    stock_ids: &[i64],
+) -> Result<std::collections::HashMap<i64, String>> {
+    let conn = conn(guard)?;
+    let mut result = std::collections::HashMap::new();
+    for &sid in stock_ids {
+        let mut stmt = conn.prepare("SELECT code, name, industry FROM stocks WHERE id=?1")?;
+        let row: Result<(String, String, Option<String>)> = stmt.query_row(params![sid], |r| {
+            Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?))
+        });
+        if let Ok((code, name, industry)) = row {
+            let label = industry.unwrap_or_else(|| "未分类".to_string());
+            result.insert(sid, label);
+            let _ = (code, name);
+        }
+    }
+    Ok(result)
+}
+
+pub fn set_stock_industry(
+    guard: &std::sync::MutexGuard<'_, Option<Connection>>,
+    stock_id: i64, industry: &str,
+) -> Result<()> {
+    let conn = conn(guard)?;
+    conn.execute("UPDATE stocks SET industry=?1 WHERE id=?2", params![industry, stock_id])?;
+    Ok(())
 }
 
 #[cfg(test)]
