@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { RiskPanel } from "@me/ui";
 import { useAppStore } from "../stores/appStore";
@@ -127,6 +127,7 @@ function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: stri
   const [simAmount, setSimAmount] = useState("");
   const [simPrice, setSimPrice] = useState("");
   const [simResult, setSimResult] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Form state
   const [formCode, setFormCode] = useState(selectedStockCode || "");
@@ -188,6 +189,56 @@ function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: stri
     setSimResult(`买入 ¥${amt.toLocaleString()}（约${shares.toFixed(0)}股@${price.toFixed(2)}），持仓市值→¥${newTV.toLocaleString(undefined, { maximumFractionDigits: 0 })}，成本→¥${newCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`);
   };
 
+  const handleExportCSV = () => {
+    if (holdings.length === 0) return;
+    const header = "代码,名称,持仓股数,成本价,现价,市值,盈亏,盈亏%,占比%";
+    const rows = holdings.map(h =>
+      `${h.code},${h.name},${h.shares},${h.avgCost.toFixed(3)},${h.currentPrice.toFixed(3)},${h.marketValue.toFixed(2)},${h.pnl.toFixed(2)},${h.pnlPct.toFixed(2)},${h.weight.toFixed(1)}`
+    );
+    const csv = [header, ...rows].join("\n");
+    const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }); // BOM for Excel
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `portfolio_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const text = ev.target?.result as string;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      if (lines.length < 2) return;
+      const newHoldings: PortfolioHolding[] = [];
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        if (cols.length < 5) continue;
+        const code = cols[0].trim();
+        const name = cols[1].trim();
+        const shares = parseFloat(cols[2]);
+        const avgCost = parseFloat(cols[3]);
+        const currentPrice = parseFloat(cols[4]);
+        if (!code || isNaN(shares) || isNaN(avgCost) || isNaN(currentPrice)) continue;
+        const marketValue = shares * currentPrice;
+        const pnl = (currentPrice - avgCost) * shares;
+        const pnlPct = avgCost > 0 ? ((currentPrice - avgCost) / avgCost) * 100 : 0;
+        newHoldings.push({ code, name, shares, avgCost, currentPrice, marketValue, pnl, pnlPct, weight: 0 });
+      }
+      if (newHoldings.length > 0) {
+        const tv = newHoldings.reduce((s, x) => s + x.marketValue, 0);
+        newHoldings.forEach(x => { x.weight = tv > 0 ? (x.marketValue / tv) * 100 : 0; });
+        saveHoldings(newHoldings);
+      }
+      // Reset file input
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    };
+    reader.readAsText(file, "UTF-8");
+  };
+
   return (
     <div style={{ padding: 16 }}>
       {/* Summary cards */}
@@ -234,16 +285,42 @@ function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: stri
         </div>
       )}
 
-      {/* Add holding button */}
-      {!showForm ? (
-        <button onClick={() => setShowForm(true)} style={{
-          padding: "6px 16px", background: "#CCAA00", color: "#000",
-          border: "none", borderRadius: 4, cursor: "pointer",
-          fontFamily: "monospace", fontSize: 12, fontWeight: 600, marginBottom: 16,
+      {/* Add holding button + CSV import/export */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, alignItems: "center" }}>
+        {!showForm && (
+          <button onClick={() => setShowForm(true)} style={{
+            padding: "6px 16px", background: "#CCAA00", color: "#000",
+            border: "none", borderRadius: 4, cursor: "pointer",
+            fontFamily: "monospace", fontSize: 12, fontWeight: 600,
+          }}>
+            + 添加持仓
+          </button>
+        )}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".csv"
+          onChange={handleImportCSV}
+          style={{ display: "none" }}
+        />
+        <button onClick={() => fileInputRef.current?.click()} style={{
+          padding: "6px 14px", background: "transparent", color: "#858585",
+          border: "1px solid #2A2A2A", borderRadius: 4, cursor: "pointer",
+          fontFamily: "monospace", fontSize: 11,
         }}>
-          + 添加持仓
+          📥 导入CSV
         </button>
-      ) : (
+        {holdings.length > 0 && (
+          <button onClick={handleExportCSV} style={{
+            padding: "6px 14px", background: "transparent", color: "#858585",
+            border: "1px solid #2A2A2A", borderRadius: 4, cursor: "pointer",
+            fontFamily: "monospace", fontSize: 11,
+          }}>
+            📤 导出CSV
+          </button>
+        )}
+      </div>
+      {showForm && (
         <div style={{ marginBottom: 16, padding: 12, background: "#121212", borderRadius: 8, border: "1px solid #2A2A2A" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 }}>
             <div>

@@ -83,6 +83,8 @@ export default function ChartPage() {
   const setChartType = useChartStore((s) => s.setChartType);
   const drawingTool = useChartStore((s) => s.drawingTool);
   const setDrawingTool = useChartStore((s) => s.setDrawingTool);
+  const gridMode = useChartStore((s) => s.gridMode);
+  const toggleGridMode = useChartStore((s) => s.toggleGridMode);
 
   // --- Page-local state ---
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("stocks");
@@ -98,6 +100,60 @@ export default function ChartPage() {
   const [indicatorsData, setIndicatorsData] = useState<IndicatorData[]>([]);
   const [drawings, setDrawings] = useState<DrawingObject[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+
+  // ── Multi-chart grid state ──
+  interface GridCellData {
+    stockId: number | null;
+    stockCode: string | null;
+    stockName: string | null;
+    data: OHLCV[];
+    indicators: IndicatorData[];
+    drawings: DrawingObject[];
+  }
+  const emptyCell = (): GridCellData => ({
+    stockId: null, stockCode: null, stockName: null,
+    data: [], indicators: [], drawings: [],
+  });
+  const [gridCells, setGridCells] = useState<GridCellData[]>([emptyCell(), emptyCell(), emptyCell(), emptyCell()]);
+  const [activeCellIdx, setActiveCellIdx] = useState(0);
+
+  const loadGridCellData = useCallback(async (cellIdx: number, stockId: number, code: string, name: string) => {
+    setLoading(true);
+    try {
+      const data = await invoke<DailyPrice[]>("query_daily_prices", {
+        stockId, startDate: "2020-01-01", endDate: "2099-12-31",
+      });
+      const ohlcv: OHLCV[] = data.map((d) => ({
+        time: Math.floor(new Date(d.trade_date).getTime() / 1000),
+        open: d.open, high: d.high, low: d.low, close: d.close,
+        volume: d.volume, amount: d.amount, turnover: d.turnover ?? undefined,
+      }));
+      setGridCells(prev => {
+        const next = [...prev];
+        next[cellIdx] = { ...next[cellIdx], stockId, stockCode: code, stockName: name, data: ohlcv };
+        return next;
+      });
+      if (cellIdx === activeCellIdx) {
+        setChartData(ohlcv);
+      }
+    } catch (e) {
+      console.error("Grid cell load failed:", e);
+    }
+    setLoading(false);
+  }, [activeCellIdx]);
+
+  // When stock is selected from sidebar, assign to active grid cell
+  const handleSelectStock = (stock: StockInfo) => {
+    selectStock(stock.id, stock.code, stock.name);
+    if (gridMode) {
+      setGridCells(prev => {
+        const next = [...prev];
+        next[activeCellIdx] = { ...next[activeCellIdx], stockId: stock.id, stockCode: stock.code, stockName: stock.name };
+        return next;
+      });
+      loadGridCellData(activeCellIdx, stock.id, stock.code, stock.name);
+    }
+  };
 
   const loadLicense = useCallback(async () => {
     try {
@@ -146,10 +202,6 @@ export default function ChartPage() {
       loadChartData(selectedStockId);
     }
   }, [selectedStockId, loadChartData]);
-
-  const handleSelectStock = (stock: StockInfo) => {
-    selectStock(stock.id, stock.code, stock.name);
-  };
 
   const handleSelectWatchlist = (id: number) => {
     setSelectedWatchlistId(id);
@@ -279,6 +331,8 @@ export default function ChartPage() {
         onToolChange={setDrawingTool}
         onClearDrawings={() => setDrawings([])}
         drawingCount={drawings.length}
+        gridMode={gridMode}
+        onToggleGridMode={toggleGridMode}
       />
 
       {/* Body */}
@@ -345,20 +399,97 @@ export default function ChartPage() {
 
         {/* Main Chart */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          {chartData.length > 0 ? (
-            <KLineChart
-              data={chartData}
-              indicators={indicatorsData}
-              chartType={chartType}
-              activeTool={drawingTool}
-              drawings={drawings}
-              onDrawingAdd={(obj) => setDrawings((prev) => [...prev, obj])}
-              onDrawingDelete={(id) => { setDrawings((prev) => prev.filter((d) => d.id !== id)); setSelectedDrawingId(null); }}
-              onDrawingSelect={(id) => setSelectedDrawingId(id)}
-              onToolCancel={() => setDrawingTool(null)}
-            />
+          {gridMode ? (
+            /* 2×2 Grid Layout */
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, background: "#2A2A2A" }}>
+              {gridCells.map((cell, idx) => (
+                <div
+                  key={idx}
+                  onClick={() => {
+                    setActiveCellIdx(idx);
+                    selectStock(cell.stockId!, cell.stockCode!, cell.stockName!);
+                    if (cell.data.length > 0) setChartData(cell.data);
+                  }}
+                  style={{
+                    background: "#121212",
+                    display: "flex",
+                    flexDirection: "column",
+                    overflow: "hidden",
+                    border: activeCellIdx === idx ? "2px solid #CCAA00" : "2px solid transparent",
+                    cursor: "pointer",
+                  }}
+                >
+                  {/* Cell header */}
+                  <div style={{
+                    padding: "4px 8px", background: activeCellIdx === idx ? "#1A1A0A" : "#161616",
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    borderBottom: "1px solid #2A2A2A", flexShrink: 0,
+                  }}>
+                    <span style={{
+                      color: cell.stockCode ? "#CCAA00" : "#666666",
+                      fontSize: 11, fontFamily: "monospace", fontWeight: 600,
+                    }}>
+                      {cell.stockCode ? `${cell.stockCode} ${cell.stockName || ""}` : `画布 ${idx + 1}`}
+                    </span>
+                    {activeCellIdx === idx && (
+                      <span style={{ color: "#CCAA00", fontSize: 9, fontFamily: "monospace" }}>● 激活</span>
+                    )}
+                  </div>
+                  {/* Chart content */}
+                  <div style={{ flex: 1, overflow: "hidden" }}>
+                    {cell.data.length > 0 ? (
+                      <KLineChart
+                        data={cell.data}
+                        indicators={cell.indicators}
+                        chartType={chartType}
+                        activeTool={activeCellIdx === idx ? drawingTool : null}
+                        drawings={cell.drawings}
+                        onDrawingAdd={(obj) => {
+                          setGridCells(prev => {
+                            const next = [...prev];
+                            next[idx] = { ...next[idx], drawings: [...next[idx].drawings, obj] };
+                            return next;
+                          });
+                        }}
+                        onDrawingDelete={(id) => {
+                          setGridCells(prev => {
+                            const next = [...prev];
+                            next[idx] = { ...next[idx], drawings: next[idx].drawings.filter((d) => d.id !== id) };
+                            return next;
+                          });
+                        }}
+                        onDrawingSelect={(_id) => {}}
+                        onToolCancel={() => {}}
+                      />
+                    ) : (
+                      <div style={{
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        height: "100%", color: "#555", fontSize: 11, fontFamily: "monospace",
+                      }}>
+                        点击左侧股票 → 自动加载到激活画布
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : (
-            <EmptyChart onImport={() => setShowImport(true)} />
+            /* Single chart */
+            chartData.length > 0 ? (
+              <KLineChart
+                data={chartData}
+                indicators={indicatorsData}
+                chartType={chartType}
+                activeTool={drawingTool}
+                drawings={drawings}
+                onDrawingAdd={(obj) => setDrawings((prev) => [...prev, obj])}
+                onDrawingDelete={(id) => { setDrawings((prev) => prev.filter((d) => d.id !== id)); setSelectedDrawingId(null); }}
+                onDrawingSelect={(id) => setSelectedDrawingId(id)}
+                onToolCancel={() => setDrawingTool(null)}
+              />
+            ) : (
+              <EmptyChart onImport={() => setShowImport(true)} />
+            )
           )}
         </div>
 
@@ -388,19 +519,19 @@ export default function ChartPage() {
               策略
             </TabBtn>
             <TabBtn active={rightTab === "backtest"} onClick={() => setRightTab("backtest")}>
-              回测
+              回测 <ProBadge />
             </TabBtn>
             <TabBtn active={rightTab === "scanner"} onClick={() => setRightTab("scanner")}>
-              扫描
+              扫描 <ProBadge />
             </TabBtn>
             <TabBtn active={rightTab === "distribution"} onClick={() => setRightTab("distribution")}>
-              筹码
+              筹码 <ProBadge />
             </TabBtn>
             <TabBtn active={rightTab === "patterns"} onClick={() => setRightTab("patterns")}>
-              形态
+              形态 <ProBadge />
             </TabBtn>
             <TabBtn active={rightTab === "risk"} onClick={() => setRightTab("risk")}>
-              风控
+              风控 <ProBadge />
             </TabBtn>
             <TabBtn active={rightTab === "download"} onClick={() => setRightTab("download")}>
               下载
@@ -521,3 +652,16 @@ const headerBtn: React.CSSProperties = {
   fontSize: 12,
   fontFamily: "monospace",
 };
+
+function ProBadge() {
+  return (
+    <span style={{
+      fontSize: 8, padding: "1px 4px", marginLeft: 2,
+      background: "rgba(126,87,194,0.15)", color: "#7E57C2",
+      borderRadius: 2, verticalAlign: "middle",
+      fontFamily: "monospace",
+    }}>
+      PRO
+    </span>
+  );
+}

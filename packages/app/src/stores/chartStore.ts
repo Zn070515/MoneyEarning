@@ -21,6 +21,9 @@ export interface ChartState {
 
   crosshair: boolean;
   toggleCrosshair: () => void;
+
+  gridMode: boolean;
+  toggleGridMode: () => void;
 }
 
 export const useChartStore = create<ChartState>()((set) => ({
@@ -46,4 +49,7 @@ export const useChartStore = create<ChartState>()((set) => ({
 
   crosshair: true,
   toggleCrosshair: () => set((s) => ({ crosshair: !s.crosshair })),
+
+  gridMode: false,
+  toggleGridMode: () => set((s) => ({ gridMode: !s.gridMode })),
 }));

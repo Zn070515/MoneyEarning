@@ -189,6 +189,31 @@ export default function SettingsPage() {
           <div>本地量化分析工作站</div>
           <div>Tauri 2.x + Rust + React/TypeScript</div>
         </div>
+
+        {/* Share button */}
+        <button
+          onClick={() => {
+            const link = "https://zn070515.github.io/MoneyEarning/";
+            navigator.clipboard.writeText(link).then(() => {
+              alert("推荐链接已复制到剪贴板！\n\n分享链接: " + link);
+            }).catch(() => {
+              prompt("复制此链接分享给朋友：", link);
+            });
+          }}
+          style={{
+            marginTop: 12,
+            padding: "6px 14px",
+            background: "transparent",
+            border: "1px solid #CCAA00",
+            color: "#CCAA00",
+            borderRadius: 4,
+            cursor: "pointer",
+            fontFamily: "monospace",
+            fontSize: 12,
+          }}
+        >
+          🔗 推荐给朋友
+        </button>
       </section>
     </div>
   );

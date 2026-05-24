@@ -134,6 +134,46 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
         </div>
       )}
 
+      {/* Trial expiry upgrade prompt */}
+      {status && status.trial_days_left != null && status.trial_days_left <= 3 && (
+        <div style={{
+          padding: 12, marginBottom: 16, borderRadius: 6,
+          background: status.trial_days_left <= 0
+            ? "rgba(239,83,80,0.08)" : "rgba(255,167,38,0.08)",
+          border: status.trial_days_left <= 0
+            ? "1px solid rgba(239,83,80,0.3)" : "1px solid rgba(255,167,38,0.3)",
+        }}>
+          <div style={{
+            color: status.trial_days_left <= 0 ? "#EF5350" : "#FFA726",
+            fontSize: 13, fontWeight: 600, fontFamily: "monospace", marginBottom: 6,
+          }}>
+            {status.trial_days_left <= 0
+              ? "🔒 试用已到期"
+              : `⏰ 试用还剩 ${status.trial_days_left} 天`}
+          </div>
+          <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace", lineHeight: 1.5, marginBottom: 8 }}>
+            升级到专业版以解锁全部功能：
+            <ul style={{ margin: "4px 0", paddingLeft: 18 }}>
+              <li>全部27个PRO交易策略模板</li>
+              <li>参数优化 & 遗传算法搜索</li>
+              <li>Walk-Forward 分析 & Monte Carlo 模拟</li>
+              <li>组合扫描（CAPS / CGPC / MARS）</li>
+              <li>筹码分布 & 历史帧分析</li>
+            </ul>
+          </div>
+          <a href="https://zn070515.github.io/MoneyEarning/#pricing"
+            target="_blank" rel="noopener noreferrer"
+            style={{
+              display: "inline-block", padding: "5px 14px",
+              background: "#CCAA00", color: "#000",
+              borderRadius: 4, textDecoration: "none",
+              fontSize: 12, fontWeight: 600, fontFamily: "monospace",
+            }}>
+            获取专业版 →
+          </a>
+        </div>
+      )}
+
       {/* Fingerprint */}
       <div style={{ marginBottom: 16 }}>
         <label style={{ fontSize: 12, color: "#858585", marginBottom: 4, display: "block" }}>
@@ -156,7 +196,20 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
         <textarea
           value={licenseKey}
           onChange={e => setLicenseKey(e.target.value)}
-          placeholder="粘贴授权码..."
+          onPaste={e => {
+            const pasted = e.clipboardData.getData("text");
+            // Auto-clean: remove whitespace, normalize dashes, remove surrounding quotes
+            const cleaned = pasted
+              .replace(/^["']|["']$/g, "")
+              .replace(/\s+/g, "")
+              .replace(/—/g, "-")
+              .replace(/–/g, "-");
+            e.preventDefault();
+            setLicenseKey(cleaned);
+            setMessage("已粘贴并自动格式化授权码");
+            setMessageType("success");
+          }}
+          placeholder="粘贴授权码（自动格式化）..."
           rows={4}
           style={{
             width: "100%", background: "#121212", border: "1px solid #2A2A2A",

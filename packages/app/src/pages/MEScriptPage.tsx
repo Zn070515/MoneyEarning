@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useAppStore } from "../stores/appStore";
 
@@ -106,14 +106,104 @@ export default function MEScriptPage() {
   const [compiling, setCompiling] = useState(false);
   const [compileResult, setCompileResult] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"templates" | "reference">("reference");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Autocomplete state
+  const [acVisible, setAcVisible] = useState(false);
+  const [acItems, setAcItems] = useState<string[]>([]);
+  const [acIdx, setAcIdx] = useState(0);
+  const [acPrefix, setAcPrefix] = useState("");
+  const [acPos, setAcPos] = useState({ top: 0, left: 0 });
+
+  // Build keyword list from FUNCTION_REF
+  const allKeywords = Object.keys(FUNCTION_REF).map(k => k.split("(")[0]);
+  const allSignatures = Object.keys(FUNCTION_REF);
+  const dataVars = ["OPEN", "HIGH", "LOW", "CLOSE", "VOL", "AMOUNT"];
 
   // Sync test stock with app store selection
-  useState(() => {
+  useEffect(() => {
     if (selectedStockId) {
       setTestStockId(selectedStockId);
       setTestStockCode(selectedStockCode ?? "");
     }
-  });
+  }, [selectedStockId, selectedStockCode]);
+
+  const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (acVisible) {
+      if (e.key === "Tab" || e.key === "Enter") {
+        e.preventDefault();
+        acceptAutocomplete(acItems[acIdx]);
+        return;
+      }
+      if (e.key === "Escape") { setAcVisible(false); return; }
+      if (e.key === "ArrowDown") { e.preventDefault(); setAcIdx((acIdx + 1) % acItems.length); return; }
+      if (e.key === "ArrowUp") { e.preventDefault(); setAcIdx((acIdx - 1 + acItems.length) % acItems.length); return; }
+    }
+    if (e.ctrlKey && e.key === " ") {
+      e.preventDefault();
+      triggerAutocomplete("");
+      return;
+    }
+  };
+
+  const triggerAutocomplete = (prefix: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const search = prefix.toLowerCase();
+    const matches = allSignatures.filter(k => k.toLowerCase().startsWith(search)).slice(0, 10);
+    if (matches.length > 0) {
+      setAcItems(matches);
+      setAcIdx(0);
+      setAcPrefix(prefix);
+      setAcVisible(true);
+      // Calculate position based on cursor
+      const cursorPos = ta.selectionStart ?? 0;
+      const textBeforeCursor = script.substring(0, cursorPos);
+      const lineStart = textBeforeCursor.lastIndexOf("\n") + 1;
+      const col = cursorPos - lineStart;
+      const row = textBeforeCursor.split("\n").length;
+      const lineH = 22;
+      setAcPos({ top: row * lineH + 12, left: col * 7.8 + 56 }); // approximate monospace char width
+    }
+  };
+
+  const acceptAutocomplete = (sig: string) => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const cursorPos = ta.selectionStart ?? script.length;
+    // Find the word boundary before cursor
+    const textBefore = script.substring(0, cursorPos);
+    const wordStart = Math.max(
+      textBefore.lastIndexOf(" "),
+      textBefore.lastIndexOf("\n"),
+      textBefore.lastIndexOf("("),
+      textBefore.lastIndexOf(";"),
+      textBefore.lastIndexOf(":="),
+    ) + 1;
+    const newScript = script.substring(0, wordStart) + sig + script.substring(cursorPos);
+    setScript(newScript);
+    setAcVisible(false);
+    // Set cursor after the inserted text
+    setTimeout(() => {
+      const newCursor = wordStart + sig.length;
+      ta.setSelectionRange(newCursor, newCursor);
+      ta.focus();
+    }, 0);
+  };
+
+  const handleEditorChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setScript(value);
+    const cursorPos = e.target.selectionStart ?? value.length;
+    // Check if we should show autocomplete
+    const textBefore = value.substring(0, cursorPos);
+    const match = textBefore.match(/([A-Za-z_]{2,})$/);
+    if (match) {
+      triggerAutocomplete(match[1]);
+    } else {
+      setAcVisible(false);
+    }
+  };
 
   const handleCompile = async () => {
     if (!script.trim()) return;
@@ -260,19 +350,72 @@ export default function MEScriptPage() {
                 </div>
               ))}
             </div>
-            <textarea
-              value={script}
-              onChange={(e) => setScript(e.target.value)}
-              spellCheck={false}
-              style={{
-                flex: 1, background: "#111122", color: "#e0e0e0",
-                border: "none", padding: "12px 16px",
-                fontSize: 13, lineHeight: "22px",
-                fontFamily: '"JetBrains Mono", "Consolas", monospace',
-                resize: "none", outline: "none",
-                tabSize: 2, whiteSpace: "pre",
-              }}
-            />
+            <div style={{ flex: 1, position: "relative" }}>
+              <textarea
+                ref={textareaRef}
+                value={script}
+                onChange={handleEditorChange}
+                onKeyDown={handleEditorKeyDown}
+                spellCheck={false}
+                style={{
+                  width: "100%", height: "100%",
+                  background: "#111122", color: "#e0e0e0",
+                  border: "none", padding: "12px 16px",
+                  fontSize: 13, lineHeight: "22px",
+                  fontFamily: '"JetBrains Mono", "Consolas", monospace',
+                  resize: "none", outline: "none",
+                  tabSize: 2, whiteSpace: "pre",
+                  position: "absolute", top: 0, left: 0,
+                }}
+              />
+              {/* Autocomplete dropdown */}
+              {acVisible && (
+                <div style={{
+                  position: "absolute",
+                  top: acPos.top,
+                  left: acPos.left,
+                  background: "#1A1A2E",
+                  border: "1px solid #CCAA00",
+                  borderRadius: 4,
+                  minWidth: 200,
+                  maxHeight: 220,
+                  overflow: "auto",
+                  zIndex: 100,
+                  boxShadow: "0 4px 16px rgba(0,0,0,0.6)",
+                }}>
+                  {acItems.map((item, i) => {
+                    const desc = FUNCTION_REF[item];
+                    return (
+                      <div
+                        key={item}
+                        onClick={() => acceptAutocomplete(item)}
+                        style={{
+                          padding: "4px 12px",
+                          background: i === acIdx ? "rgba(204,170,0,0.2)" : "transparent",
+                          color: i === acIdx ? "#CCAA00" : "#D4D4D4",
+                          cursor: "pointer",
+                          fontSize: 12,
+                          fontFamily: '"JetBrains Mono", "Consolas", monospace',
+                          display: "flex",
+                          justifyContent: "space-between",
+                        }}
+                        onMouseEnter={() => setAcIdx(i)}
+                      >
+                        <span>{item}</span>
+                        <span style={{ color: "#666666", fontSize: 10, marginLeft: 12 }}>{desc ?? ""}</span>
+                      </div>
+                    );
+                  })}
+                  <div style={{
+                    padding: "2px 12px", background: "#0C0C0C",
+                    color: "#555", fontSize: 9, fontFamily: "monospace",
+                    borderTop: "1px solid #2A2A2A",
+                  }}>
+                    ↑↓ 导航  ↵ 选择  Esc 关闭
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Compile output */}

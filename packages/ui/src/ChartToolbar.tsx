@@ -9,6 +9,8 @@ interface ChartToolbarProps {
   onToolChange: (t: DrawingTool | null) => void;
   onClearDrawings: () => void;
   drawingCount: number;
+  gridMode?: boolean;
+  onToggleGridMode?: () => void;
 }
 
 const CHART_TYPES: Array<{ key: ChartType; label: string }> = [
@@ -30,6 +32,7 @@ export function ChartToolbar({
   chartType, onChartTypeChange,
   activeTool, onToolChange,
   onClearDrawings, drawingCount,
+  gridMode, onToggleGridMode,
 }: ChartToolbarProps) {
   return (
     <div style={{
@@ -52,6 +55,19 @@ export function ChartToolbar({
           {ct.label}
         </button>
       ))}
+
+      {onToggleGridMode && (
+        <>
+          <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
+          <button onClick={onToggleGridMode} style={{
+            ...btnBase,
+            background: gridMode ? "#7E57C2" : "#2A2A2A",
+            color: gridMode ? "#fff" : "#858585",
+          }} title="多图表 2×2 布局">
+            {gridMode ? "⊞ 2×2 ✓" : "⊞ 2×2"}
+          </button>
+        </>
+      )}
 
       <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
 
