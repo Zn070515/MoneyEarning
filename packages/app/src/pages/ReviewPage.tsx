@@ -347,11 +347,15 @@ function ReviewTemplatePanel() {
           使用历史数据逐根K线判断买卖点，隐藏后续走势，完成后对照实际走势检验判断准确性。
           帮助训练盘感，改善入场/离场时机把握。
         </div>
-        <button disabled style={{
-          marginTop: 12, padding: "4px 16px", background: "#3a3a5a",
-          color: "#888", border: "none", borderRadius: 4,
-          cursor: "not-allowed", fontFamily: "monospace", fontSize: 12,
-        }}>
+        <button
+          title="前往设置页面激活授权"
+          onClick={() => alert("请在「设置 → 授权管理」页面激活专业版授权以解锁训练模式。")}
+          style={{
+            marginTop: 12, padding: "4px 16px", background: "#fbbf24",
+            color: "#000", border: "none", borderRadius: 4,
+            cursor: "pointer", fontFamily: "monospace", fontSize: 12, fontWeight: 600,
+          }}
+        >
           升级专业版解锁
         </button>
       </div>

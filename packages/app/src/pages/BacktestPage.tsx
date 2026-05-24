@@ -31,6 +31,8 @@ export default function BacktestPage() {
   const licenseTier = useAppStore((s) => s.licenseTier);
 
   const [templates, setTemplates] = useState<StrategyTemplate[]>([]);
+  const [progress, setProgress] = useState({ current: 0, total: 0 });
+  const setResult = useBacktestStore((s) => s.setResult);
 
   const loadTemplates = useCallback(async () => {
     try {
@@ -46,6 +48,53 @@ export default function BacktestPage() {
     if (!grouped[t.category]) grouped[t.category] = [];
     grouped[t.category].push(t);
   });
+
+  const handleRunBacktest = async () => {
+    if (!selectedStockId) return;
+    setRunning(true); setProgress({ current: 0, total: 100 });
+    try {
+      const prices = await invoke<Array<{
+        trade_date: string; open: number; high: number; low: number;
+        close: number; volume: number; amount: number; turnover?: number;
+      }>>("query_daily_prices", {
+        stockId: selectedStockId,
+        startDate: "2020-01-01",
+        endDate: "2099-12-31",
+      });
+      if (prices.length === 0) {
+        setResult(null, "该股票无日线数据，请先导入数据"); return;
+      }
+      setProgress({ current: 30, total: 100 });
+      const data = prices.map((p) => ({
+        time: new Date(p.trade_date).getTime() / 1000,
+        open: p.open, high: p.high, low: p.low, close: p.close,
+        volume: p.volume, amount: p.amount, turnover: p.turnover,
+      }));
+      const sel = templates.find((t) => t.name === config.template);
+      setProgress({ current: 60, total: 100 });
+      const raw = await invoke<Record<string, unknown>>("run_backtest", {
+        data, template: config.template, params: sel?.params ?? {},
+        config: {
+          initial_capital: config.initialCapital,
+          commission_rate: config.commissionRate,
+          stamp_tax_rate: 0.001, slippage: config.slippage,
+          position_pct: 0.95,
+        },
+      });
+      setProgress({ current: 100, total: 100 });
+      setResult({
+        totalReturn: raw.total_return as number,
+        annualReturn: raw.annual_return as number,
+        maxDrawdown: raw.max_drawdown as number,
+        sharpeRatio: raw.sharpe_ratio as number,
+        sortinoRatio: raw.sortino_ratio as number,
+        calmarRatio: raw.calmar_ratio as number,
+        winRate: raw.win_rate as number,
+        totalTrades: raw.total_trades as number,
+        equityCurve: raw.equity_curve as [string, number][],
+      });
+    } catch (e) { setResult(null, String(e)); }
+  };
 
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
@@ -111,7 +160,7 @@ export default function BacktestPage() {
         </label>
         <button
           disabled={running || !selectedStockId}
-          onClick={() => setRunning(true)}
+          onClick={handleRunBacktest}
           style={{
             padding: "4px 16px",
             background: running || !selectedStockId ? "#3a3a5a" : "#fbbf24",
@@ -125,7 +174,7 @@ export default function BacktestPage() {
         </button>
         {result && (
           <button onClick={() => {
-            const md = generateBacktestReportMarkdown(config, result, selectedStockCode);
+            const md = generateBacktestReportMarkdown(config, result, selectedStockCode ?? "");
             downloadMarkdownReport(md, `backtest-${config.template}-${Date.now()}.md`);
           }} style={{
             padding: "4px 16px", background: "#22c55e", color: "#000",
@@ -139,6 +188,28 @@ export default function BacktestPage() {
           <span style={{ color: "#666", fontSize: 11 }}>请先在图表页面选择股票</span>
         )}
       </div>
+
+      {/* Progress bar */}
+      {running && progress.total > 0 && (
+        <div style={{ padding: "0 20px", flexShrink: 0 }}>
+          <div style={{
+            height: 3, background: "#2a2a4a", borderRadius: 2,
+            overflow: "hidden", marginTop: 2,
+          }}>
+            <div style={{
+              height: "100%", width: `${(progress.current / progress.total) * 100}%`,
+              background: "linear-gradient(90deg, #00D8FF, #7C3CFF)",
+              borderRadius: 2, transition: "width 0.3s ease",
+            }} />
+          </div>
+          <div style={{
+            color: "#888", fontSize: 10, fontFamily: "monospace",
+            textAlign: "right", marginTop: 1,
+          }}>
+            {Math.round((progress.current / progress.total) * 100)}%
+          </div>
+        </div>
+      )}
 
       {/* Results summary */}
       {result && (

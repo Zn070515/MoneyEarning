@@ -12,7 +12,8 @@
   },
   "dependencies": {
     "@me/chart-engine": "workspace:*",
-    "@tauri-apps/api": "^2.0"
+    "@tauri-apps/api": "^2.0",
+    "@tauri-apps/plugin-dialog": "^2.0"
   },
   "devDependencies": {
     "typescript": "^5.4"

@@ -405,6 +405,8 @@ function SummaryCard({
 function ProPlaceholder({ title, desc }: { title: string; desc: string }) {
   return (
     <div
+      title="功能开发中，敬请期待"
+      onClick={() => alert(`${title}为专业版功能，正在开发中，敬请期待。`)}
       style={{
         flex: "1 1 200px",
         padding: 16,
@@ -412,6 +414,8 @@ function ProPlaceholder({ title, desc }: { title: string; desc: string }) {
         border: "1px solid #2a2a4a",
         borderRadius: 8,
         opacity: 0.6,
+        cursor: "pointer",
+        transition: "border-color 0.2s",
       }}
     >
       <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 4 }}>

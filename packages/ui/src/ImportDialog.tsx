@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 
 interface ImportResult {
   stock_count: number;
@@ -62,10 +63,28 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
           <label style={{ fontSize: 12, color: "#888", marginBottom: 4, display: "block" }}>
             CSV文件路径
           </label>
-          <input value={filePath}
-            onChange={e => setFilePath(e.target.value)}
-            placeholder='输入完整路径，如 C:\data\000001.csv'
-            style={{ ...inputStyle, width: "100%", boxSizing: "border-box" }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <input value={filePath}
+              onChange={e => setFilePath(e.target.value)}
+              placeholder='选择或输入 .csv 文件路径'
+              style={{ ...inputStyle, flex: 1 }} />
+            <button onClick={async () => {
+              const selected = await open({
+                multiple: false,
+                filters: [{ name: "CSV文件", extensions: ["csv"] }],
+              });
+              if (selected && typeof selected === "string") {
+                setFilePath(selected);
+              }
+            }} style={{
+              background: "#1a1a2e", border: "1px solid #3a3a5a",
+              color: "#00D8FF", padding: "6px 14px", borderRadius: 4,
+              cursor: "pointer", fontSize: 12, fontFamily: "monospace",
+              whiteSpace: "nowrap",
+            }}>
+              浏览...
+            </button>
+          </div>
         </div>
 
         {/* Code + Exchange */}

@@ -407,6 +407,36 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
             {optResult && <OptimizationResults result={optResult} capital={capital} />}
           </>
         )}
+
+        {/* Running progress indicator */}
+        {running && (
+          <div style={{ marginBottom: 12 }}>
+            <div style={{
+              height: 3, background: "#2a2a4a", borderRadius: 2,
+              overflow: "hidden", position: "relative",
+            }}>
+              <div style={{
+                position: "absolute", top: 0, left: 0, height: "100%",
+                width: "30%",
+                background: "linear-gradient(90deg, #00D8FF, #7C3CFF)",
+                borderRadius: 2,
+                animation: "backtest-progress-slide 1.2s ease-in-out infinite",
+              }} />
+            </div>
+            <style>{`
+              @keyframes backtest-progress-slide {
+                0% { left: -30%; }
+                100% { left: 100%; }
+              }
+            `}</style>
+            <div style={{
+              color: "#888", fontSize: 10, fontFamily: "monospace",
+              textAlign: "center", marginTop: 4,
+            }}>
+              正在计算中...
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
