@@ -5,6 +5,7 @@ mod db;
 mod license;
 mod import;
 mod download;
+mod tdx;
 
 // ── License ──
 
@@ -132,6 +133,21 @@ fn import_csv(file_path: String, stock_code: String, exchange: String,
               app: tauri::AppHandle) -> Result<ImportResult, String> {
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
     import::import_csv_file(&db, &file_path, &stock_code, &exchange).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn import_tdx_day(file_path: String, stock_code: Option<String>, exchange: Option<String>,
+                   app: tauri::AppHandle) -> Result<ImportResult, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    tdx::import_day_file(&db, &file_path,
+        stock_code.as_deref(), exchange.as_deref())
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn import_tdx_directory(dir_path: String, app: tauri::AppHandle) -> Result<Vec<ImportResult>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    tdx::import_day_directory(&db, &dir_path).map_err(|e| e.to_string())
 }
 
 // ── Watchlist ──
@@ -1314,7 +1330,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_machine_fingerprint, activate_license, check_license,
             query_daily_prices, query_stock_list, query_stock_by_code, get_data_summary,
-            import_csv,
+            import_csv, import_tdx_day, import_tdx_directory,
             watchlist_list, watchlist_create, watchlist_delete,
             watchlist_items, watchlist_add_item, watchlist_remove_item,
             trade_create, trade_list, trade_pnl,
