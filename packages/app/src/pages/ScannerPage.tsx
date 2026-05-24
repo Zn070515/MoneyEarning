@@ -36,7 +36,7 @@ export default function ScannerPage() {
             margin: "4px 0 0",
           }}
         >
-          CAPS / CGPC / MARS / MetaSearcher 智能选股算法
+          CAPS / CGPC / MARS / MetaSearcher 条件扫描算法
         </p>
       </div>
       <div style={{ flex: 1, overflow: "hidden" }}>

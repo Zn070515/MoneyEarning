@@ -243,8 +243,8 @@ export default function MEScriptPage() {
         parts.push("✓ 脚本编译通过，执行成功");
       }
       parts.push("");
-      parts.push("买入信号: " + result.buy_count + " 次");
-      parts.push("卖出信号: " + result.sell_count + " 次");
+      parts.push("条件触发标记(上): " + result.buy_count + " 次");
+      parts.push("退出条件标记: " + result.sell_count + " 次");
       if (Object.keys(result.params).length > 0) {
         parts.push("");
         parts.push("参数:");

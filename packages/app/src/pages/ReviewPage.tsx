@@ -90,6 +90,9 @@ export default function ReviewPage() {
         )}
         {activeTab === "alerts" && (
           <div style={{ height: "100%", overflow: "auto", padding: 16 }}>
+            <div style={{ padding: "5px 10px", background: "rgba(204,170,0,0.06)", border: "1px solid rgba(204,170,0,0.1)", borderRadius: 4, marginBottom: 12, fontSize: 11, color: "#94A3B8", lineHeight: 1.5 }}>
+              ⚠️ 预警为条件触发通知，仅供研究参考，不构成买卖建议。预警触发不代表应进行交易，请独立判断。
+            </div>
             <AlertsPanel selectedStockId={selectedStockId} selectedStockCode={selectedStockCode} />
           </div>
         )}

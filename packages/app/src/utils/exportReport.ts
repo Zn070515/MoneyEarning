@@ -102,7 +102,23 @@ export function generateBacktestReportMarkdown(
   lines.push("---");
   lines.push("");
   lines.push(
-    "*本报告由 QuantVault 本地量化分析工作站自动生成。过往业绩不代表未来表现，投资有风险，入市需谨慎。*",
+    "## ⚠️ 风险提示",
+  );
+  lines.push("");
+  lines.push(
+    "**本报告由 QuantVault 自动生成，仅供用户自我研究参考，不构成任何投资建议。**",
+  );
+  lines.push("");
+  lines.push(
+    "- 历史回测不代表未来收益。策略在历史数据上的表现（包括但不限于收益率、胜率、夏普比率、最大回撤）",
+  );
+  lines.push("  不构成对未来表现的任何明示或暗示的保证。");
+  lines.push(
+    "- 回测假设所有交易以收盘价成交、未考虑流动性限制。实际交易成本（手续费、印花税、滑点）可能高于设置值。",
+  );
+  lines.push("- 历史回测存在幸存者偏差、前视偏差、过拟合等固有局限。");
+  lines.push(
+    "- 用户基于本报告做出的任何投资决策，风险自担。投资有风险，入市需谨慎。",
   );
   lines.push("");
 

@@ -269,6 +269,9 @@ export function ScannerPanel() {
         fontSize: 13,
       }}
     >
+      <div style={{ padding: "5px 10px", background: "rgba(204,170,0,0.06)", borderBottom: "1px solid rgba(204,170,0,0.15)", fontSize: 11, color: "#94A3B8", lineHeight: 1.5, flexShrink: 0 }}>
+        ⚠️ 扫描结果仅为技术条件匹配，不构成投资建议。所有筛选条件由您自行设定，扫描结果不代表任何推荐。
+      </div>
       {/* Algorithm Tabs */}
       <div
         style={{

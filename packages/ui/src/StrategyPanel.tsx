@@ -233,8 +233,8 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
       } else {
         parts.push("✓ 脚本编译通过");
       }
-      parts.push("买入信号: " + result.buy_count + " 次");
-      parts.push("卖出信号: " + result.sell_count + " 次");
+      parts.push("条件触发标记(上): " + result.buy_count + " 次");
+      parts.push("退出条件标记: " + result.sell_count + " 次");
       if (Object.keys(result.params).length > 0) {
         parts.push("参数: " + JSON.stringify(result.params, null, 2));
       }
@@ -338,6 +338,9 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
           {toast}
         </div>
       )}
+      <div style={{ padding: "4px 12px", background: "rgba(204,170,0,0.05)", borderBottom: "1px solid rgba(204,170,0,0.1)", fontSize: 10, color: "#94A3B8", lineHeight: 1.5, flexShrink: 0 }}>
+        ⚠️ 策略模板仅供研究参考。历史回测绩效不代表未来表现。策略参数可能过拟合，实盘结果可能显著偏离回测结果。
+      </div>
       <div style={{
         padding: "10px 12px", borderBottom: "1px solid #2A2A2A",
         fontWeight: 600, color: "#fff", fontSize: 14,

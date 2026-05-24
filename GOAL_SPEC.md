@@ -1,10 +1,10 @@
 # GOAL_SPEC — 产品目标规格文档
 
-> 版本 v0.10.0 | 2026-05-24 | 通达信导入 + 回测可视化 + 预警系统 + 多图表 + 编辑器增强 + CSV导入导出 + 付费转化
+> 版本 v0.11.0 | 2026-05-24 | 图表细节增强 + 回测修复 + 安全审计硬化
 
 ---
 
-## 变更日志 v0.10.0（已完成）
+## 变更日志 v0.11.0（已完成）
 
 ### v0.9.0 已发布功能
 
@@ -58,7 +58,7 @@
 - 多图表同时打开（2×2 布局）✅ — ChartToolbar "2×2" 按钮切换网格模式，4个独立画布各自加载不同股票
 - ME Script 编辑器增强 ✅ — 自动完成弹出框（Ctrl+Space / 输入触发），函数签名+描述提示
 - 持仓组合页支持 CSV 导入/导出 ✅ — 导入/导出按钮，Excel兼容 UTF-8 BOM
-- 优化大数据量图表渲染（WebGL 加速散点图层）→ 延后至 v0.11.0
+- 优化大数据量图表渲染（WebGL 加速散点图层）→ 延后至 v0.12.0
 
 ### 优先级五：付费转化优化 ✅
 - 试用到期后显示升级引导页 ✅ — LicensePanel 剩余≤3天显示引导卡片
@@ -68,9 +68,40 @@
 
 ---
 
-## 变更日志 v0.11.0（规划中）
+## 变更日志 v0.11.0（已完成）
 
-> 目标：弥补 v0.10.0 延后项，夯实核心体验
+### 优先级一：图表细节增强
+- **十字光标增强**：工具提示显示日期、OHLCV、涨跌幅（红涨绿跌）、成交额（中文格式化）、换手率；智能定位（靠近右边界时翻转到左侧防溢出）
+- **日期轴**：新增 `DateAxisRenderer`，成交量面板下方 MM-DD 格式日期标签，自动间隔防重叠
+- **成交量轴标签**：成交量面板右上角显示格式化最大值（万/亿）
+- **右侧价格轴**：主图右侧镜像左侧价格标签，适配自适应精度
+- **OHLCV 快照栏**：图表工具栏下方、Canvas 上方显示最新蜡烛 O/H/L/C/量/额/涨跌幅
+- **自适应价格精度**：<10→3位小数，<100→2位，<1000→1位，>=1000→0位
+- **格式化工具**：`formatVolumeCN()`、`formatAmountCN()`、`autoPrecision()`、`formatPriceCN()`
+- 涉及文件：CrosshairRenderer、DateAxisRenderer、GridRenderer、VolumeRenderer、ChartEngine、KLineChart
+
+### 优先级二：回测三个 Bug 修复
+- **Bug 1**：BacktestPage 移除死的 `<BacktestPanel data={[]} />`，替换为真实结果摘要+空状态占位
+- **Bug 2**：StrategyPanel 接线——ChartPage 新增 `onSelectStrategy` 回调，选中策略→自动切回测 tab→预填模板名
+- **Bug 3**：`run_backtest` 等 4 个命令新增 `is_free` 检查，免费模板不再被 PRO 门控拦截
+
+### 优先级三：全量安全审计硬化
+- 启动 3 Agent 并行审计（WASM/Rust/前端），修复后重审至零问题
+- WASM：13 CRITICAL 修复（period=0 除零、unwrap 替换、索引越界、pool_size=0 防死循环）
+- Rust 后端：4 HIGH 修复（ma_cross 除零、volume_spike 除零、SR 级别 PRO 门控）
+- 前端：5 HIGH 修复（div-by-zero 守卫、null 解引用、FileReader 错误处理）
+- 合计 32 个安全问题修复，审计循环 2 轮清零
+
+### 优先级四：工程基础设施
+- CLAUDE.md 新增"变更后多Agent健康审计工作流"规则
+- Landing 页面更新至 v0.11.0（HTML 引用 + 安装包二进制）
+- ChartEngine 初始化加 try/catch 错误降级 UI
+
+---
+
+## 变更日志 v0.12.0（规划中）
+
+> 目标：弥补 v0.10.0/v0.11.0 延后项，夯实核心体验
 
 ### 优先级一：后台预警 + Windows 原生通知
 - 后台定时扫描（每5分钟自动检查所有预警规则）
@@ -2679,11 +2710,11 @@ COLORWHITE COLORCYAN COLORMAGENTA
 
 ---
 
-## 十五、质检与风控体系
+## 二十二、质检与风控体系
 
 > v1.0 | 2026-05-22 | 基于开源生态扫描 + 金融行业 QA 最佳实践 + A股特殊规则
 
-### 15.1 已安装的工具集
+### 22.1 已安装的工具集
 
 #### AI Agent Skills（Claude Code 插件）
 
@@ -2729,7 +2760,7 @@ conda activate quant-qa
 pip install quantlite pandas numpy scipy statsmodels matplotlib
 ```
 
-### 15.2 参考开源项目（量化验证与风控）
+### 22.2 参考开源项目（量化验证与风控）
 
 #### 核心对标项目
 
@@ -2759,7 +2790,7 @@ pip install quantlite pandas numpy scipy statsmodels matplotlib
 | **Implementation Risk Framework** | arXiv 2603.20319 | 15 策略 × 5 引擎交叉比对，Engine Spread/IUI/DAF/CSI 四指标 |
 | **Tauri + WebDriver** | Tauri 官方 | `tauri-driver` + WebdriverIO E2E，`cargo test` 后端单元测试 |
 
-### 15.3 Rust 原生库依赖计划
+### 22.3 Rust 原生库依赖计划
 
 可以直接 `Cargo.toml` 集成的 crate：
 
@@ -2781,7 +2812,7 @@ tempfile = "3"           # 临时文件测试
 
 > **注意**：Rust 生态目前缺少 PBO/DSR 原生实现。需将 `pypbo` 的 CSCV 算法+ DSR 公式移植到 `wasm-backtest`，或通过 PyO3 桥接 Python 库。
 
-### 15.4 四层质检体系设计
+### 22.4 四层质检体系设计
 
 ```
 ┌──────────────────────────────────────────────────┐
@@ -2818,7 +2849,7 @@ tempfile = "3"           # 临时文件测试
 └──────────────────────────────────────────────────┘
 ```
 
-### 15.5 A 股数据质量检查清单
+### 22.5 A 股数据质量检查清单
 
 #### 数据导入阶段
 
@@ -2855,7 +2886,7 @@ tempfile = "3"           # 临时文件测试
 | 技术指标计算 | 计算 `ref(N)` 时意外引用未来值 | `position = signal.shift(1)` 强制 lag |
 | Train/Test 泄漏 | Walk-Forward 时 in-sample 与 out-sample 重叠 | Purged K-Fold CV 分配 |
 
-### 15.6 回测过拟合检测流程（PBO/DSR）
+### 22.6 回测过拟合检测流程（PBO/DSR）
 
 参考 Lopez de Prado & Bailey 论文 + `pypbo`/`backtester-mcp` 实现：
 
@@ -2879,7 +2910,7 @@ tempfile = "3"           # 临时文件测试
 5. 拟合 logit 的累积分布 → PBO = 排名逻辑回归的概率下界
 ```
 
-### 15.7 Tauri 桌面应用测试架构
+### 22.7 Tauri 桌面应用测试架构
 
 ```
 ┌──────────────────────────────────┐
@@ -2899,7 +2930,7 @@ tempfile = "3"           # 临时文件测试
 4. **E2E**：安装 `cargo install tauri-driver`，配置 WebdriverIO，覆盖核心用户流程
 5. **CI 管线**：GitHub Actions 矩阵（Windows→主力，macOS→兼容性）
 
-### 15.8 实施路径
+### 22.8 实施路径
 
 | 阶段 | 时间 | 任务 | 交付物 |
 |------|------|------|--------|
@@ -2909,7 +2940,7 @@ tempfile = "3"           # 临时文件测试
 | **Phase 4：CI + AI 持续审查** | 第8-9周 | 配置 GitHub Actions 测试矩阵；集成 `tauri-driver` E2E；编码规范文档 + AI code-review hook | 每次 PR 自动运行测试+审查 |
 | **Phase 5：性能与安全** | 第10-12周 | 全市场扫描压力测试；WASM 完整性校验自动化；授权系统渗透测试 | 压力测试报告 + 安全审计报告 |
 
-### 15.9 风险评分卡（策略上线门控）
+### 22.9 风险评分卡（策略上线门控）
 
 每个策略上线前必须通过以下硬性门控：
 
@@ -2925,7 +2956,7 @@ tempfile = "3"           # 临时文件测试
 
 ---
 
-## 二十二、v0.9.0 UX/UI 全面升级方案
+## 二十三、v0.9.0 UX/UI 全面升级方案（历史留存，最终采用 Professional Terminal 主题）
 
 ### 22.1 背景与动机
 

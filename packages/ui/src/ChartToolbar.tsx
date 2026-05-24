@@ -2,6 +2,8 @@ import type { ChartType } from "@me/chart-engine";
 import type { DrawingTool } from "./KLineChart";
 import { drawingToolLabel } from "./KLineChart";
 
+export type Period = "1min" | "5min" | "15min" | "30min" | "60min" | "D" | "W" | "M";
+
 interface ChartToolbarProps {
   chartType: ChartType;
   onChartTypeChange: (t: ChartType) => void;
@@ -11,12 +13,25 @@ interface ChartToolbarProps {
   drawingCount: number;
   gridMode?: boolean;
   onToggleGridMode?: () => void;
+  period?: Period;
+  onPeriodChange?: (p: Period) => void;
 }
 
 const CHART_TYPES: Array<{ key: ChartType; label: string }> = [
   { key: "candlestick", label: "K线" },
   { key: "heikin_ashi", label: "Heikin Ashi" },
   { key: "line", label: "折线" },
+];
+
+const PERIODS: Array<{ key: Period; label: string }> = [
+  { key: "1min", label: "1分" },
+  { key: "5min", label: "5分" },
+  { key: "15min", label: "15分" },
+  { key: "30min", label: "30分" },
+  { key: "60min", label: "60分" },
+  { key: "D", label: "日" },
+  { key: "W", label: "周" },
+  { key: "M", label: "月" },
 ];
 
 const DRAWING_TOOLS: Array<{ key: DrawingTool; label: string; icon: string }> = [
@@ -33,6 +48,7 @@ export function ChartToolbar({
   activeTool, onToolChange,
   onClearDrawings, drawingCount,
   gridMode, onToggleGridMode,
+  period, onPeriodChange,
 }: ChartToolbarProps) {
   return (
     <div style={{
@@ -55,6 +71,26 @@ export function ChartToolbar({
           {ct.label}
         </button>
       ))}
+
+      {/* Period selector */}
+      {period && onPeriodChange && (
+        <>
+          <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
+          <span style={{ color: "#858585", marginRight: 4 }}>周期:</span>
+          {PERIODS.map(p => (
+            <button key={p.key} onClick={() => onPeriodChange(p.key)}
+              style={{
+                ...btnBase,
+                background: period === p.key ? "#CCAA00" : "#2A2A2A",
+                color: period === p.key ? "#000" : "#D4D4D4",
+                fontWeight: period === p.key ? 600 : 400,
+                minWidth: 32, textAlign: "center", padding: "4px 6px",
+              }}>
+              {p.label}
+            </button>
+          ))}
+        </>
+      )}
 
       {onToggleGridMode && (
         <>

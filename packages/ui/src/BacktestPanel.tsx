@@ -348,7 +348,12 @@ export function BacktestPanel({ data, isPro, initialTemplate }: BacktestPanelPro
               {running ? "回测中..." : "开始回测"}
             </button>
             {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#EF5350", fontSize: 12, marginBottom: 12 }}>{error}</div>}
-            {result && <BacktestResults result={result} capital={capital} />}
+            {result && <>
+                <div style={{ padding: "6px 10px", background: "rgba(204,170,0,0.08)", borderLeft: "2px solid #CCAA00", borderRadius: 2, marginBottom: 12, fontSize: 11, color: "#94A3B8", lineHeight: 1.5 }}>
+                  ⚠️ 历史回测不代表未来收益。策略参数可能过拟合，实盘结果可能显著偏离回测结果。以下数据仅供研究参考，不构成投资建议。
+                </div>
+                <BacktestResults result={result} capital={capital} />
+              </>}
           </>
         )}
 

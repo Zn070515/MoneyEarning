@@ -17,5 +17,6 @@ export { ChartToolbar } from "./ChartToolbar";
 export { RiskPanel } from "./RiskPanel";
 export { PatternPanel } from "./PatternPanel";
 export { DownloadPanel } from "./DownloadPanel";
+export { OnboardingWizard } from "./OnboardingWizard";
 
 export const version = "0.6.0";

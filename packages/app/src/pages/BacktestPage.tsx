@@ -185,6 +185,11 @@ export default function BacktestPage() {
           {running ? "运行中..." : "▶ 运行回测"}
         </button>
         {result && (
+        <div style={{ padding: "6px 10px", background: "rgba(204,170,0,0.08)", borderLeft: "2px solid #CCAA00", borderRadius: 2, marginBottom: 12, fontSize: 11, color: "#94A3B8", lineHeight: 1.5, fontFamily: "monospace" }}>
+          ⚠️ 历史回测不代表未来收益。策略参数可能过拟合，实盘结果可能显著偏离回测结果。以下数据仅供研究参考，不构成投资建议。
+        </div>
+        )}
+        {result && (
           <button onClick={() => {
             const md = generateBacktestReportMarkdown(config, result, selectedStockCode ?? "");
             downloadMarkdownReport(md, `backtest-${config.template}-${Date.now()}.md`);

@@ -24,6 +24,11 @@
     ],
     "security": {
       "csp": null
+    },
+    "trayIcon": {
+      "id": "quantvault-tray",
+      "iconPath": "icons/icon.png",
+      "tooltip": "QuantVault"
     }
   },
   "plugins": {},

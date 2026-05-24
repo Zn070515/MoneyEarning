@@ -87,7 +87,7 @@ export default function DashboardPage() {
       {/* Quick actions */}
       <div style={{ display: "flex", gap: 16, marginBottom: 28, flexWrap: "wrap" }}>
         <QuickCard icon="⚡" title="策略回测" desc="20+策略模板，完整回测报告，参数优化" primary onClick={() => navigateTo("/backtest")} />
-        <QuickCard icon="🔍" title="股票扫描" desc="CAPS/CGPC/MARS 智能选股，锁定标的" onClick={() => navigateTo("/scanner")} />
+        <QuickCard icon="🔍" title="条件扫描" desc="CAPS/CGPC/MARS 多条件筛选，按技术条件匹配" onClick={() => navigateTo("/scanner")} />
         <QuickCard icon="📈" title="图表分析" desc="K线图、316+技术指标、绘图工具" onClick={() => navigateTo("/chart")} />
         <QuickCard icon="📝" title="交易复盘" desc="情绪标签、复盘模板，建立交易纪律" onClick={() => navigateTo("/review")} />
         <QuickCard icon="📊" title="组合管理" desc="持仓跟踪、VaR风险、收益归因分析" onClick={() => navigateTo("/portfolio")} />
@@ -141,10 +141,15 @@ export default function DashboardPage() {
         </p>
         <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
           <WorkflowStep num="1" title="回测验证" desc="把你的交易想法放到历史数据里跑一遍。夏普比率、最大回撤、胜率、盈亏比——用数字代替感觉做决策。" />
-          <WorkflowStep num="2" title="扫描选股" desc="设定条件（趋势、动量、形态、筹码），全市场批量筛选，找到真正符合你策略的标的，不再靠消息炒股。" />
+          <WorkflowStep num="2" title="条件扫描" desc="设定技术条件（趋势、动量、形态、筹码），全市场批量筛选，找到符合你交易系统的标的，不再靠消息炒股。" />
           <WorkflowStep num="3" title="纪律执行" desc="制定买入/持仓/止损规则，图表分析辅助确认入场点。明确盈亏比，赚该赚的钱，亏可控的钱。" />
           <WorkflowStep num="4" title="复盘改进" desc="记录每笔交易的情绪和逻辑，定期复盘归因。不是赚了就对、亏了就错——找到真正有效的模式。" />
         </div>
+      </div>
+
+      {/* Risk disclaimer */}
+      <div style={{ marginTop: 28, padding: "12px 16px", background: "rgba(204,170,0,0.04)", border: "1px solid rgba(204,170,0,0.1)", borderRadius: 6, fontSize: 11, color: "#94A3B8", lineHeight: 1.7, fontFamily: "monospace" }}>
+        ⚠️ <strong>风险提示：</strong>QuantVault 是一款本地离线数据分析工具，不提供任何投资建议。所有功能仅供历史数据分析与自我研究。投资有风险，入市需谨慎。过往业绩不代表未来表现。
       </div>
     </div>
   );

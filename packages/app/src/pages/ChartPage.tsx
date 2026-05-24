@@ -81,6 +81,8 @@ export default function ChartPage() {
 
   const chartType = useChartStore((s) => s.chartType);
   const setChartType = useChartStore((s) => s.setChartType);
+  const period = useChartStore((s) => s.period);
+  const setPeriod = useChartStore((s) => s.setPeriod);
   const drawingTool = useChartStore((s) => s.drawingTool);
   const setDrawingTool = useChartStore((s) => s.setDrawingTool);
   const gridMode = useChartStore((s) => s.gridMode);
@@ -179,22 +181,44 @@ export default function ChartPage() {
     setLoading(true);
     setDataStatus("加载中...");
     try {
-      const data = await invoke<DailyPrice[]>("query_daily_prices", {
-        stockId,
-        startDate: "2020-01-01",
-        endDate: "2099-12-31",
-      });
-      if (!mountedRef.current) return;
-      const ohlcv: OHLCV[] = data.map((d) => ({
-        time: Math.floor(new Date(d.trade_date).getTime() / 1000),
-        open: d.open,
-        high: d.high,
-        low: d.low,
-        close: d.close,
-        volume: d.volume,
-        amount: d.amount,
-        turnover: d.turnover ?? undefined,
-      }));
+      let ohlcv: OHLCV[];
+      if (period === "W" || period === "M") {
+        const bars = await invoke<any[]>("resample_daily", { stockId, period });
+        if (!mountedRef.current) return;
+        ohlcv = bars.map((d: any) => ({
+          time: Math.floor(new Date(d.trade_date).getTime() / 1000),
+          open: d.open, high: d.high, low: d.low, close: d.close,
+          volume: d.volume, amount: d.amount, turnover: d.turnover ?? undefined,
+        }));
+      } else if (period.endsWith("min")) {
+        const kltMap: Record<string, number> = { "1min": 1, "5min": 5, "15min": 15, "30min": 30, "60min": 60 };
+        const klt = kltMap[period] || 5;
+        const minuteBars = await invoke<any[]>("query_minute_prices", {
+          stockId, start: "2020-01-01 00:00:00", end: "2099-12-31 23:59:59",
+        });
+        if (!mountedRef.current) return;
+        const filtered = minuteBars.filter((m: any) => {
+          const mins = new Date(m.trade_time).getMinutes();
+          return mins % klt === 0 || klt === 1;
+        });
+        ohlcv = filtered.map((m: any) => ({
+          time: Math.floor(new Date(m.trade_time).getTime() / 1000),
+          open: m.open, high: m.high, low: m.low, close: m.close,
+          volume: m.volume, amount: m.amount, turnover: m.turnover ?? undefined,
+        }));
+      } else {
+        const data = await invoke<DailyPrice[]>("query_daily_prices", {
+          stockId,
+          startDate: "2020-01-01",
+          endDate: "2099-12-31",
+        });
+        if (!mountedRef.current) return;
+        ohlcv = data.map((d) => ({
+          time: Math.floor(new Date(d.trade_date).getTime() / 1000),
+          open: d.open, high: d.high, low: d.low, close: d.close,
+          volume: d.volume, amount: d.amount, turnover: d.turnover ?? undefined,
+        }));
+      }
       setChartData(ohlcv);
       setDataStatus(`${ohlcv.length} 条K线数据`);
     } catch (e) {
@@ -204,14 +228,14 @@ export default function ChartPage() {
       }
     }
     if (mountedRef.current) setLoading(false);
-  }, []);
+  }, [period]);
 
-  // Watchlist→chart linkage: auto-load when selectedStockId changes (skip in grid mode)
+  // Watchlist→chart linkage: auto-load when selectedStockId or period changes (skip in grid mode)
   useEffect(() => {
     if (selectedStockId != null && !gridMode) {
       loadChartData(selectedStockId);
     }
-  }, [selectedStockId, loadChartData, gridMode]);
+  }, [selectedStockId, loadChartData, gridMode, period]);
 
   const handleSelectWatchlist = (id: number) => {
     setSelectedWatchlistId(id);
@@ -353,6 +377,8 @@ export default function ChartPage() {
         drawingCount={drawings.length}
         gridMode={gridMode}
         onToggleGridMode={toggleGridMode}
+        period={period}
+        onPeriodChange={setPeriod}
       />
 
       {/* Body */}

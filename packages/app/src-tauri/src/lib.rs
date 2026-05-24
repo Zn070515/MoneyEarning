@@ -1,6 +1,10 @@
 use tauri::{Emitter, Manager};
+use tauri::tray::{TrayIconBuilder, MouseButton, MouseButtonState, TrayIconEvent};
+use tauri_plugin_notification::NotificationExt;
 use rusqlite::params;
 use serde::{Serialize, Deserialize};
+use std::sync::atomic::{AtomicBool, Ordering};
+use chrono::Datelike;
 
 mod db;
 mod license;
@@ -1365,6 +1369,167 @@ struct UpdateInfo {
     download_url: String,
 }
 
+// ── Multi-Period Resample ──
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ResampledBar {
+    trade_date: String,
+    open: f64,
+    high: f64,
+    low: f64,
+    close: f64,
+    volume: f64,
+    amount: f64,
+    turnover: Option<f64>,
+}
+
+#[tauri::command]
+fn resample_daily(app: tauri::AppHandle, stock_id: i64,
+                  period: String) -> Result<Vec<ResampledBar>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let prices = db::query_daily(&db, stock_id, "1970-01-01", "2099-12-31")
+        .map_err(|e| e.to_string())?;
+    if prices.is_empty() {
+        return Err("无日线数据可用于重采样".into());
+    }
+    let bars: Vec<ResampledBar> = match period.as_str() {
+        "W" => resample_to_weekly(&prices),
+        "M" => resample_to_monthly(&prices),
+        _ => return Err(format!("不支持的重采样周期: {}", period)),
+    };
+    Ok(bars)
+}
+
+fn resample_to_weekly(prices: &[DailyPrice]) -> Vec<ResampledBar> {
+    let mut result = Vec::new();
+    let mut week_bars: Vec<&DailyPrice> = Vec::new();
+    for p in prices {
+        if let Some(last) = week_bars.last() {
+            let last_dt = chrono::NaiveDate::parse_from_str(&last.trade_date, "%Y-%m-%d").ok();
+            let cur_dt = chrono::NaiveDate::parse_from_str(&p.trade_date, "%Y-%m-%d").ok();
+            if let (Some(l), Some(c)) = (last_dt, cur_dt) {
+                if c.iso_week().week() != l.iso_week().week()
+                    || c.iso_week().year() != l.iso_week().year()
+                {
+                    result.push(aggregate_bars(&week_bars));
+                    week_bars.clear();
+                }
+            }
+        }
+        week_bars.push(p);
+    }
+    if !week_bars.is_empty() {
+        result.push(aggregate_bars(&week_bars));
+    }
+    result
+}
+
+fn resample_to_monthly(prices: &[DailyPrice]) -> Vec<ResampledBar> {
+    let mut result = Vec::new();
+    let mut month_bars: Vec<&DailyPrice> = Vec::new();
+    for p in prices {
+        if let Some(last) = month_bars.last() {
+            if p.trade_date[..7] != last.trade_date[..7] {
+                result.push(aggregate_bars(&month_bars));
+                month_bars.clear();
+            }
+        }
+        month_bars.push(p);
+    }
+    if !month_bars.is_empty() {
+        result.push(aggregate_bars(&month_bars));
+    }
+    result
+}
+
+fn aggregate_bars(bars: &[&DailyPrice]) -> ResampledBar {
+    let first = bars[0];
+    let last = bars[bars.len() - 1];
+    let mut high = f64::MIN;
+    let mut low = f64::MAX;
+    let mut vol = 0.0;
+    let mut amt = 0.0;
+    for b in bars {
+        if b.high > high { high = b.high; }
+        if b.low < low { low = b.low; }
+        vol += b.volume;
+        amt += b.amount;
+    }
+    ResampledBar {
+        trade_date: last.trade_date.clone(),
+        open: first.open,
+        high,
+        low,
+        close: last.close,
+        volume: vol,
+        amount: amt,
+        turnover: last.turnover,
+    }
+}
+
+// ── Backup / Restore ──
+
+#[tauri::command]
+fn backup_database(app: tauri::AppHandle, dest_path: String) -> Result<String, String> {
+    let db_path = app.path().app_data_dir()
+        .map(|p| p.join("moneyearning.db"))
+        .map_err(|e| e.to_string())?;
+    std::fs::copy(&db_path, &dest_path)
+        .map_err(|e| format!("备份失败: {}", e))?;
+    let size = std::fs::metadata(&dest_path)
+        .map(|m| m.len())
+        .unwrap_or(0);
+    Ok(format!("备份完成。文件: {}, 大小: {} KB", dest_path, size / 1024))
+}
+
+#[tauri::command]
+fn restore_database(app: tauri::AppHandle, backup_path: String) -> Result<String, String> {
+    let db_path = app.path().app_data_dir()
+        .map(|p| p.join("moneyearning.db"))
+        .map_err(|e| e.to_string())?;
+    // Backup current DB first (safety net)
+    let auto_backup = db_path.with_extension("db.pre_restore");
+    std::fs::copy(&db_path, &auto_backup)
+        .map_err(|e| format!("恢复前备份当前数据失败: {}", e))?;
+    // Restore from backup
+    std::fs::copy(&backup_path, &db_path)
+        .map_err(|e| format!("恢复失败: {}", e))?;
+    Ok("数据恢复完成。应用将重新加载数据库。".into())
+}
+
+#[tauri::command]
+fn get_backup_info(backup_path: String) -> Result<serde_json::Value, String> {
+    let meta = std::fs::metadata(&backup_path)
+        .map_err(|e| format!("无法读取文件: {}", e))?;
+    let modified = meta.modified().ok();
+    let date_str = modified.and_then(|t| {
+        let d = t.duration_since(std::time::UNIX_EPOCH).ok()?;
+        Some(chrono::DateTime::from_timestamp(d.as_secs() as i64, 0)?
+            .format("%Y-%m-%d %H:%M:%S").to_string())
+    }).unwrap_or_else(|| "未知".to_string());
+    Ok(serde_json::json!({
+        "path": backup_path,
+        "size_bytes": meta.len(),
+        "size_kb": meta.len() / 1024,
+        "modified": date_str,
+        "is_file": meta.is_file(),
+    }))
+}
+
+// ── Background Alert Scanner Control ──
+
+static ALERT_SCAN_ENABLED: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+fn get_alert_scan_status() -> bool {
+    ALERT_SCAN_ENABLED.load(Ordering::Relaxed)
+}
+
+#[tauri::command]
+fn set_alert_scan_enabled(enabled: bool) {
+    ALERT_SCAN_ENABLED.store(enabled, Ordering::Relaxed);
+}
+
 // ── File System ──
 
 #[tauri::command]
@@ -1378,6 +1543,7 @@ fn get_app_data_dir(app: tauri::AppHandle) -> Result<String, String> {
 pub fn run() {
     let result = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let db_path = app.path().app_data_dir()
                 .map(|p| p.join("moneyearning.db"))?;
@@ -1392,7 +1558,87 @@ pub fn run() {
             // Populate license cache at startup (best-effort)
             let handle = app.handle();
             let _ = license::check_with_db(&handle);
+
+            // ── System Tray ──
+            let tray_menu = tauri::menu::MenuBuilder::new(app)
+                .text("show_hide", "显示/隐藏主窗口")
+                .separator()
+                .text("toggle_scan", "暂停/恢复预警扫描")
+                .separator()
+                .text("recent_alerts", "最近预警(空)")
+                .separator()
+                .text("quit", "退出应用")
+                .build()?;
+            let _tray = TrayIconBuilder::with_id("quantvault-tray")
+                .tooltip("QuantVault — 本地量化工作站")
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up, ..
+                    } = event {
+                        let app = tray.app_handle();
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.show();
+                            let _ = window.set_focus();
+                        }
+                    }
+                })
+                .menu(&tray_menu)
+                .on_menu_event(|app, event| {
+                    match event.id().as_ref() {
+                        "show_hide" => {
+                            if let Some(window) = app.get_webview_window("main") {
+                                if window.is_visible().unwrap_or(false) {
+                                    let _ = window.hide();
+                                } else {
+                                    let _ = window.show();
+                                    let _ = window.set_focus();
+                                }
+                            }
+                        }
+                        "toggle_scan" => {
+                            let cur = ALERT_SCAN_ENABLED.load(Ordering::Relaxed);
+                            ALERT_SCAN_ENABLED.store(!cur, Ordering::Relaxed);
+                            if !cur {
+                                let handle = app.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    run_alert_scan(&handle).await;
+                                });
+                            }
+                        }
+                        "quit" => {
+                            std::process::exit(0);
+                        }
+                        _ => {}
+                    }
+                })
+                .build(app)?;
+
+            // ── Background Alert Scanner ──
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                // Initial delay to let app settle
+                std::thread::sleep(std::time::Duration::from_secs(30));
+                loop {
+                    if ALERT_SCAN_ENABLED.load(Ordering::Relaxed) {
+                        let handle_clone = handle.clone();
+                        tauri::async_runtime::block_on(async move {
+                            run_alert_scan(&handle_clone).await;
+                        });
+                    }
+                    // Check every 2 minutes
+                    std::thread::sleep(std::time::Duration::from_secs(120));
+                }
+            });
+
             Ok(())
+        })
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                // Hide to tray instead of closing (unless user selects Quit from tray)
+                api.prevent_close();
+                let _ = window.hide();
+            }
         })
         .invoke_handler(tauri::generate_handler![
             get_machine_fingerprint, activate_license, check_license,
@@ -1419,6 +1665,9 @@ pub fn run() {
             execute_custom_script,
             download_stock_list, download_stock_data,
             query_minute_prices, download_minute_data,
+            resample_daily,
+            backup_database, restore_database, get_backup_info,
+            get_alert_scan_status, set_alert_scan_enabled,
             check_for_app_update,
             get_app_data_dir,
             // Portfolio analysis (PRO)
@@ -1432,5 +1681,39 @@ pub fn run() {
             eprintln!("QuantVault 启动失败: {}", e);
             std::process::exit(1);
         }
+    }
+}
+
+/// Background alert scan — called by the timer loop
+async fn run_alert_scan(app: &tauri::AppHandle) {
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let triggers = {
+        let db_guard = db::get_db(app);
+        match db_guard {
+            Ok(guard) => alerts::check_alerts(&guard, &today).unwrap_or_default(),
+            Err(_) => return,
+        }
+    };
+    for t in &triggers {
+        let _ = app.emit("alert:triggered", serde_json::json!({
+            "id": t.rule.id,
+            "name": t.rule.name,
+            "stock_code": t.rule.stock_code,
+            "stock_name": t.rule.stock_name,
+            "message": t.message,
+            "current_value": t.current_value,
+            "threshold_value": t.threshold_value,
+        }));
+        // Send Windows native notification
+        let stock_info = format!(
+            "{} {}",
+            t.rule.stock_name.as_deref().unwrap_or(""),
+            t.rule.stock_code.as_deref().unwrap_or("")
+        );
+        let _ = app.notification()
+            .builder()
+            .title(format!("预警: {}", t.rule.name))
+            .body(format!("{} - {}", stock_info.trim(), t.message))
+            .show();
     }
 }

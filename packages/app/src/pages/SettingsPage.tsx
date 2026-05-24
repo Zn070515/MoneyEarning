@@ -166,8 +166,75 @@ export default function SettingsPage() {
         >
           数据管理
         </h3>
-        <div style={{ height: 400, border: "1px solid #2A2A2A", borderRadius: 8, overflow: "hidden" }}>
+        <div style={{ height: 400, border: "1px solid #2A2A2A", borderRadius: 8, overflow: "hidden", marginBottom: 16 }}>
           <DataPanel />
+        </div>
+        {/* Backup / Restore */}
+        <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+          <button
+            onClick={async () => {
+              try {
+                const { save } = await import("@tauri-apps/plugin-dialog");
+                const path = await save({
+                  defaultPath: `quantvault_backup_${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.db`,
+                  filters: [{ name: "SQLite Database", extensions: ["db"] }],
+                });
+                if (path) {
+                  const result = await invoke<string>("backup_database", { destPath: path });
+                  alert(result);
+                }
+              } catch (e: any) {
+                alert("备份失败: " + (e?.toString?.() ?? String(e)));
+              }
+            }}
+            style={{
+              padding: "8px 16px",
+              background: "#2A2A2A",
+              border: "1px solid #444444",
+              color: "#D4D4D4",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontFamily: "monospace",
+              fontSize: 12,
+            }}
+          >
+            📥 备份数据
+          </button>
+          <button
+            onClick={async () => {
+              try {
+                const { open } = await import("@tauri-apps/plugin-dialog");
+                const path = await open({
+                  filters: [{ name: "SQLite Database", extensions: ["db"] }],
+                  multiple: false,
+                });
+                if (path) {
+                  const confirmed = window.confirm("恢复数据将替换当前所有数据。\n\n恢复前会自动备份当前数据，是否继续？");
+                  if (confirmed) {
+                    const result = await invoke<string>("restore_database", { backupPath: path });
+                    alert(result + "\n\n请重新启动应用以加载恢复的数据。");
+                  }
+                }
+              } catch (e: any) {
+                alert("恢复失败: " + (e?.toString?.() ?? String(e)));
+              }
+            }}
+            style={{
+              padding: "8px 16px",
+              background: "#2A2A2A",
+              border: "1px solid #444444",
+              color: "#D4D4D4",
+              borderRadius: 4,
+              cursor: "pointer",
+              fontFamily: "monospace",
+              fontSize: 12,
+            }}
+          >
+            📤 恢复数据
+          </button>
+        </div>
+        <div style={{ fontSize: 11, color: "#666666", marginTop: 8 }}>
+          备份文件包含你的行情数据、交易记录和预警规则。建议定期备份。
         </div>
       </section>
 
