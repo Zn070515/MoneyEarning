@@ -1,6 +1,6 @@
 {
   "name": "@me/app",
-  "version": "0.10.1",
+  "version": "0.10.2",
   "private": true,
   "description": "桌面应用主入口",
   "scripts": {

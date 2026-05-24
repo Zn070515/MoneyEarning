@@ -419,7 +419,7 @@ fn find_squeeze_alert(df: &DataFrame) -> Vec<PatternMatch> {
 fn find_ladder_bottom(df: &DataFrame) -> Vec<PatternMatch> {
     let (o, _h, _l, c) = get_ohlc(df);
     let mut results = Vec::new();
-    for i in 4..o.len() {
+    for i in 5..o.len() {
         // Days 1-4: consecutive lower closes (bearish or mixed)
         let lower1 = c[i-4] < c[i-5].max(c[i-4] + 1.0);
         let lower2 = c[i-3] < c[i-4];
