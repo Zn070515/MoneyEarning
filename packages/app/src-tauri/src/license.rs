@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 use wasm_license;
 
-static LICENSE_CACHE: Mutex<Option<wasm_license::LicensePayload>> = Mutex::new(None);
+static LICENSE_CACHE: Mutex<Option<super::LicenseStatus>> = Mutex::new(None);
 
 const TRIAL_DAYS: i64 = 14;
 
@@ -42,7 +42,12 @@ pub fn activate(
         features: payload.features.clone(),
         valid: true,
     };
-    *LICENSE_CACHE.lock().unwrap() = Some(payload);
+    *LICENSE_CACHE.lock().unwrap() = Some(super::LicenseStatus {
+        valid: true,
+        tier: payload.tier.clone(),
+        expiry: payload.expiry.clone(),
+        trial_days_left: None,
+    });
     Ok(info)
 }
 
@@ -50,12 +55,7 @@ pub fn activate(
 pub fn check_cached() -> super::LicenseStatus {
     let guard = LICENSE_CACHE.lock().unwrap();
     match guard.as_ref() {
-        Some(payload) => super::LicenseStatus {
-            valid: check_expiry(&payload.expiry),
-            tier: payload.tier.clone(),
-            expiry: payload.expiry.clone(),
-            trial_days_left: None,
-        },
+        Some(cached) => cached.clone(),
         None => super::LicenseStatus {
             valid: false,
             tier: "free".into(),
@@ -67,18 +67,14 @@ pub fn check_cached() -> super::LicenseStatus {
 
 /// Full check: memory → DB → trial calculation. Called at startup and before PRO ops.
 pub fn check_with_db(app: &tauri::AppHandle) -> Result<super::LicenseStatus, String> {
-    // 1. Memory cache
+    // 1. Memory cache (includes trial status now)
     {
         let cache = LICENSE_CACHE.lock().unwrap();
-        if let Some(payload) = cache.as_ref() {
-            if check_expiry(&payload.expiry) {
-                return Ok(super::LicenseStatus {
-                    valid: true,
-                    tier: payload.tier.clone(),
-                    expiry: payload.expiry.clone(),
-                    trial_days_left: None,
-                });
+        if let Some(cached) = cache.as_ref() {
+            if cached.valid {
+                return Ok(cached.clone());
             }
+            // If cached is invalid (expired), fall through to re-check
         }
     }
 
@@ -97,10 +93,11 @@ pub fn check_with_db(app: &tauri::AppHandle) -> Result<super::LicenseStatus, Str
                     trial_days_left: None,
                 };
                 if valid {
-                    *LICENSE_CACHE.lock().unwrap() = Some(payload);
+                    *LICENSE_CACHE.lock().unwrap() = Some(status.clone());
                 } else {
-                    // Expired — clear from DB
+                    // Expired — clear from DB and cache
                     let _ = crate::db::clear_license(&guard);
+                    *LICENSE_CACHE.lock().unwrap() = None;
                 }
                 return Ok(status);
             }
@@ -112,26 +109,29 @@ pub fn check_with_db(app: &tauri::AppHandle) -> Result<super::LicenseStatus, Str
     }
 
     // 3. Trial from install_date
-    if let Some(install_date) =
+    let status = if let Some(install_date) =
         crate::db::get_config(&guard, "install_date").map_err(|e| e.to_string())?
     {
         let elapsed = days_since(&install_date);
         let left = (TRIAL_DAYS - elapsed).max(0) as i32;
         let tier = if left > 0 { "trial" } else { "free" };
-        return Ok(super::LicenseStatus {
+        super::LicenseStatus {
             valid: left > 0,
             tier: tier.into(),
             expiry: None,
             trial_days_left: Some(left),
-        });
-    }
-
-    Ok(super::LicenseStatus {
-        valid: false,
-        tier: "free".into(),
-        expiry: None,
-        trial_days_left: Some(14),
-    })
+        }
+    } else {
+        super::LicenseStatus {
+            valid: false,
+            tier: "free".into(),
+            expiry: None,
+            trial_days_left: Some(14),
+        }
+    };
+    drop(guard);
+    *LICENSE_CACHE.lock().unwrap() = Some(status.clone());
+    Ok(status)
 }
 
 // ── Date helpers ──

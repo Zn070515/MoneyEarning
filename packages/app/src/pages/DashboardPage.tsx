@@ -30,18 +30,18 @@ function tierLabel(t: string) {
 }
 
 const C = {
-  bgBase:     "#0A0E1A",
-  bgSurface:  "#111827",
-  bgElevated: "#1a1f2e",
-  bgCard:     "#141b2d",
-  border:     "#1E293B",
-  cyan:       "#00D8FF",
-  violet:     "#7C3CFF",
-  positive:   "#00E676",
-  negative:   "#FF2A7A",
-  textPrimary:   "#F1F5F9",
-  textSecondary: "#94A3B8",
-  textMuted:     "#64748B",
+  bgBase:     "#0C0C0C",
+  bgSurface:  "#161616",
+  bgElevated: "#1A1A1A",
+  bgCard:     "#121212",
+  border:     "#2A2A2A",
+  cyan:       "#CCAA00",
+  violet:     "#7E57C2",
+  positive:   "#26A69A",
+  negative:   "#EF5350",
+  textPrimary:   "#D4D4D4",
+  textSecondary: "#858585",
+  textMuted:     "#666666",
 };
 
 export default function DashboardPage() {
@@ -157,7 +157,7 @@ function QuickCard({ icon, title, desc, onClick, primary }: {
     <button onClick={onClick} style={{
       width: 200, padding: "16px",
       background: primary ? C.bgCard : C.bgSurface,
-      border: primary ? `1px solid rgba(0,216,255,0.25)` : `1px solid ${C.border}`,
+      border: primary ? `1px solid rgba(204,170,0,0.25)` : `1px solid ${C.border}`,
       borderRadius: 8, cursor: "pointer", textAlign: "left",
       fontFamily: "monospace", color: C.textPrimary,
       transition: "border-color 0.2s, box-shadow 0.2s",
@@ -176,7 +176,7 @@ function WorkflowStep({ num, title, desc }: { num: string; title: string; desc: 
         <span style={{
           display: "inline-flex", alignItems: "center", justifyContent: "center",
           width: 24, height: 24, borderRadius: 6,
-          background: "rgba(0,216,255,0.12)", color: C.cyan,
+          background: "rgba(204,170,0,0.12)", color: C.cyan,
           fontSize: 12, fontWeight: 700, fontFamily: "monospace",
         }}>
           {num}

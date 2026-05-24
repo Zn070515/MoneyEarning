@@ -50,17 +50,17 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
       zIndex: 1000,
     }} onClick={onClose}>
       <div onClick={e => e.stopPropagation()} style={{
-        background: "#111827", border: "1px solid #1E293B",
+        background: "#161616", border: "1px solid #2A2A2A",
         borderRadius: 8, padding: 24, width: 480, maxWidth: "90vw",
-        fontFamily: "monospace", color: "#F1F5F9", fontSize: 13,
+        fontFamily: "monospace", color: "#D4D4D4", fontSize: 13,
       }}>
-        <h2 style={{ margin: "0 0 20px", color: "#00D8FF", fontSize: 16 }}>
+        <h2 style={{ margin: "0 0 20px", color: "#CCAA00", fontSize: 16 }}>
           导入CSV数据
         </h2>
 
         {/* File path */}
         <div style={{ marginBottom: 14 }}>
-          <label style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4, display: "block" }}>
+          <label style={{ fontSize: 12, color: "#858585", marginBottom: 4, display: "block" }}>
             CSV文件路径
           </label>
           <div style={{ display: "flex", gap: 8 }}>
@@ -77,8 +77,8 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
                 setFilePath(selected);
               }
             }} style={{
-              background: "#141b2d", border: "1px solid #1E293B",
-              color: "#00D8FF", padding: "6px 14px", borderRadius: 4,
+              background: "#121212", border: "1px solid #2A2A2A",
+              color: "#CCAA00", padding: "6px 14px", borderRadius: 4,
               cursor: "pointer", fontSize: 12, fontFamily: "monospace",
               whiteSpace: "nowrap",
             }}>
@@ -90,7 +90,7 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
         {/* Code + Exchange */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
           <div>
-            <label style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4, display: "block" }}>
+            <label style={{ fontSize: 12, color: "#858585", marginBottom: 4, display: "block" }}>
               股票代码
             </label>
             <input value={stockCode}
@@ -99,7 +99,7 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
               style={inputStyle} />
           </div>
           <div>
-            <label style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4, display: "block" }}>
+            <label style={{ fontSize: 12, color: "#858585", marginBottom: 4, display: "block" }}>
               交易所
             </label>
             <select value={exchange}
@@ -116,8 +116,8 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
 
         {/* Format hint */}
         <div style={{
-          padding: 8, background: "#141b2d", borderRadius: 4,
-          fontSize: 11, color: "#94A3B8", marginBottom: 14,
+          padding: 8, background: "#121212", borderRadius: 4,
+          fontSize: 11, color: "#858585", marginBottom: 14,
         }}>
           支持格式：trade_date, open, high, low, close, volume[, amount, turnover]
           <br />
@@ -130,15 +130,15 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
             padding: 10, background: "#1a3a2e", borderRadius: 4,
             fontSize: 12, marginBottom: 14,
           }}>
-            <div style={{ color: "#00E676", fontWeight: 600, marginBottom: 4 }}>
+            <div style={{ color: "#26A69A", fontWeight: 600, marginBottom: 4 }}>
               导入成功
             </div>
             <div>股票：{result.stock_count}只，数据行：{result.row_count}条</div>
             {result.skipped > 0 && (
-              <div style={{ color: "#00D8FF" }}>跳过重复行：{result.skipped}条</div>
+              <div style={{ color: "#CCAA00" }}>跳过重复行：{result.skipped}条</div>
             )}
             {result.date_range && (
-              <div style={{ color: "#94A3B8" }}>
+              <div style={{ color: "#858585" }}>
                 日期范围：{result.date_range[0]} ~ {result.date_range[1]}
               </div>
             )}
@@ -149,7 +149,7 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
         {error && (
           <div style={{
             padding: 10, background: "#3a1a2e", borderRadius: 4,
-            color: "#FF2A7A", fontSize: 12, marginBottom: 14,
+            color: "#EF5350", fontSize: 12, marginBottom: 14,
           }}>
             {error}
           </div>
@@ -158,15 +158,15 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
         {/* Actions */}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{
-            background: "transparent", border: "1px solid #1E293B",
-            color: "#F1F5F9", padding: "6px 16px", borderRadius: 4,
+            background: "transparent", border: "1px solid #2A2A2A",
+            color: "#D4D4D4", padding: "6px 16px", borderRadius: 4,
             cursor: "pointer", fontSize: 12,
           }}>
             关闭
           </button>
           <button onClick={handleImport} disabled={loading || !filePath.trim() || !stockCode.trim()}
             style={{
-              background: loading ? "#8a7a3a" : "#00D8FF",
+              background: loading ? "#8a7a3a" : "#CCAA00",
               color: "#000", border: "none",
               padding: "6px 16px", borderRadius: 4,
               cursor: loading ? "not-allowed" : "pointer",
@@ -181,7 +181,7 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
 }
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", background: "#141b2d", border: "1px solid #1E293B",
+  width: "100%", background: "#121212", border: "1px solid #2A2A2A",
   color: "#fff", padding: "6px 8px", borderRadius: 4, fontSize: 12,
   fontFamily: "monospace", outline: "none", boxSizing: "border-box",
 };

@@ -97,6 +97,7 @@ export default function ChartPage() {
   const [refreshKey, setRefreshKey] = useState(0);
   const [indicatorsData, setIndicatorsData] = useState<IndicatorData[]>([]);
   const [drawings, setDrawings] = useState<DrawingObject[]>([]);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
 
   const loadLicense = useCallback(async () => {
     try {
@@ -202,8 +203,8 @@ export default function ChartPage() {
       <header
         style={{
           padding: "6px 16px",
-          background: "#111827",
-          borderBottom: "1px solid #1E293B",
+          background: "#161616",
+          borderBottom: "1px solid #2A2A2A",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -213,15 +214,15 @@ export default function ChartPage() {
         }}
       >
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <span style={{ color: "#00D8FF", fontWeight: 700, fontSize: 15 }}>
+          <span style={{ color: "#CCAA00", fontWeight: 700, fontSize: 15 }}>
             QuantVault
           </span>
           {license && (
             <span
               style={{
-                color: license.tier === "pro" ? "#00D8FF" : "#00E676",
+                color: license.tier === "pro" ? "#CCAA00" : "#26A69A",
                 fontSize: 11,
-                background: "#141b2d",
+                background: "#121212",
                 padding: "2px 8px",
                 borderRadius: 3,
               }}
@@ -229,8 +230,8 @@ export default function ChartPage() {
               {tierLabel(license.tier)}
             </span>
           )}
-          <span style={{ color: "#64748B" }}>|</span>
-          <span style={{ color: "#94A3B8" }}>
+          <span style={{ color: "#666666" }}>|</span>
+          <span style={{ color: "#858585" }}>
             {selectedStock
               ? `${selectedStock.code} ${selectedStock.name}`
               : "选择股票开始分析"}
@@ -240,14 +241,14 @@ export default function ChartPage() {
           <button onClick={() => setShowImport(true)} style={headerBtn}>
             + 导入数据
           </button>
-          <span style={{ color: "#64748B" }}>|</span>
+          <span style={{ color: "#666666" }}>|</span>
           <button
             onClick={toggleLargeFont}
             style={{
               ...headerBtn,
-              background: largeFont ? "#00D8FF" : "transparent",
-              color: largeFont ? "#000" : "#94A3B8",
-              border: largeFont ? "1px solid #00D8FF" : "1px solid #555",
+              background: largeFont ? "#CCAA00" : "transparent",
+              color: largeFont ? "#000" : "#858585",
+              border: largeFont ? "1px solid #CCAA00" : "1px solid #555",
             }}
             title="大字体模式"
           >
@@ -257,16 +258,16 @@ export default function ChartPage() {
             onClick={toggleHighContrast}
             style={{
               ...headerBtn,
-              background: highContrast ? "#00D8FF" : "transparent",
-              color: highContrast ? "#000" : "#94A3B8",
-              border: highContrast ? "1px solid #00D8FF" : "1px solid #555",
+              background: highContrast ? "#CCAA00" : "transparent",
+              color: highContrast ? "#000" : "#858585",
+              border: highContrast ? "1px solid #CCAA00" : "1px solid #555",
             }}
             title="高对比度模式"
           >
             高对比
           </button>
-          {loading && <span style={{ color: "#00D8FF" }}>⏳</span>}
-          <span style={{ color: "#94A3B8", fontSize: 12 }}>{dataStatus}</span>
+          {loading && <span style={{ color: "#CCAA00" }}>⏳</span>}
+          <span style={{ color: "#858585", fontSize: 12 }}>{dataStatus}</span>
         </div>
       </header>
 
@@ -288,15 +289,15 @@ export default function ChartPage() {
             width: 280,
             display: "flex",
             flexDirection: "column",
-            borderRight: "1px solid #1E293B",
+            borderRight: "1px solid #2A2A2A",
             flexShrink: 0,
           }}
         >
           <div
             style={{
               display: "flex",
-              borderBottom: "1px solid #1E293B",
-              background: "#111827",
+              borderBottom: "1px solid #2A2A2A",
+              background: "#161616",
             }}
           >
             <TabBtn active={sidebarTab === "stocks"} onClick={() => setSidebarTab("stocks")}>
@@ -352,8 +353,8 @@ export default function ChartPage() {
               activeTool={drawingTool}
               drawings={drawings}
               onDrawingAdd={(obj) => setDrawings((prev) => [...prev, obj])}
-              onDrawingDelete={(id) => setDrawings((prev) => prev.filter((d) => d.id !== id))}
-              onDrawingSelect={() => {}}
+              onDrawingDelete={(id) => { setDrawings((prev) => prev.filter((d) => d.id !== id)); setSelectedDrawingId(null); }}
+              onDrawingSelect={(id) => setSelectedDrawingId(id)}
               onToolCancel={() => setDrawingTool(null)}
             />
           ) : (
@@ -365,7 +366,7 @@ export default function ChartPage() {
         <div
           style={{
             width: 300,
-            borderLeft: "1px solid #1E293B",
+            borderLeft: "1px solid #2A2A2A",
             flexShrink: 0,
             overflow: "hidden",
             display: "flex",
@@ -375,8 +376,8 @@ export default function ChartPage() {
           <div
             style={{
               display: "flex",
-              borderBottom: "1px solid #1E293B",
-              background: "#111827",
+              borderBottom: "1px solid #2A2A2A",
+              background: "#161616",
               flexWrap: "wrap",
             }}
           >
@@ -456,13 +457,13 @@ function TabBtn({
         flex: 1,
         padding: "8px 12px",
         border: "none",
-        background: active ? "#141b2d" : "transparent",
-        color: active ? "#00D8FF" : "#94A3B8",
+        background: active ? "#121212" : "transparent",
+        color: active ? "#CCAA00" : "#858585",
         cursor: "pointer",
         fontSize: 13,
         fontFamily: "monospace",
         fontWeight: active ? 600 : 400,
-        borderBottom: active ? "2px solid #00D8FF" : "2px solid transparent",
+        borderBottom: active ? "2px solid #CCAA00" : "2px solid transparent",
       }}
     >
       {children}
@@ -478,20 +479,20 @@ function EmptyChart({ onImport }: { onImport: () => void }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#64748B",
+        color: "#666666",
         fontFamily: "monospace",
         fontSize: 16,
-        background: "#141b2d",
+        background: "#121212",
       }}
     >
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16, color: "#1E293B" }}>📈</div>
+        <div style={{ fontSize: 48, marginBottom: 16, color: "#2A2A2A" }}>📈</div>
         <div>从左侧选择一个股票开始分析</div>
         <div style={{ fontSize: 12, marginTop: 16, color: "#555" }}>
           <button
             onClick={onImport}
             style={{
-              background: "#00D8FF",
+              background: "#CCAA00",
               color: "#000",
               border: "none",
               padding: "6px 16px",
@@ -511,8 +512,8 @@ function EmptyChart({ onImport }: { onImport: () => void }) {
 }
 
 const headerBtn: React.CSSProperties = {
-  background: "#1E293B",
-  color: "#F1F5F9",
+  background: "#2A2A2A",
+  color: "#D4D4D4",
   border: "none",
   padding: "4px 12px",
   borderRadius: 4,

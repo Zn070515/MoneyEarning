@@ -86,16 +86,16 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
 
   const tierColor = (t: string) => {
     switch (t) {
-      case "pro": return "#00D8FF";
-      case "free": return "#00E676";
+      case "pro": return "#CCAA00";
+      case "free": return "#26A69A";
       case "trial": return "#60a5fa";
-      default: return "#94A3B8";
+      default: return "#858585";
     }
   };
 
   return (
     <div style={{
-      background: "#111827", color: "#F1F5F9", fontFamily: "monospace",
+      background: "#161616", color: "#D4D4D4", fontFamily: "monospace",
       fontSize: 13, height: "100%", display: "flex", flexDirection: "column",
       padding: 16,
     }}>
@@ -106,7 +106,7 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
       {/* Status */}
       {status && (
         <div style={{
-          padding: 12, background: "#141b2d", borderRadius: 6,
+          padding: 12, background: "#121212", borderRadius: 6,
           border: `1px solid ${tierColor(status.tier)}`,
           marginBottom: 16,
         }}>
@@ -117,7 +117,7 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
             {tierLabel(status.tier)}
           </div>
           {status.expiry && (
-            <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4 }}>
+            <div style={{ fontSize: 12, color: "#858585", marginBottom: 4 }}>
               有效期至：{status.expiry}
             </div>
           )}
@@ -127,7 +127,7 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
             </div>
           )}
           {status.trial_days_left != null && status.trial_days_left <= 0 && (
-            <div style={{ fontSize: 12, color: "#FF2A7A" }}>
+            <div style={{ fontSize: 12, color: "#EF5350" }}>
               试用已过期
             </div>
           )}
@@ -136,12 +136,12 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
 
       {/* Fingerprint */}
       <div style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4, display: "block" }}>
+        <label style={{ fontSize: 12, color: "#858585", marginBottom: 4, display: "block" }}>
           机器指纹
         </label>
         <div style={{
-          padding: 8, background: "#141b2d", borderRadius: 4,
-          fontSize: 11, color: "#64748B", wordBreak: "break-all",
+          padding: 8, background: "#121212", borderRadius: 4,
+          fontSize: 11, color: "#666666", wordBreak: "break-all",
           fontFamily: "monospace",
         }}>
           {fingerprint || "获取中..."}
@@ -150,7 +150,7 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
 
       {/* Activation */}
       <div style={{ marginBottom: 12 }}>
-        <label style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4, display: "block" }}>
+        <label style={{ fontSize: 12, color: "#858585", marginBottom: 4, display: "block" }}>
           授权码
         </label>
         <textarea
@@ -159,7 +159,7 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
           placeholder="粘贴授权码..."
           rows={4}
           style={{
-            width: "100%", background: "#141b2d", border: "1px solid #1E293B",
+            width: "100%", background: "#121212", border: "1px solid #2A2A2A",
             color: "#fff", padding: "8px", borderRadius: 4, fontSize: 12,
             fontFamily: "monospace", outline: "none", resize: "vertical",
             boxSizing: "border-box",
@@ -172,7 +172,7 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
         <div style={{
           padding: 8, borderRadius: 4, fontSize: 12, marginBottom: 12,
           background: messageType === "success" ? "#1a3a2e" : "#3a1a2e",
-          color: messageType === "success" ? "#00E676" : "#FF2A7A",
+          color: messageType === "success" ? "#26A69A" : "#EF5350",
         }}>
           {message}
         </div>
@@ -180,7 +180,7 @@ export function LicensePanel({ onActivated }: LicensePanelProps) {
 
       <button onClick={handleActivate} disabled={loading || !licenseKey.trim()}
         style={{
-          background: loading ? "#164E63" : "#00D8FF",
+          background: loading ? "#2A2210" : "#CCAA00",
           color: "#000", border: "none",
           padding: "8px 16px", borderRadius: 4,
           cursor: loading ? "not-allowed" : "pointer",

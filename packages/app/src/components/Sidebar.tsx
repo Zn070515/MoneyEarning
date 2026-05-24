@@ -29,8 +29,8 @@ export default function Sidebar() {
     <nav
       style={{
         width: 56,
-        background: "#111827",
-        borderRight: "1px solid #1E293B",
+        background: "#161616",
+        borderRight: "1px solid #2A2A2A",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -59,8 +59,8 @@ export default function Sidebar() {
               justifyContent: "center",
               border: "none",
               borderRadius: 6,
-              background: active ? "#1a1f2e" : "transparent",
-              color: active ? "#00D8FF" : "#64748B",
+              background: active ? "#1A1A1A" : "transparent",
+              color: active ? "#CCAA00" : "#666666",
               cursor: "pointer",
               fontSize: 18,
               fontFamily: "monospace",
@@ -80,9 +80,8 @@ export default function Sidebar() {
                   top: "25%",
                   bottom: "25%",
                   width: 3,
-                  background: "#00D8FF",
+                  background: "#CCAA00",
                   borderRadius: "0 2px 2px 0",
-                  boxShadow: "0 0 8px rgba(0, 216, 255, 0.5)",
                 }}
               />
             )}
@@ -97,11 +96,11 @@ export default function Sidebar() {
             marginTop: "auto",
             marginBottom: 12,
             padding: "4px 6px",
-            background: "#1a1f2e",
-            border: "1px solid #1E293B",
+            background: "#1A1A1A",
+            border: "1px solid #2A2A2A",
             borderRadius: 4,
             fontSize: 10,
-            color: "#00D8FF",
+            color: "#CCAA00",
             fontFamily: "monospace",
             textAlign: "center",
             maxWidth: 48,

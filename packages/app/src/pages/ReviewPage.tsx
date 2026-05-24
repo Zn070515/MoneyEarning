@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { invoke } from "@tauri-apps/api/core";
 import { TradeJournalPanel } from "@me/ui";
 import { StrategyPanel } from "@me/ui";
 import { useAppStore } from "../stores/appStore";
@@ -16,19 +17,19 @@ export default function ReviewPage() {
       <div
         style={{
           padding: "12px 20px",
-          background: "#111827",
-          borderBottom: "1px solid #1E293B",
+          background: "#161616",
+          borderBottom: "1px solid #2A2A2A",
           display: "flex",
           alignItems: "center",
           gap: 16,
           flexShrink: 0,
         }}
       >
-        <h2 style={{ color: "#00D8FF", fontSize: 16, fontFamily: "monospace", margin: 0 }}>
+        <h2 style={{ color: "#CCAA00", fontSize: 16, fontFamily: "monospace", margin: 0 }}>
           交易复盘
         </h2>
         {selectedStockCode && (
-          <span style={{ color: "#94A3B8", fontSize: 12, fontFamily: "monospace" }}>
+          <span style={{ color: "#858585", fontSize: 12, fontFamily: "monospace" }}>
             当前标的: {selectedStockCode}
           </span>
         )}
@@ -38,8 +39,8 @@ export default function ReviewPage() {
       <div
         style={{
           padding: "4px 20px",
-          background: "#141b2d",
-          borderBottom: "1px solid #1E293B",
+          background: "#121212",
+          borderBottom: "1px solid #2A2A2A",
           display: "flex",
           gap: 4,
           flexShrink: 0,
@@ -55,8 +56,8 @@ export default function ReviewPage() {
             onClick={() => setActiveTab(tab)}
             style={{
               padding: "6px 16px",
-              background: activeTab === tab ? "#00D8FF" : "transparent",
-              color: activeTab === tab ? "#000" : "#94A3B8",
+              background: activeTab === tab ? "#CCAA00" : "transparent",
+              color: activeTab === tab ? "#000" : "#858585",
               border: "none",
               borderRadius: "4px 4px 0 0",
               cursor: "pointer",
@@ -83,7 +84,7 @@ export default function ReviewPage() {
           </div>
         )}
         {activeTab === "review" && (
-          <ReviewTemplatePanel />
+          <ReviewTemplatePanel selectedStockId={selectedStockId} selectedStockCode={selectedStockCode} />
         )}
       </div>
     </div>
@@ -125,14 +126,14 @@ const REVIEW_QUESTIONS = [
 ];
 
 const EMOTION_TAGS = [
-  { value: "理性建仓", label: "理性建仓", color: "#00E676" },
-  { value: "冲动追高", label: "冲动追高", color: "#FF2A7A" },
-  { value: "恐慌割肉", label: "恐慌割肉", color: "#FF2A7A" },
+  { value: "理性建仓", label: "理性建仓", color: "#26A69A" },
+  { value: "冲动追高", label: "冲动追高", color: "#EF5350" },
+  { value: "恐慌割肉", label: "恐慌割肉", color: "#EF5350" },
   { value: "盲目跟风", label: "盲目跟风", color: "#fb923c" },
   { value: "纪律止盈", label: "纪律止盈", color: "#4ade80" },
   { value: "纪律止损", label: "纪律止损", color: "#a78bfa" },
   { value: "犹豫错过", label: "犹豫错过", color: "#94a3b8" },
-  { value: "躺平持有", label: "躺平持有", color: "#00D8FF" },
+  { value: "躺平持有", label: "躺平持有", color: "#CCAA00" },
 ];
 
 interface ReviewRecord {
@@ -141,7 +142,247 @@ interface ReviewRecord {
   answers: Record<string, string>;
 }
 
-function ReviewTemplatePanel() {
+// ── Training Mode ──
+
+interface DailyBar { trade_date: string; open: number; high: number; low: number; close: number }
+type TrainState = "idle" | "ready" | "playing" | "done";
+
+function TrainingPanel({ selectedStockId, selectedStockCode }: { selectedStockId: number | null; selectedStockCode: string | null }) {
+  const [state, setState] = useState<TrainState>("idle");
+  const [bars, setBars] = useState<DailyBar[]>([]);
+  const [currentIdx, setCurrentIdx] = useState(0);
+  const [decisions, setDecisions] = useState<("bull" | "bear" | null)[]>([]);
+  const [score, setScore] = useState<{ correct: number; total: number } | null>(null);
+
+  const loadData = useCallback(async () => {
+    if (!selectedStockId) return;
+    try {
+      const data = await invoke<DailyBar[]>("query_daily_prices", {
+        stockId: selectedStockId,
+        startDate: "2022-01-01",
+        endDate: "2099-12-31",
+      });
+      if (data.length < 30) {
+        alert("该股票数据不足（需至少30条日线），请先导入数据。");
+        return;
+      }
+      setBars(data.slice(-60)); // use last 60 bars for training
+      setDecisions(new Array(Math.min(data.length, 60)).fill(null));
+      setCurrentIdx(0);
+      setScore(null);
+      setState("ready");
+    } catch (e) {
+      alert(`加载数据失败: ${e}`);
+    }
+  }, [selectedStockId]);
+
+  const startTraining = () => setState("playing");
+
+  const decide = (dir: "bull" | "bear") => {
+    const next = [...decisions];
+    next[currentIdx] = dir;
+    setDecisions(next);
+    if (currentIdx + 1 >= bars.length) {
+      finishTraining(next);
+    } else {
+      setCurrentIdx(currentIdx + 1);
+    }
+  };
+
+  const finishTraining = (final: ("bull" | "bear" | null)[]) => {
+    let correct = 0;
+    let total = 0;
+    for (let i = 0; i < final.length - 1; i++) {
+      const d = final[i];
+      if (!d) continue;
+      total++;
+      const actual = bars[i + 1].close >= bars[i].close ? "bull" : "bear";
+      if (d === actual) correct++;
+    }
+    setScore({ correct, total });
+    setState("done");
+  };
+
+  const reset = () => { setState("idle"); setBars([]); setCurrentIdx(0); setDecisions([]); setScore(null); };
+
+  if (state === "idle") {
+    return (
+      <div style={{ marginTop: 24, padding: 16, background: "#121212", border: "1px solid #2A2A2A", borderRadius: 8 }}>
+        <div style={{ color: "#CCAA00", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>K线训练模式</div>
+        <div style={{ color: "#666666", fontSize: 12, fontFamily: "monospace", lineHeight: 1.6, marginBottom: 12 }}>
+          逐根K线判断涨跌方向，隐藏后市走势，对照实际结果检验判断准确性。帮助训练盘感，改善入场/离场时机把握。
+        </div>
+        <button
+          onClick={loadData}
+          disabled={!selectedStockId}
+          title={!selectedStockId ? "请先在图表页面选择一只股票" : ""}
+          style={{
+            padding: "6px 16px", background: selectedStockId ? "#CCAA00" : "#2A2A2A",
+            color: selectedStockId ? "#000" : "#666666", border: "none", borderRadius: 4,
+            cursor: selectedStockId ? "pointer" : "not-allowed",
+            fontFamily: "monospace", fontSize: 12, fontWeight: 600,
+          }}
+        >
+          {selectedStockId ? `开始训练 (${selectedStockCode || ""})` : "请先选择股票"}
+        </button>
+        {!selectedStockId && (
+          <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace", marginTop: 6 }}>
+            在图表页面选择一个已导入数据的股票后，返回此页面开始训练。
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (state === "ready") {
+    return (
+      <div style={{ marginTop: 24, padding: 16, background: "#121212", border: "1px solid #2A2A2A", borderRadius: 8 }}>
+        <div style={{ color: "#26A69A", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>数据已就绪</div>
+        <div style={{ color: "#858585", fontSize: 12, fontFamily: "monospace", marginBottom: 8 }}>
+          已加载 {bars.length} 条日线数据（{bars[0]?.trade_date} ~ {bars[bars.length - 1]?.trade_date}）
+        </div>
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace", lineHeight: 1.6, marginBottom: 12 }}>
+          规则：逐条显示K线数据（隐藏后续走势），你需要判断下一天是涨还是跌。
+          完成全部判断后，系统会与真实走势对比，计算你的准确率。
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={startTraining} style={{ padding: "6px 20px", background: "#CCAA00", color: "#000", border: "none", borderRadius: 4, cursor: "pointer", fontFamily: "monospace", fontSize: 13, fontWeight: 600 }}>开始挑战</button>
+          <button onClick={reset} style={{ padding: "6px 16px", background: "transparent", color: "#858585", border: "1px solid #2A2A2A", borderRadius: 4, cursor: "pointer", fontFamily: "monospace", fontSize: 12 }}>取消</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (state === "done" && score) {
+    const pct = score.total > 0 ? (score.correct / score.total * 100).toFixed(1) : "0.0";
+    const grade = Number(pct) >= 70 ? "优秀" : Number(pct) >= 55 ? "良好" : Number(pct) >= 45 ? "一般" : "需加强";
+    const gradeColor = Number(pct) >= 70 ? "#26A69A" : Number(pct) >= 55 ? "#CCAA00" : Number(pct) >= 45 ? "#fb923c" : "#EF5350";
+    return (
+      <div style={{ marginTop: 24, padding: 16, background: "#121212", border: "1px solid #2A2A2A", borderRadius: 8 }}>
+        <div style={{ color: "#CCAA00", fontSize: 14, fontFamily: "monospace", marginBottom: 12 }}>训练结果</div>
+        <div style={{ display: "flex", gap: 20, flexWrap: "wrap", marginBottom: 16 }}>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: gradeColor, fontSize: 36, fontFamily: "monospace", fontWeight: 700 }}>{pct}%</div>
+            <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace" }}>准确率</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#26A69A", fontSize: 28, fontFamily: "monospace", fontWeight: 700 }}>{score.correct}</div>
+            <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace" }}>正确</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: "#EF5350", fontSize: 28, fontFamily: "monospace", fontWeight: 700 }}>{score.total - score.correct}</div>
+            <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace" }}>错误</div>
+          </div>
+          <div style={{ textAlign: "center" }}>
+            <div style={{ color: gradeColor, fontSize: 28, fontFamily: "monospace", fontWeight: 700 }}>{grade}</div>
+            <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace" }}>评级</div>
+          </div>
+        </div>
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace", marginBottom: 12, lineHeight: 1.5 }}>
+          {Number(pct) >= 70 ? "盘感很好，继续保持纪律性交易。"
+            : Number(pct) >= 55 ? "方向判断基本准确，注意节奏把握。"
+            : Number(pct) >= 45 ? "接近随机水平，建议结合指标辅助判断。"
+            : "准确率偏低，建议先学习K线基础形态。"}
+        </div>
+        <button onClick={reset} style={{ padding: "6px 20px", background: "#CCAA00", color: "#000", border: "none", borderRadius: 4, cursor: "pointer", fontFamily: "monospace", fontSize: 13, fontWeight: 600 }}>再次训练</button>
+      </div>
+    );
+  }
+
+  // state === "playing"
+  const bar = bars[currentIdx];
+  const prevClose = currentIdx > 0 ? bars[currentIdx - 1].close : bar.open;
+  const change = ((bar.close - prevClose) / prevClose * 100).toFixed(2);
+  const isUp = bar.close >= prevClose;
+  const progress = ((currentIdx + 0) / bars.length * 100).toFixed(0);
+
+  return (
+    <div style={{ marginTop: 24, padding: 16, background: "#121212", border: "1px solid #2A2A2A", borderRadius: 8 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <div style={{ color: "#CCAA00", fontSize: 13, fontFamily: "monospace" }}>
+          K线训练 · 第 {currentIdx + 1} / {bars.length} 根
+        </div>
+        <div style={{ color: "#666666", fontSize: 11, fontFamily: "monospace" }}>
+          进度 {progress}%
+        </div>
+      </div>
+
+      {/* Progress bar */}
+      <div style={{ background: "#0C0C0C", borderRadius: 4, height: 4, marginBottom: 16, overflow: "hidden" }}>
+        <div style={{ width: `${progress}%`, height: "100%", background: "linear-gradient(90deg, #CCAA00, #7E57C2)", borderRadius: 4, transition: "width 0.2s" }} />
+      </div>
+
+      {/* Current bar display */}
+      <div style={{ padding: 12, background: "#161616", borderRadius: 6, border: "1px solid #2A2A2A", marginBottom: 16 }}>
+        <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace", marginBottom: 8 }}>
+          日期: {bar.trade_date}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 12 }}>
+          <div>
+            <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace" }}>开盘</div>
+            <div style={{ color: "#D4D4D4", fontSize: 16, fontFamily: "monospace", fontWeight: 600 }}>{bar.open.toFixed(2)}</div>
+          </div>
+          <div>
+            <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace" }}>最高</div>
+            <div style={{ color: "#26A69A", fontSize: 16, fontFamily: "monospace", fontWeight: 600 }}>{bar.high.toFixed(2)}</div>
+          </div>
+          <div>
+            <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace" }}>最低</div>
+            <div style={{ color: "#EF5350", fontSize: 16, fontFamily: "monospace", fontWeight: 600 }}>{bar.low.toFixed(2)}</div>
+          </div>
+          <div>
+            <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace" }}>收盘</div>
+            <div style={{ color: isUp ? "#26A69A" : "#EF5350", fontSize: 16, fontFamily: "monospace", fontWeight: 600 }}>{bar.close.toFixed(2)}</div>
+          </div>
+        </div>
+        <div style={{ marginTop: 8, color: change.startsWith("-") ? "#EF5350" : "#26A69A", fontSize: 11, fontFamily: "monospace" }}>
+          较前收盘: {change}%
+        </div>
+        <div style={{ marginTop: 4, color: "#666666", fontSize: 10, fontFamily: "monospace" }}>
+          振幅: {((bar.high - bar.low) / bar.low * 100).toFixed(2)}%
+        </div>
+      </div>
+
+      {/* Previous decisions summary */}
+      <div style={{ marginBottom: 16, display: "flex", gap: 4, flexWrap: "wrap", maxHeight: 80, overflow: "auto" }}>
+        {decisions.slice(0, currentIdx).map((d, i) => (
+          <span key={i} style={{
+            padding: "2px 6px", borderRadius: 2, fontSize: 9, fontFamily: "monospace",
+            background: d === "bull" ? "rgba(38,166,154,0.15)" : "rgba(239,83,80,0.15)",
+            color: d === "bull" ? "#26A69A" : "#EF5350",
+          }}>
+            {i + 1}:{d === "bull" ? "涨" : "跌"}
+          </span>
+        ))}
+      </div>
+
+      {/* Decision buttons */}
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => decide("bull")} style={{
+          padding: "8px 28px", background: "#26A69A", color: "#000", border: "none", borderRadius: 6,
+          cursor: "pointer", fontFamily: "monospace", fontSize: 14, fontWeight: 700,
+        }}>
+          看涨 ↑
+        </button>
+        <button onClick={() => decide("bear")} style={{
+          padding: "8px 28px", background: "#EF5350", color: "#fff", border: "none", borderRadius: 6,
+          cursor: "pointer", fontFamily: "monospace", fontSize: 14, fontWeight: 700,
+        }}>
+          看跌 ↓
+        </button>
+        <button onClick={reset} style={{
+          padding: "8px 16px", background: "transparent", color: "#858585",
+          border: "1px solid #2A2A2A", borderRadius: 6, cursor: "pointer",
+          fontFamily: "monospace", fontSize: 12,
+        }}>
+          退出
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function ReviewTemplatePanel({ selectedStockId, selectedStockCode }: { selectedStockId: number | null; selectedStockCode: string | null }) {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [selectedEmotion, setSelectedEmotion] = useState("");
   const [saved, setSaved] = useState(false);
@@ -183,9 +424,9 @@ function ReviewTemplatePanel() {
       {history.length > 0 && (
         <div style={{
           marginBottom: 20, padding: 14,
-          background: "#141b2d", borderRadius: 8, border: "1px solid #1E293B",
+          background: "#121212", borderRadius: 8, border: "1px solid #2A2A2A",
         }}>
-          <div style={{ color: "#00D8FF", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
+          <div style={{ color: "#CCAA00", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
             复盘情绪分布 ({history.length} 条记录)
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -198,21 +439,21 @@ function ReviewTemplatePanel() {
                   <span style={{ color: tag.color, fontSize: 11, fontFamily: "monospace", width: 72, textAlign: "right" }}>
                     {tag.label}
                   </span>
-                  <div style={{ flex: 1, background: "#0A0E1A", borderRadius: 4, height: 14, overflow: "hidden" }}>
+                  <div style={{ flex: 1, background: "#0C0C0C", borderRadius: 4, height: 14, overflow: "hidden" }}>
                     <div style={{
                       width: `${(count / maxCount) * 100}%`, height: "100%",
                       background: tag.color, borderRadius: 4, opacity: 0.7,
                       transition: "width 0.5s",
                     }} />
                   </div>
-                  <span style={{ color: "#94A3B8", fontSize: 10, fontFamily: "monospace", width: 40 }}>
+                  <span style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", width: 40 }}>
                     {count} ({pct}%)
                   </span>
                 </div>
               );
             })}
           </div>
-          <div style={{ color: "#64748B", fontSize: 10, fontFamily: "monospace", marginTop: 8 }}>
+          <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace", marginTop: 8 }}>
             提示：观察情绪分布，找出导致亏损的主要情绪模式。纪律性交易（理性建仓 + 纪律止盈/止损）占比越高，长期盈利概率越大。
           </div>
         </div>
@@ -221,15 +462,15 @@ function ReviewTemplatePanel() {
       {/* New review form */}
       <div style={{
         marginBottom: 16, padding: 14,
-        background: "#111827", borderRadius: 8, border: "1px solid #1E293B",
+        background: "#161616", borderRadius: 8, border: "1px solid #2A2A2A",
       }}>
-        <div style={{ color: "#00D8FF", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
+        <div style={{ color: "#CCAA00", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
           新建复盘记录
         </div>
 
         {/* Emotion tag selector */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ color: "#94A3B8", fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>
+          <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>
             本次交易情绪标签
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -239,7 +480,7 @@ function ReviewTemplatePanel() {
                 onClick={() => setSelectedEmotion(tag.value)}
                 style={{
                   padding: "4px 10px",
-                  background: selectedEmotion === tag.value ? tag.color : "#141b2d",
+                  background: selectedEmotion === tag.value ? tag.color : "#121212",
                   color: selectedEmotion === tag.value ? "#000" : tag.color,
                   border: `1px solid ${tag.color}`,
                   borderRadius: 12,
@@ -258,14 +499,14 @@ function ReviewTemplatePanel() {
         {REVIEW_QUESTIONS.map((section) => (
           <div key={section.category} style={{ marginBottom: 16 }}>
             <div style={{
-              color: "#00D8FF", fontSize: 12, fontFamily: "monospace",
-              marginBottom: 6, borderBottom: "1px solid #1E293B", paddingBottom: 4,
+              color: "#CCAA00", fontSize: 12, fontFamily: "monospace",
+              marginBottom: 6, borderBottom: "1px solid #2A2A2A", paddingBottom: 4,
             }}>
               {section.category}
             </div>
             {section.questions.map((q) => (
               <div key={q} style={{ marginBottom: 8 }}>
-                <div style={{ color: "#94A3B8", fontSize: 11, fontFamily: "monospace", marginBottom: 3 }}>
+                <div style={{ color: "#858585", fontSize: 11, fontFamily: "monospace", marginBottom: 3 }}>
                   {q}
                 </div>
                 <textarea
@@ -274,7 +515,7 @@ function ReviewTemplatePanel() {
                   rows={2}
                   style={{
                     width: "100%", maxWidth: 600, padding: "6px 8px",
-                    background: "#0A0E1A", color: "#F1F5F9", border: "1px solid #1E293B",
+                    background: "#0C0C0C", color: "#D4D4D4", border: "1px solid #2A2A2A",
                     borderRadius: 4, fontFamily: "monospace", fontSize: 12, resize: "vertical",
                     boxSizing: "border-box",
                   }}
@@ -285,7 +526,7 @@ function ReviewTemplatePanel() {
         ))}
 
         <button onClick={handleSave} style={{
-          padding: "8px 24px", background: saved ? "#00E676" : "#00D8FF",
+          padding: "8px 24px", background: saved ? "#26A69A" : "#CCAA00",
           color: "#000", border: "none", borderRadius: 4, cursor: "pointer",
           fontFamily: "monospace", fontSize: 13, fontWeight: 600,
         }}>
@@ -297,7 +538,7 @@ function ReviewTemplatePanel() {
       {history.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <button onClick={() => setShowHistory(!showHistory)} style={{
-            background: "transparent", color: "#94A3B8", border: "1px solid #1E293B",
+            background: "transparent", color: "#858585", border: "1px solid #2A2A2A",
             padding: "6px 16px", borderRadius: 4, cursor: "pointer",
             fontFamily: "monospace", fontSize: 12,
           }}>
@@ -309,18 +550,18 @@ function ReviewTemplatePanel() {
       {showHistory && history.slice().reverse().map((r, i) => (
         <div key={i} style={{
           marginBottom: 8, padding: "10px 14px",
-          background: "#111827", borderRadius: 6, border: "1px solid #1E293B",
+          background: "#161616", borderRadius: 6, border: "1px solid #2A2A2A",
         }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
-            <span style={{ color: "#94A3B8", fontSize: 11, fontFamily: "monospace" }}>
+            <span style={{ color: "#858585", fontSize: 11, fontFamily: "monospace" }}>
               {new Date(r.date).toLocaleDateString("zh-CN")}
             </span>
             {r.emotion && (
               <span style={{
                 fontSize: 10, fontFamily: "monospace",
-                color: EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#94A3B8",
+                color: EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#858585",
                 padding: "1px 8px", borderRadius: 8,
-                border: `1px solid ${EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#94A3B8"}`,
+                border: `1px solid ${EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#858585"}`,
               }}>
                 {r.emotion}
               </span>
@@ -328,37 +569,15 @@ function ReviewTemplatePanel() {
           </div>
           {Object.entries(r.answers).filter(([, v]) => v).slice(0, 3).map(([q, a]) => (
             <div key={q} style={{ marginBottom: 3, fontSize: 11, fontFamily: "monospace" }}>
-              <span style={{ color: "#64748B" }}>{q.slice(0, 20)}...: </span>
-              <span style={{ color: "#94A3B8" }}>{a.slice(0, 80)}{a.length > 80 ? "..." : ""}</span>
+              <span style={{ color: "#666666" }}>{q.slice(0, 20)}...: </span>
+              <span style={{ color: "#858585" }}>{a.slice(0, 80)}{a.length > 80 ? "..." : ""}</span>
             </div>
           ))}
         </div>
       ))}
 
-      {/* Training mode placeholder */}
-      <div style={{
-        marginTop: 24, padding: 16, background: "#141b2d",
-        border: "1px solid #1E293B", borderRadius: 8,
-      }}>
-        <div style={{ color: "#00D8FF", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>
-          训练模式（付费功能）
-        </div>
-        <div style={{ color: "#64748B", fontSize: 12, fontFamily: "monospace", lineHeight: 1.6 }}>
-          使用历史数据逐根K线判断买卖点，隐藏后续走势，完成后对照实际走势检验判断准确性。
-          帮助训练盘感，改善入场/离场时机把握。
-        </div>
-        <button
-          title="前往设置页面激活授权"
-          onClick={() => alert("请在「设置 → 授权管理」页面激活专业版授权以解锁训练模式。")}
-          style={{
-            marginTop: 12, padding: "4px 16px", background: "#00D8FF",
-            color: "#000", border: "none", borderRadius: 4,
-            cursor: "pointer", fontFamily: "monospace", fontSize: 12, fontWeight: 600,
-          }}
-        >
-          升级专业版解锁
-        </button>
-      </div>
+      {/* Training mode */}
+      <TrainingPanel selectedStockId={selectedStockId} selectedStockCode={selectedStockCode} />
     </div>
   );
 }

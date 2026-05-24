@@ -127,6 +127,8 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         "INSERT OR IGNORE INTO app_config (key, value, updated_at) VALUES ('install_date', date('now'), datetime('now','localtime'))",
         [],
     )?;
+    // 首次运行预置三支演示股票
+    seed_demo_data(conn)?;
     Ok(())
 }
 
@@ -146,6 +148,71 @@ fn column_exists(conn: &Connection, table: &str, column: &str) -> Result<bool> {
         }
     }
     Ok(false)
+}
+
+/// 首次启动预置三支演示股票（仅DB为空时写入）
+fn seed_demo_data(conn: &Connection) -> Result<()> {
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM stocks", [], |r| r.get(0))?;
+    if count > 0 {
+        return Ok(());
+    }
+
+    #[allow(clippy::approx_constant)]
+    let demos: [(&str, &str, &str, f64, f64, &str); 3] = [
+        ("600519", "贵州茅台", "SH", 1700.0, 40.0,  "2000-01-01"),
+        ("300750", "宁德时代", "SZ",  250.0,  8.0,  "2018-06-11"),
+        ("600036", "招商银行", "SH",   38.0,  0.8,  "2002-04-09"),
+    ];
+
+    let today = chrono::Local::now().date_naive();
+    let days_back = 120i64;
+    let start = today - chrono::Duration::days(days_back);
+
+    let mut stmt = conn.prepare(
+        "INSERT OR IGNORE INTO daily_prices (stock_id, trade_date, open, high, low, close, volume, amount)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)"
+    )?;
+
+    for (code, name, exchange, init_price, daily_vol, _ipo) in &demos {
+        conn.execute(
+            "INSERT OR IGNORE INTO stocks (code, name, exchange) VALUES (?1, ?2, ?3)",
+            params![code, name, exchange],
+        )?;
+        let stock_id: i64 = conn.query_row(
+            "SELECT id FROM stocks WHERE code = ?1", params![code], |r| r.get(0),
+        )?;
+
+        let mut price = *init_price;
+        let mut day = start;
+        let mut inserted: usize = 0;
+        while day <= today {
+            let dow = day.format("%u").to_string().parse::<u8>().unwrap_or(0);
+            if dow >= 1 && dow <= 5 {
+                // Simple pseudo-random walk using day index
+                let seed = (day - start).num_days() as f64 * 0.0174533;
+                let r = (seed.sin() * 0.7 + seed.cos() * 0.5 + (seed * 1.3).sin() * 0.4) as f64;
+                let drift = r * *daily_vol;
+                let open = price;
+                let close = price + drift;
+                let range = (open - close).abs().max(0.01) * 1.8;
+                let high = open.max(close) + range * 0.15;
+                let low = open.min(close) - range * 0.15;
+                let base_vol = 20_000_000.0 / *init_price * *daily_vol;
+                let volume = (base_vol * (0.6 + r.abs() * 2.0)).abs();
+                let amount = volume * close.abs();
+
+                stmt.execute(params![
+                    stock_id, day.format("%Y-%m-%d").to_string(),
+                    open, high, low, close, volume, amount
+                ])?;
+                inserted += 1;
+                price = close.max(*init_price * 0.6).min(*init_price * 1.5);
+            }
+            day += chrono::Duration::days(1);
+        }
+        println!("[QuantVault] 预置演示数据: {} ({}), {} 条日线", name, code, inserted);
+    }
+    Ok(())
 }
 
 // ── Config helpers ──

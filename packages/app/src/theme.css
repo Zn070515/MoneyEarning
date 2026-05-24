@@ -1,53 +1,46 @@
 /* ══════════════════════════════════════════════════════════
-   QuantVault — Cyber Finance Terminal Theme v0.9.0
-   Dark immersive design system for professional quant workstation
+   QuantVault — Professional Terminal Theme v0.9.0
+   High-density, data-first design for quant workstation
    ══════════════════════════════════════════════════════════ */
 
 :root {
   /* ── Background layers ── */
-  --bg-base:       #0A0E1A;
-  --bg-surface:    #111827;
-  --bg-elevated:   #1a1f2e;
-  --bg-card:       #141b2d;
+  --bg-base:       #0C0C0C;
+  --bg-surface:    #161616;
+  --bg-elevated:   #1A1A1A;
+  --bg-card:       #121212;
 
-  /* ── Borders ── */
-  --border-subtle: #1E293B;
-  --border-active: #00D8FF;
+  /* ── Borders (subtle, near-invisible) ── */
+  --border-subtle: #2A2A2A;
+  --border-active: #555555;
 
-  /* ── Accent neons ── */
-  --cyan:          #00D8FF;
-  --cyan-glow:     rgba(0, 216, 255, 0.15);
-  --violet:        #7C3CFF;
-  --violet-glow:   rgba(124, 60, 255, 0.12);
-  --amber:         #FF9A00;
-  --amber-glow:    rgba(255, 154, 0, 0.15);
+  /* ── Accents (muted, professional) ── */
+  --accent:        #CCAA00;
+  --accent-blue:   #42A5F5;
+  --accent-purple: #7E57C2;
+  --accent-amber:  #FFA726;
 
   /* ── Semantic colors ── */
-  --positive:      #00E676;
-  --negative:      #FF2A7A;
-  --warning:       #FF9A00;
+  --positive:      #26A69A;
+  --negative:      #EF5350;
+  --warning:       #FFA726;
 
   /* ── Text ── */
-  --text-primary:  #F1F5F9;
-  --text-secondary:#94A3B8;
-  --text-muted:    #64748B;
-  --text-inverse:  #0A0E1A;
+  --text-primary:  #D4D4D4;
+  --text-secondary:#858585;
+  --text-muted:    #666666;
+  --text-inverse:  #0C0C0C;
 
   /* ── Typography ── */
   --font-data:     "JetBrains Mono", "Consolas", monospace;
-  --font-ui:       "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-ui:       "JetBrains Mono", "Consolas", monospace;
   --font-mono:     "JetBrains Mono", "Consolas", monospace;
 
   /* ── Sizing ── */
-  --sidebar-width: 56px;
-  --radius-sm:     3px;
-  --radius-md:     6px;
-  --radius-lg:     8px;
-
-  /* ── Shadows / Glow ── */
-  --glow-cyan:     0 0 10px rgba(0, 216, 255, 0.25);
-  --glow-violet:   0 0 10px rgba(124, 60, 255, 0.2);
-  --glow-card:     0 0 0 1px var(--border-subtle);
+  --sidebar-width: 48px;
+  --radius-sm:     2px;
+  --radius-md:     3px;
+  --radius-lg:     4px;
 }
 
 /* ── Global reset ── */
@@ -60,24 +53,23 @@ body {
   padding: 0;
   background: var(--bg-base);
   color: var(--text-primary);
-  font-family: var(--font-ui);
-  font-size: 13px;
-  line-height: 1.5;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ── Scrollbar — cyber thin ── */
+/* ── Scrollbar — minimal ── */
 ::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
+  width: 4px;
+  height: 4px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border-subtle);
-  border-radius: 3px;
+  border-radius: 2px;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: var(--text-muted);
@@ -85,148 +77,133 @@ body {
 
 /* ── Selection ── */
 ::selection {
-  background: rgba(0, 216, 255, 0.25);
+  background: rgba(204, 170, 0, 0.2);
   color: var(--text-primary);
 }
 
 /* ── Focus ring ── */
 :focus-visible {
-  outline: 1px solid var(--cyan);
+  outline: 1px solid var(--accent);
   outline-offset: 2px;
 }
 
-/* ── Shared component classes (opt-in via className) ── */
+/* ── Shared component classes ── */
 
-.cyber-card {
+.terminal-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
 }
 
-.cyber-card:hover {
-  border-color: var(--cyan);
-  box-shadow: var(--cyan-glow);
-}
-
-.cyber-btn-ghost {
+.terminal-btn-ghost {
   background: transparent;
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: var(--font-mono);
-  font-size: 12px;
-  padding: 5px 14px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  font-size: 11px;
+  padding: 4px 10px;
 }
-.cyber-btn-ghost:hover {
-  border-color: var(--cyan);
-  box-shadow: var(--glow-cyan);
+.terminal-btn-ghost:hover {
+  border-color: var(--border-active);
 }
 
-.cyber-btn-primary {
-  background: var(--cyan);
+.terminal-btn-primary {
+  background: var(--accent);
   border: none;
   color: var(--text-inverse);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
-  padding: 5px 16px;
-  transition: box-shadow 0.2s;
+  padding: 4px 12px;
 }
-.cyber-btn-primary:hover {
-  box-shadow: var(--glow-cyan);
+.terminal-btn-primary:hover {
+  filter: brightness(1.1);
 }
-.cyber-btn-primary:disabled {
+.terminal-btn-primary:disabled {
   background: var(--border-subtle);
   color: var(--text-muted);
   cursor: not-allowed;
-  box-shadow: none;
+  filter: none;
 }
 
-.cyber-pro-badge {
-  padding: 2px 8px;
-  background: rgba(124, 60, 255, 0.15);
-  border: 1px solid rgba(124, 60, 255, 0.3);
-  color: var(--violet);
+.terminal-pro-badge {
+  padding: 1px 6px;
+  background: rgba(126, 87, 194, 0.12);
+  border: 1px solid rgba(126, 87, 194, 0.2);
+  color: var(--accent-purple);
   border-radius: var(--radius-sm);
-  font-size: 10px;
+  font-size: 9px;
   font-family: var(--font-mono);
 }
 
-.cyber-input {
+.terminal-input {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
-  padding: 6px 10px;
+  padding: 4px 8px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   outline: none;
-  transition: border-color 0.2s;
 }
-.cyber-input:focus {
-  border-color: var(--cyan);
-  box-shadow: var(--cyan-glow);
+.terminal-input:focus {
+  border-color: var(--border-active);
 }
 
-.cyber-select {
+.terminal-select {
   background: var(--bg-surface);
   border: 1px solid var(--border-subtle);
   color: var(--text-primary);
   border-radius: var(--radius-sm);
-  padding: 5px 8px;
+  padding: 4px 6px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 11px;
   outline: none;
 }
 
-.cyber-divider {
+.terminal-divider {
   border: none;
   border-top: 1px solid var(--border-subtle);
   margin: 0;
 }
 
-/* ── Animated progress bar ── */
-@keyframes cyber-progress-slide {
+/* ── Progress bar — flat, solid ── */
+@keyframes terminal-progress-slide {
   0%   { left: -35%; }
   100% { left: 100%; }
 }
 
-.cyber-progress-indeterminate {
-  height: 3px;
+.terminal-progress-indeterminate {
+  height: 2px;
   background: var(--border-subtle);
-  border-radius: 2px;
   overflow: hidden;
   position: relative;
 }
-.cyber-progress-indeterminate::after {
+.terminal-progress-indeterminate::after {
   content: "";
   position: absolute;
   top: 0;
   height: 100%;
-  width: 35%;
-  background: linear-gradient(90deg, var(--cyan), var(--violet));
-  border-radius: 2px;
-  animation: cyber-progress-slide 1.2s ease-in-out infinite;
+  width: 30%;
+  background: var(--accent);
+  animation: terminal-progress-slide 1.5s linear infinite;
 }
 
 
 /* ══════════════════════════════════════════════════════════
-   Accessibility Theme — 适老化UI (preserved from v0.8.0)
+   Accessibility — Large Font + High Contrast (preserved)
    ══════════════════════════════════════════════════════════ */
 
-/* —— Large Font Mode —— */
 html[data-large-font] {
   font-size: 18px;
 }
-
 html[data-large-font] body {
   font-size: 18px !important;
 }
-
 html[data-large-font] div,
 html[data-large-font] span,
 html[data-large-font] p,
@@ -237,13 +214,11 @@ html[data-large-font] label,
 html[data-large-font] a {
   font-size: inherit !important;
 }
-
 html[data-large-font] button {
   font-size: 16px !important;
   padding: 8px 16px !important;
   min-height: 36px !important;
 }
-
 html[data-large-font] input,
 html[data-large-font] select,
 html[data-large-font] textarea,
@@ -252,28 +227,21 @@ html[data-large-font] option {
   padding: 6px 10px !important;
   min-height: 32px !important;
 }
-
 html[data-large-font] h1 { font-size: 28px !important; }
 html[data-large-font] h2 { font-size: 24px !important; }
 html[data-large-font] h3 { font-size: 20px !important; }
-
-html[data-large-font] table {
-  font-size: 15px !important;
-}
-
+html[data-large-font] table { font-size: 15px !important; }
 html[data-large-font] small,
 html[data-large-font] .hint,
 html[data-large-font] .note {
   font-size: 14px !important;
 }
-
 html[data-large-font] button[style*="font-size"],
 html[data-large-font] select[style*="font-size"],
 html[data-large-font] input[style*="font-size"] {
   font-size: 16px !important;
 }
 
-/* —— High Contrast Mode —— */
 html[data-high-contrast] {
   --hc-bg: #000000;
   --hc-bg-alt: #0a0a0a;
@@ -283,23 +251,19 @@ html[data-high-contrast] {
   --hc-positive: #00ff00;
   --hc-negative: #ff4444;
 }
-
 html[data-high-contrast] body {
   background: #000000 !important;
   color: #ffffff !important;
 }
-
 html[data-high-contrast] button {
   border: 2px solid #ffffff !important;
   color: #ffffff !important;
   background: #000000 !important;
 }
-
 html[data-high-contrast] button:hover {
   background: #ffffff !important;
   color: #000000 !important;
 }
-
 html[data-high-contrast] input,
 html[data-high-contrast] select,
 html[data-high-contrast] textarea {
@@ -307,27 +271,19 @@ html[data-high-contrast] textarea {
   color: #ffffff !important;
   background: #000000 !important;
 }
-
 html[data-high-contrast] table,
 html[data-high-contrast] th,
 html[data-high-contrast] td {
   border-color: #ffffff !important;
   color: #ffffff !important;
 }
-
 html[data-high-contrast] th {
   background: #1a1a1a !important;
 }
-
 html[data-high-contrast] a {
   color: #ffff00 !important;
 }
-
 html[data-high-contrast] *:focus-visible {
   outline: 3px solid #ffff00 !important;
   outline-offset: 2px;
-}
-
-html[data-large-font][data-high-contrast] {
-  /* Both modes active — each rule set applies independently */
 }

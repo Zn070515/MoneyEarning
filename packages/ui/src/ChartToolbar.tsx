@@ -34,36 +34,36 @@ export function ChartToolbar({
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 8,
-      padding: "4px 12px", background: "#111827",
-      borderBottom: "1px solid #1E293B",
+      padding: "4px 12px", background: "#161616",
+      borderBottom: "1px solid #2A2A2A",
       fontFamily: "monospace", fontSize: 12,
       flexShrink: 0, flexWrap: "wrap",
     }}>
       {/* Chart type */}
-      <span style={{ color: "#94A3B8", marginRight: 4 }}>图表:</span>
+      <span style={{ color: "#858585", marginRight: 4 }}>图表:</span>
       {CHART_TYPES.map(ct => (
         <button key={ct.key} onClick={() => onChartTypeChange(ct.key)}
           style={{
             ...btnBase,
-            background: chartType === ct.key ? "#00D8FF" : "#1E293B",
-            color: chartType === ct.key ? "#000" : "#F1F5F9",
+            background: chartType === ct.key ? "#CCAA00" : "#2A2A2A",
+            color: chartType === ct.key ? "#000" : "#D4D4D4",
             fontWeight: chartType === ct.key ? 600 : 400,
           }}>
           {ct.label}
         </button>
       ))}
 
-      <span style={{ color: "#64748B", margin: "0 4px" }}>|</span>
+      <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
 
       {/* Drawing tools */}
-      <span style={{ color: "#94A3B8", marginRight: 4 }}>绘图:</span>
+      <span style={{ color: "#858585", marginRight: 4 }}>绘图:</span>
       {DRAWING_TOOLS.map(dt => (
         <button key={dt.key} onClick={() => onToolChange(activeTool === dt.key ? null : dt.key)}
           title={dt.label}
           style={{
             ...btnBase,
-            background: activeTool === dt.key ? "#00D8FF" : "#1E293B",
-            color: activeTool === dt.key ? "#000" : "#94A3B8",
+            background: activeTool === dt.key ? "#CCAA00" : "#2A2A2A",
+            color: activeTool === dt.key ? "#000" : "#858585",
             minWidth: 28, textAlign: "center",
           }}>
           {dt.icon}
@@ -72,9 +72,9 @@ export function ChartToolbar({
 
       {drawingCount > 0 && (
         <>
-          <span style={{ color: "#64748B", margin: "0 4px" }}>|</span>
+          <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
           <button onClick={onClearDrawings} style={{
-            ...btnBase, background: "#3a1a1a", color: "#FF2A7A",
+            ...btnBase, background: "#3a1a1a", color: "#EF5350",
           }}>
             清除全部 ({drawingCount})
           </button>

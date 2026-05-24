@@ -25,8 +25,8 @@ function Layout() {
       style={{
         display: "flex",
         height: "100vh",
-        background: "#0A0E1A",
-        color: "#F1F5F9",
+        background: "#0C0C0C",
+        color: "#D4D4D4",
         fontFamily: `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
       }}
     >

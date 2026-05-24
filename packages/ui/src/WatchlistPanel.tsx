@@ -96,12 +96,12 @@ export function WatchlistPanel({ onSelectStock, onSelectWatchlist }: WatchlistPa
 
   return (
     <div style={{
-      background: "#111827", color: "#F1F5F9", fontFamily: "monospace",
+      background: "#161616", color: "#D4D4D4", fontFamily: "monospace",
       fontSize: 13, height: "100%", display: "flex", flexDirection: "column",
     }}>
       {/* Header */}
       <div style={{
-        padding: "10px 12px", borderBottom: "1px solid #1E293B",
+        padding: "10px 12px", borderBottom: "1px solid #2A2A2A",
         fontWeight: 600, color: "#fff", fontSize: 14,
       }}>
         自选股列表
@@ -115,13 +115,13 @@ export function WatchlistPanel({ onSelectStock, onSelectWatchlist }: WatchlistPa
           onKeyDown={e => e.key === "Enter" && handleCreate()}
           placeholder="新建列表名称..."
           style={{
-            flex: 1, background: "#141b2d", border: "1px solid #1E293B",
+            flex: 1, background: "#121212", border: "1px solid #2A2A2A",
             color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12,
             fontFamily: "monospace", outline: "none",
           }}
         />
         <button onClick={handleCreate} disabled={loading} style={{
-          background: "#00D8FF", color: "#000", border: "none",
+          background: "#CCAA00", color: "#000", border: "none",
           padding: "4px 10px", borderRadius: 4, cursor: "pointer",
           fontSize: 12, fontWeight: 600,
         }}>
@@ -138,19 +138,19 @@ export function WatchlistPanel({ onSelectStock, onSelectWatchlist }: WatchlistPa
               style={{
                 padding: "8px 12px", cursor: "pointer",
                 background: selectedId === wl.id ? "#2a3a5e" : "transparent",
-                borderBottom: "1px solid #141b2d",
+                borderBottom: "1px solid #121212",
                 display: "flex", justifyContent: "space-between", alignItems: "center",
               }}
             >
-              <span style={{ color: selectedId === wl.id ? "#00D8FF" : "#F1F5F9" }}>
+              <span style={{ color: selectedId === wl.id ? "#CCAA00" : "#D4D4D4" }}>
                 {wl.name}
-                <span style={{ color: "#94A3B8", marginLeft: 8, fontSize: 11 }}>
+                <span style={{ color: "#858585", marginLeft: 8, fontSize: 11 }}>
                   ({wl.item_count})
                 </span>
               </span>
               <button onClick={e => { e.stopPropagation(); handleDelete(wl.id); }}
                 style={{
-                  background: "none", border: "none", color: "#64748B",
+                  background: "none", border: "none", color: "#666666",
                   cursor: "pointer", fontSize: 14, padding: "0 4px",
                 }}
                 title="删除列表"
@@ -163,7 +163,7 @@ export function WatchlistPanel({ onSelectStock, onSelectWatchlist }: WatchlistPa
             {selectedId === wl.id && (
               <div style={{ paddingLeft: 12 }}>
                 {items.length === 0 && (
-                  <div style={{ padding: 8, color: "#64748B", fontSize: 11 }}>
+                  <div style={{ padding: 8, color: "#666666", fontSize: 11 }}>
                     暂无股票，从股票列表中拖入或搜索添加
                   </div>
                 )}
@@ -172,22 +172,22 @@ export function WatchlistPanel({ onSelectStock, onSelectWatchlist }: WatchlistPa
                     onClick={() => onSelectStock?.(s)}
                     style={{
                       padding: "6px 12px", cursor: "pointer",
-                      borderBottom: "1px solid #141b2d",
+                      borderBottom: "1px solid #121212",
                       display: "flex", justifyContent: "space-between",
                       fontSize: 12,
                     }}
                   >
                     <span>
-                      <span style={{ color: "#00D8FF" }}>{s.code}</span>
-                      <span style={{ color: "#94A3B8", marginLeft: 8 }}>{s.name}</span>
+                      <span style={{ color: "#CCAA00" }}>{s.code}</span>
+                      <span style={{ color: "#858585", marginLeft: 8 }}>{s.name}</span>
                     </span>
                     <span style={{ display: "flex", gap: 12, alignItems: "center" }}>
-                      <span style={{ color: "#94A3B8", fontSize: 11 }}>
+                      <span style={{ color: "#858585", fontSize: 11 }}>
                         {s.exchange} · {s.total_rows}条
                       </span>
                       <button onClick={e => { e.stopPropagation(); handleRemoveItem(s.id); }}
                         style={{
-                          background: "none", border: "none", color: "#64748B",
+                          background: "none", border: "none", color: "#666666",
                           cursor: "pointer", fontSize: 12,
                         }}
                       >

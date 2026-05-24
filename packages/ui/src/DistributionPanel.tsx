@@ -120,12 +120,12 @@ export function DistributionPanel({ stockId }: { stockId: number | null }) {
   return (
     <div style={{
       display: "flex", flexDirection: "column", height: "100%",
-      background: "#141b2d", color: "#F1F5F9", fontFamily: "monospace", fontSize: 13,
+      background: "#121212", color: "#D4D4D4", fontFamily: "monospace", fontSize: 13,
     }}>
       {/* Sub tabs */}
       <div style={{
-        display: "flex", borderBottom: "1px solid #1E293B",
-        background: "#111827", flexShrink: 0,
+        display: "flex", borderBottom: "1px solid #2A2A2A",
+        background: "#161616", flexShrink: 0,
       }}>
         {([
           ["profile", "成交量"],
@@ -137,11 +137,11 @@ export function DistributionPanel({ stockId }: { stockId: number | null }) {
         ] as [SubTab, string][]).map(([k, label]) => (
           <button key={k} onClick={() => setSubTab(k)} style={{
             flex: 1, padding: "8px 12px", border: "none",
-            background: subTab === k ? "#141b2d" : "transparent",
-            color: subTab === k ? "#00D8FF" : "#94A3B8",
+            background: subTab === k ? "#121212" : "transparent",
+            color: subTab === k ? "#CCAA00" : "#858585",
             cursor: "pointer", fontSize: 13, fontFamily: "monospace",
             fontWeight: subTab === k ? 600 : 400,
-            borderBottom: subTab === k ? "2px solid #00D8FF" : "2px solid transparent",
+            borderBottom: subTab === k ? "2px solid #CCAA00" : "2px solid transparent",
           }}>
             {label}
           </button>
@@ -150,8 +150,8 @@ export function DistributionPanel({ stockId }: { stockId: number | null }) {
 
       {/* Content */}
       <div style={{ flex: 1, overflow: "auto", padding: "12px" }}>
-        {loading && <div style={{ color: "#00D8FF", textAlign: "center" }}>计算中...</div>}
-        {status && !loading && <div style={{ color: "#FF2A7A", textAlign: "center" }}>{status}</div>}
+        {loading && <div style={{ color: "#CCAA00", textAlign: "center" }}>计算中...</div>}
+        {status && !loading && <div style={{ color: "#EF5350", textAlign: "center" }}>{status}</div>}
 
         {subTab === "profile" && profile && <VolumeProfileChart profile={profile} />}
         {subTab === "chip" && chipDist && <ChipDistChart dist={chipDist} />}
@@ -181,24 +181,24 @@ function VolumeProfileChart({ profile }: { profile: VolumeProfileResult }) {
 
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 8, color: "#00D8FF" }}>成交量分布图</div>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#CCAA00" }}>成交量分布图</div>
 
-      <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
-        <span>POC: <span style={{ color: "#00D8FF" }}>{poc.toFixed(2)}</span></span>
-        <span style={{ marginLeft: 16 }}>VAH: <span style={{ color: "#FF2A7A" }}>{vah.toFixed(2)}</span></span>
-        <span style={{ marginLeft: 16 }}>VAL: <span style={{ color: "#00E676" }}>{val.toFixed(2)}</span></span>
+      <div style={{ fontSize: 12, color: "#858585", marginBottom: 12 }}>
+        <span>POC: <span style={{ color: "#CCAA00" }}>{poc.toFixed(2)}</span></span>
+        <span style={{ marginLeft: 16 }}>VAH: <span style={{ color: "#EF5350" }}>{vah.toFixed(2)}</span></span>
+        <span style={{ marginLeft: 16 }}>VAL: <span style={{ color: "#26A69A" }}>{val.toFixed(2)}</span></span>
         <span style={{ marginLeft: 16 }}>价值区: {val.toFixed(2)} ~ {vah.toFixed(2)}</span>
       </div>
 
-      <svg width={280} height={Math.min(levels.length * 4, 400)} style={{ background: "#0A0E1A" }}>
+      <svg width={280} height={Math.min(levels.length * 4, 400)} style={{ background: "#0C0C0C" }}>
         {levels.map((l, i) => {
           const w = maxVol > 0 ? (l.volume / maxVol) * barWidth : 0;
           const y = ((l.price - minP) / priceRange) * (levels.length * 4);
-          const fill = l.is_poc ? "#00D8FF" : (l.price >= val && l.price <= vah ? "#3b82f6" : "#1E293B");
+          const fill = l.is_poc ? "#CCAA00" : (l.price >= val && l.price <= vah ? "#3b82f6" : "#2A2A2A");
           return (
             <g key={i}>
               <rect x={0} y={y - 1.5} width={w} height={3} fill={fill} rx={1} />
-              <text x={w + 4} y={y + 2} fill="#94A3B8" fontSize={9} fontFamily="monospace">
+              <text x={w + 4} y={y + 2} fill="#858585" fontSize={9} fontFamily="monospace">
                 {l.price.toFixed(1)}
               </text>
             </g>
@@ -208,13 +208,13 @@ function VolumeProfileChart({ profile }: { profile: VolumeProfileResult }) {
         {/* VAH/VAL lines */}
         <line x1={0} y1={((vah - minP) / priceRange) * levels.length * 4}
           x2={barWidth} y2={((vah - minP) / priceRange) * levels.length * 4}
-          stroke="#FF2A7A" strokeDasharray="4 2" strokeWidth={1} />
+          stroke="#EF5350" strokeDasharray="4 2" strokeWidth={1} />
         <line x1={0} y1={((val - minP) / priceRange) * levels.length * 4}
           x2={barWidth} y2={((val - minP) / priceRange) * levels.length * 4}
-          stroke="#00E676" strokeDasharray="4 2" strokeWidth={1} />
+          stroke="#26A69A" strokeDasharray="4 2" strokeWidth={1} />
       </svg>
 
-      <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: "#666666", marginTop: 8 }}>
         蓝条 = 70%价值区域 · 金条 = POC · 红线 = VAH · 绿线 = VAL
       </div>
     </div>
@@ -234,30 +234,30 @@ function ChipDistChart({ dist }: { dist: DistributionResult }) {
 
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 8, color: "#00D8FF" }}>筹码分布</div>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#CCAA00" }}>筹码分布</div>
 
-      <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
-        <span>平均成本: <span style={{ color: "#00D8FF" }}>{avg_cost.toFixed(2)}</span></span>
+      <div style={{ fontSize: 12, color: "#858585", marginBottom: 12 }}>
+        <span>平均成本: <span style={{ color: "#CCAA00" }}>{avg_cost.toFixed(2)}</span></span>
         <span style={{ marginLeft: 16 }}>加权均价: <span style={{ color: "#3b82f6" }}>
           {weighted_avg_cost.toFixed(2)}</span>
         </span>
       </div>
 
-      <svg width={w + 40} height={h + 30} style={{ background: "#0A0E1A" }}>
+      <svg width={w + 40} height={h + 30} style={{ background: "#0C0C0C" }}>
         {price_levels.map((p, i) => {
           const bh = maxChip > 0 ? (chip_volume[i] / maxChip) * h : 0;
           const x = (i / price_levels.length) * w + 20;
           const isCost = p < avg_cost * 1.02 && p > avg_cost * 0.98;
           return (
             <rect key={i} x={x - barW / 2} y={h - bh + 10} width={barW} height={bh}
-              fill={isCost ? "#00D8FF" : "#3b82f6"} opacity={0.7} rx={1} />
+              fill={isCost ? "#CCAA00" : "#3b82f6"} opacity={0.7} rx={1} />
           );
         })}
         <line x1={20} y1={costY} x2={w + 20} y2={costY}
-          stroke="#00D8FF" strokeDasharray="4 2" strokeWidth={1} />
+          stroke="#CCAA00" strokeDasharray="4 2" strokeWidth={1} />
       </svg>
 
-      <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: "#666666", marginTop: 8 }}>
         蓝柱 = 筹码量 · 金条 = 平均成本线 · 模拟换手率衰减
       </div>
     </div>
@@ -275,23 +275,23 @@ function SRLevelsList({ levels }: { levels: [number, number, string][] }) {
 
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 12, color: "#00D8FF" }}>
+      <div style={{ fontWeight: 600, marginBottom: 12, color: "#CCAA00" }}>
         支撑/阻力位 (高量节点 {">"} 1.5x 均值)
       </div>
 
       {resistance.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: "#FF2A7A", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ color: "#EF5350", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
             阻力位
           </div>
           {resistance.map((l, i) => (
             <div key={i} style={{
               display: "flex", justifyContent: "space-between",
-              padding: "4px 8px", background: "rgba(239,68,68,0.1)",
+              padding: "4px 8px", background: "rgba(239,83,80,0.1)",
               borderRadius: 4, marginBottom: 4, fontSize: 12,
             }}>
-              <span style={{ color: "#FF2A7A" }}>{l[0].toFixed(2)}</span>
-              <span style={{ color: "#94A3B8" }}>量: {l[1].toFixed(0)}</span>
+              <span style={{ color: "#EF5350" }}>{l[0].toFixed(2)}</span>
+              <span style={{ color: "#858585" }}>量: {l[1].toFixed(0)}</span>
             </div>
           ))}
         </div>
@@ -299,17 +299,17 @@ function SRLevelsList({ levels }: { levels: [number, number, string][] }) {
 
       {support.length > 0 && (
         <div style={{ marginBottom: 12 }}>
-          <div style={{ color: "#00E676", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ color: "#26A69A", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
             支撑位
           </div>
           {support.map((l, i) => (
             <div key={i} style={{
               display: "flex", justifyContent: "space-between",
-              padding: "4px 8px", background: "rgba(34,197,94,0.1)",
+              padding: "4px 8px", background: "rgba(38,166,154,0.1)",
               borderRadius: 4, marginBottom: 4, fontSize: 12,
             }}>
-              <span style={{ color: "#00E676" }}>{l[0].toFixed(2)}</span>
-              <span style={{ color: "#94A3B8" }}>量: {l[1].toFixed(0)}</span>
+              <span style={{ color: "#26A69A" }}>{l[0].toFixed(2)}</span>
+              <span style={{ color: "#858585" }}>量: {l[1].toFixed(0)}</span>
             </div>
           ))}
         </div>
@@ -317,17 +317,17 @@ function SRLevelsList({ levels }: { levels: [number, number, string][] }) {
 
       {poc.length > 0 && (
         <div>
-          <div style={{ color: "#00D8FF", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
+          <div style={{ color: "#CCAA00", fontSize: 12, fontWeight: 600, marginBottom: 6 }}>
             POC (最大成交量节点)
           </div>
           {poc.map((l, i) => (
             <div key={i} style={{
               display: "flex", justifyContent: "space-between",
-              padding: "4px 8px", background: "rgba(251,191,36,0.1)",
+              padding: "4px 8px", background: "rgba(204,170,0,0.1)",
               borderRadius: 4, marginBottom: 4, fontSize: 12,
             }}>
-              <span style={{ color: "#00D8FF" }}>{l[0].toFixed(2)}</span>
-              <span style={{ color: "#94A3B8" }}>量: {l[1].toFixed(0)}</span>
+              <span style={{ color: "#CCAA00" }}>{l[0].toFixed(2)}</span>
+              <span style={{ color: "#858585" }}>量: {l[1].toFixed(0)}</span>
             </div>
           ))}
         </div>
@@ -340,19 +340,19 @@ function ConcentrationView({ data }: { data: ConcentrationOutput }) {
   const barW = 180;
   const maxCR = Math.max(data.cr5, data.cr10, data.cr20, 1);
   const bars: [string, number, string][] = [
-    ["CR5 (前5)", data.cr5, "#FF2A7A"],
-    ["CR10 (前10)", data.cr10, "#00D8FF"],
-    ["CR20 (前20)", data.cr20, "#00E676"],
+    ["CR5 (前5)", data.cr5, "#EF5350"],
+    ["CR10 (前10)", data.cr10, "#CCAA00"],
+    ["CR20 (前20)", data.cr20, "#26A69A"],
   ];
 
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 8, color: "#00D8FF" }}>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#CCAA00" }}>
         筹码集中度分析
       </div>
-      <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 12 }}>
+      <div style={{ fontSize: 12, color: "#858585", marginBottom: 12 }}>
         趋势: <span style={{
-          color: data.trend < 0 ? "#00E676" : "#FF2A7A",
+          color: data.trend < 0 ? "#26A69A" : "#EF5350",
           fontWeight: 600,
         }}>
           {data.trend < 0 ? "集中" : "分散"}{" "}
@@ -364,8 +364,8 @@ function ConcentrationView({ data }: { data: ConcentrationOutput }) {
       </div>
       {bars.map(([label, val, color]) => (
         <div key={label} style={{ marginBottom: 8, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ color: "#94A3B8", fontSize: 11, width: 90 }}>{label}</span>
-          <div style={{ flex: 1, background: "#0A0E1A", borderRadius: 4, height: 18, overflow: "hidden" }}>
+          <span style={{ color: "#858585", fontSize: 11, width: 90 }}>{label}</span>
+          <div style={{ flex: 1, background: "#0C0C0C", borderRadius: 4, height: 18, overflow: "hidden" }}>
             <div style={{
               width: `${(val / maxCR) * 100}%`, height: "100%",
               background: color, borderRadius: 4, opacity: 0.7,
@@ -377,7 +377,7 @@ function ConcentrationView({ data }: { data: ConcentrationOutput }) {
           </span>
         </div>
       ))}
-      <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: "#666666", marginTop: 8 }}>
         CR集中度 = 前N大持仓占总市值的比例。集中度高表示筹码集中于少数持有者，筹码锁定性好。
       </div>
     </div>
@@ -391,32 +391,32 @@ function PLRatioView({ data }: { data: ProfitLossOutput }) {
 
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 8, color: "#00D8FF" }}>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#CCAA00" }}>
         盈亏分布
       </div>
 
       {/* Profit/Loss bar */}
       <div style={{ marginBottom: 16 }}>
-        <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 4 }}>
+        <div style={{ fontSize: 12, color: "#858585", marginBottom: 4 }}>
           持仓盈亏比例
         </div>
         <div style={{ display: "flex", height: 24, borderRadius: 4, overflow: "hidden" }}>
           <div style={{
             width: `${profitW}px`, height: "100%",
-            background: "#FF2A7A", display: "flex", alignItems: "center",
+            background: "#EF5350", display: "flex", alignItems: "center",
             justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 600,
           }}>
             {data.profit_pct > 1 ? `盈利 ${data.profit_pct.toFixed(0)}%` : ""}
           </div>
           <div style={{
             width: `${lossW}px`, height: "100%",
-            background: "#00E676", display: "flex", alignItems: "center",
+            background: "#26A69A", display: "flex", alignItems: "center",
             justifyContent: "center", fontSize: 11, color: "#fff", fontWeight: 600,
           }}>
             {data.loss_pct > 1 ? `亏损 ${data.loss_pct.toFixed(0)}%` : ""}
           </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#94A3B8", marginTop: 4 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#858585", marginTop: 4 }}>
           <span>盈利: {data.profit_pct.toFixed(1)}%</span>
           <span>亏损: {data.loss_pct.toFixed(1)}%</span>
         </div>
@@ -427,12 +427,12 @@ function PLRatioView({ data }: { data: ProfitLossOutput }) {
         <CostField label="平均成本" value={data.avg_cost.toFixed(2)} />
         <CostField label="加权均价" value={data.weighted_avg_cost.toFixed(2)} />
         <CostField label="最新价格" value={data.last_price.toFixed(2)} color={
-          data.last_price > data.avg_cost ? "#FF2A7A" : "#00E676"
+          data.last_price > data.avg_cost ? "#EF5350" : "#26A69A"
         } />
         <CostField label="盈亏幅度" value={
           ((data.last_price / data.avg_cost - 1) * 100).toFixed(2) + "%"
         } color={
-          data.last_price > data.avg_cost ? "#FF2A7A" : "#00E676"
+          data.last_price > data.avg_cost ? "#EF5350" : "#26A69A"
         } />
       </div>
     </div>
@@ -441,9 +441,9 @@ function PLRatioView({ data }: { data: ProfitLossOutput }) {
 
 function CostField({ label, value, color }: { label: string; value: string; color?: string }) {
   return (
-    <div style={{ padding: "6px 8px", background: "#111827", borderRadius: 4 }}>
-      <div style={{ color: "#94A3B8", fontSize: 10, marginBottom: 2 }}>{label}</div>
-      <div style={{ color: color ?? "#F1F5F9", fontSize: 13, fontWeight: 600 }}>{value}</div>
+    <div style={{ padding: "6px 8px", background: "#161616", borderRadius: 4 }}>
+      <div style={{ color: "#858585", fontSize: 10, marginBottom: 2 }}>{label}</div>
+      <div style={{ color: color ?? "#D4D4D4", fontSize: 13, fontWeight: 600 }}>{value}</div>
     </div>
   );
 }
@@ -467,7 +467,7 @@ function HistoryFramesView({
 
   return (
     <div>
-      <div style={{ fontWeight: 600, marginBottom: 8, color: "#00D8FF" }}>
+      <div style={{ fontWeight: 600, marginBottom: 8, color: "#CCAA00" }}>
         历史筹码分布
       </div>
 
@@ -479,24 +479,24 @@ function HistoryFramesView({
           max={frames.length - 1}
           value={frameIdx}
           onChange={(e) => onFrameChange(parseInt(e.target.value))}
-          style={{ width: "100%", accentColor: "#00D8FF" }}
+          style={{ width: "100%", accentColor: "#CCAA00" }}
         />
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#94A3B8" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "#858585" }}>
           <span>{frames[0]?.date || ""}</span>
-          <span style={{ color: "#00D8FF", fontSize: 11 }}>{frame.date}</span>
+          <span style={{ color: "#CCAA00", fontSize: 11 }}>{frame.date}</span>
           <span>{frames[frames.length - 1]?.date || ""}</span>
         </div>
       </div>
 
       {/* Frame info */}
-      <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 8, display: "flex", gap: 16, flexWrap: "wrap" }}>
-        <span>平均成本: <span style={{ color: "#00D8FF" }}>{frame.avg_cost.toFixed(2)}</span></span>
-        <span>盈利占比: <span style={{ color: "#FF2A7A" }}>{frame.profit_pct.toFixed(1)}%</span></span>
-        <span>亏损占比: <span style={{ color: "#00E676" }}>{frame.loss_pct.toFixed(1)}%</span></span>
+      <div style={{ fontSize: 12, color: "#858585", marginBottom: 8, display: "flex", gap: 16, flexWrap: "wrap" }}>
+        <span>平均成本: <span style={{ color: "#CCAA00" }}>{frame.avg_cost.toFixed(2)}</span></span>
+        <span>盈利占比: <span style={{ color: "#EF5350" }}>{frame.profit_pct.toFixed(1)}%</span></span>
+        <span>亏损占比: <span style={{ color: "#26A69A" }}>{frame.loss_pct.toFixed(1)}%</span></span>
       </div>
 
       {/* Frame distribution chart */}
-      <svg width={w + 40} height={h + 20} style={{ background: "#0A0E1A" }}>
+      <svg width={w + 40} height={h + 20} style={{ background: "#0C0C0C" }}>
         {frame.price_levels.map((p, i) => {
           const bh = maxChip > 0 ? (frame.chip_volume[i] / maxChip) * h : 0;
           const x = (i / frame.price_levels.length) * w + 20;
@@ -504,7 +504,7 @@ function HistoryFramesView({
           const isCost = Math.abs(p - frame.avg_cost) / frame.avg_cost < 0.02;
           return (
             <rect key={i} x={x - barW / 2} y={h - bh + 10} width={barW} height={bh}
-              fill={isCost ? "#00D8FF" : "#3b82f6"} opacity={0.7} rx={1} />
+              fill={isCost ? "#CCAA00" : "#3b82f6"} opacity={0.7} rx={1} />
           );
         })}
         {/* Avg cost line */}
@@ -512,12 +512,12 @@ function HistoryFramesView({
           const costY = h - ((frame.avg_cost - frame.price_levels[0]) / priceRange) * h + 10;
           return (
             <line x1={20} y1={costY} x2={w + 20} y2={costY}
-              stroke="#00D8FF" strokeDasharray="4 2" strokeWidth={1} />
+              stroke="#CCAA00" strokeDasharray="4 2" strokeWidth={1} />
           );
         })()}
       </svg>
 
-      <div style={{ fontSize: 11, color: "#64748B", marginTop: 8 }}>
+      <div style={{ fontSize: 11, color: "#666666", marginTop: 8 }}>
         拖动滑块查看不同时间点的筹码分布变化。盈利占比越高，价格越在平均成本线上方。
       </div>
     </div>

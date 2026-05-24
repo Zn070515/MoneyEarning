@@ -170,10 +170,10 @@ export function KLineChart({
       {activeTool && (
         <div style={{
           position: "absolute", top: 8, left: 8,
-          background: "rgba(0,216,255,0.12)", color: "#00D8FF",
+          background: "rgba(204,170,0,0.12)", color: "#CCAA00",
           padding: "4px 10px", borderRadius: 4, fontSize: 12,
           fontFamily: "monospace", pointerEvents: "none",
-          border: "1px solid rgba(251,191,36,0.3)",
+          border: "1px solid rgba(204,170,0,0.3)",
           zIndex: 10,
         }}>
           {drawingToolLabel(activeTool)} — 点击图表放置 {pending ? "第二个点" : "第一个点"} · 右键/Esc 取消

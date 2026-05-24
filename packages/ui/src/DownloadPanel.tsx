@@ -123,8 +123,8 @@ export function DownloadPanel() {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "#141b2d",
-        color: "#F1F5F9",
+        background: "#121212",
+        color: "#D4D4D4",
         fontFamily: "monospace",
         fontSize: 13,
       }}
@@ -132,8 +132,8 @@ export function DownloadPanel() {
       <div
         style={{
           padding: 10,
-          borderBottom: "1px solid #1E293B",
-          background: "#111827",
+          borderBottom: "1px solid #2A2A2A",
+          background: "#161616",
           fontWeight: 600,
           color: "#fff",
           fontSize: 14,
@@ -147,8 +147,8 @@ export function DownloadPanel() {
       <div
         style={{
           padding: "10px 12px",
-          borderBottom: "1px solid #1E293B",
-          background: "#111827",
+          borderBottom: "1px solid #2A2A2A",
+          background: "#161616",
           flexShrink: 0,
         }}
       >
@@ -165,7 +165,7 @@ export function DownloadPanel() {
             disabled={stockListLoading}
             style={{
               padding: "5px 14px",
-              background: stockListLoading ? "#8a7a3a" : "#00D8FF",
+              background: stockListLoading ? "#8a7a3a" : "#CCAA00",
               color: "#000",
               border: "none",
               borderRadius: 4,
@@ -177,7 +177,7 @@ export function DownloadPanel() {
           >
             {stockListLoading ? "下载中..." : "获取A股列表"}
           </button>
-          <span style={{ color: "#94A3B8", fontSize: 11 }}>{stockListStatus}</span>
+          <span style={{ color: "#858585", fontSize: 11 }}>{stockListStatus}</span>
         </div>
         {stockList.length > 0 && (
           <div>
@@ -187,8 +187,8 @@ export function DownloadPanel() {
               onChange={(e) => setSearch(e.target.value)}
               placeholder="搜索代码或名称..."
               style={{
-                background: "#0A0E1A",
-                border: "1px solid #1E293B",
+                background: "#0C0C0C",
+                border: "1px solid #2A2A2A",
                 color: "#fff",
                 padding: "4px 8px",
                 borderRadius: 4,
@@ -198,7 +198,7 @@ export function DownloadPanel() {
                 width: 200,
               }}
             />
-            <span style={{ color: "#94A3B8", fontSize: 11, marginLeft: 8 }}>
+            <span style={{ color: "#858585", fontSize: 11, marginLeft: 8 }}>
               显示 {filtered.length}/{stockList.length} 只
             </span>
           </div>
@@ -209,12 +209,12 @@ export function DownloadPanel() {
       <div
         style={{
           padding: "10px 12px",
-          borderBottom: "1px solid #1E293B",
-          background: "#111827",
+          borderBottom: "1px solid #2A2A2A",
+          background: "#161616",
           flexShrink: 0,
         }}
       >
-        <div style={{ color: "#00D8FF", fontSize: 12, marginBottom: 8 }}>
+        <div style={{ color: "#CCAA00", fontSize: 12, marginBottom: 8 }}>
           单只股票下载
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
@@ -238,9 +238,9 @@ export function DownloadPanel() {
             style={{
               padding: "5px 14px",
               background:
-                dlLoading || !dlCode.trim() ? "#1E293B" : "#00E676",
+                dlLoading || !dlCode.trim() ? "#2A2A2A" : "#26A69A",
               color:
-                dlLoading || !dlCode.trim() ? "#94A3B8" : "#000",
+                dlLoading || !dlCode.trim() ? "#858585" : "#000",
               border: "none",
               borderRadius: 4,
               cursor:
@@ -262,10 +262,10 @@ export function DownloadPanel() {
               fontSize: 12,
             }}
           >
-            <span style={{ color: "#00E676", fontWeight: 600 }}>
+            <span style={{ color: "#26A69A", fontWeight: 600 }}>
               下载成功
             </span>{" "}
-            <span style={{ color: "#94A3B8" }}>
+            <span style={{ color: "#858585" }}>
               {dlResult.code} {dlResult.name} · 导入 {dlResult.rows_inserted} 条
               {dlResult.date_range &&
                 ` · ${dlResult.date_range[0]}~${dlResult.date_range[1]}`}
@@ -278,7 +278,7 @@ export function DownloadPanel() {
               padding: 8,
               background: "#3a1a2e",
               borderRadius: 4,
-              color: "#FF2A7A",
+              color: "#EF5350",
               fontSize: 12,
             }}
           >
@@ -291,13 +291,13 @@ export function DownloadPanel() {
       <div
         style={{
           padding: "10px 12px",
-          borderBottom: "1px solid #1E293B",
-          background: "#111827",
+          borderBottom: "1px solid #2A2A2A",
+          background: "#161616",
           flexShrink: 0,
         }}
       >
-        <div style={{ color: "#7C3CFF", fontSize: 12, marginBottom: 8 }}>
-          分钟数据下载 <span style={{ color: "#64748B", fontSize: 10 }}>(Pro功能)</span>
+        <div style={{ color: "#7E57C2", fontSize: 12, marginBottom: 8 }}>
+          分钟数据下载 <span style={{ color: "#666666", fontSize: 10 }}>(Pro功能)</span>
         </div>
         <div style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
           <input
@@ -311,7 +311,7 @@ export function DownloadPanel() {
             value={minKlt}
             onChange={(e) => setMinKlt(Number(e.target.value))}
             style={{
-              background: "#0A0E1A", border: "1px solid #1E293B", color: "#00D8FF",
+              background: "#0C0C0C", border: "1px solid #2A2A2A", color: "#CCAA00",
               padding: "4px 8px", borderRadius: 4, fontSize: 12, fontFamily: "monospace",
               outline: "none", width: 100,
             }}
@@ -327,8 +327,8 @@ export function DownloadPanel() {
             disabled={minLoading || !minCode.trim()}
             style={{
               padding: "5px 14px",
-              background: minLoading || !minCode.trim() ? "#1E293B" : "#7C3CFF",
-              color: minLoading || !minCode.trim() ? "#94A3B8" : "#000",
+              background: minLoading || !minCode.trim() ? "#2A2A2A" : "#7E57C2",
+              color: minLoading || !minCode.trim() ? "#858585" : "#000",
               border: "none", borderRadius: 4,
               cursor: minLoading || !minCode.trim() ? "not-allowed" : "pointer",
               fontFamily: "monospace", fontSize: 12, fontWeight: 600,
@@ -339,8 +339,8 @@ export function DownloadPanel() {
         </div>
         {minResult && (
           <div style={{ padding: 8, background: "#1a2a3e", borderRadius: 4, fontSize: 12 }}>
-            <span style={{ color: "#7C3CFF", fontWeight: 600 }}>下载成功</span>{" "}
-            <span style={{ color: "#94A3B8" }}>
+            <span style={{ color: "#7E57C2", fontWeight: 600 }}>下载成功</span>{" "}
+            <span style={{ color: "#858585" }}>
               {minResult.code} · {minResult.klt_label} · 导入 {minResult.rows_inserted} 条
               {minResult.time_range &&
                 ` · ${minResult.time_range[0]}~${minResult.time_range[1]}`}
@@ -348,7 +348,7 @@ export function DownloadPanel() {
           </div>
         )}
         {minError && (
-          <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#FF2A7A", fontSize: 12 }}>
+          <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#EF5350", fontSize: 12 }}>
             {minError}
           </div>
         )}
@@ -363,11 +363,11 @@ export function DownloadPanel() {
             <thead>
               <tr
                 style={{
-                  color: "#94A3B8",
-                  borderBottom: "1px solid #1E293B",
+                  color: "#858585",
+                  borderBottom: "1px solid #2A2A2A",
                   position: "sticky",
                   top: 0,
-                  background: "#141b2d",
+                  background: "#121212",
                 }}
               >
                 <th style={thS}>代码</th>
@@ -386,16 +386,16 @@ export function DownloadPanel() {
                     background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)",
                   }}
                 >
-                  <td style={{ ...tdS, color: "#00D8FF" }}>{s.code}</td>
+                  <td style={{ ...tdS, color: "#CCAA00" }}>{s.code}</td>
                   <td style={tdS}>{s.name}</td>
-                  <td style={{ ...tdS, textAlign: "right", color: "#94A3B8" }}>
+                  <td style={{ ...tdS, textAlign: "right", color: "#858585" }}>
                     {s.price?.toFixed(2) || "-"}
                   </td>
                   <td
                     style={{
                       ...tdS,
                       textAlign: "right",
-                      color: s.change_pct > 0 ? "#FF2A7A" : s.change_pct < 0 ? "#00E676" : "#94A3B8",
+                      color: s.change_pct > 0 ? "#EF5350" : s.change_pct < 0 ? "#26A69A" : "#858585",
                     }}
                   >
                     {s.change_pct > 0 ? "+" : ""}
@@ -406,8 +406,8 @@ export function DownloadPanel() {
                       onClick={() => handleImportOne(s)}
                       style={{
                         padding: "2px 8px",
-                        background: "#1E293B",
-                        color: "#F1F5F9",
+                        background: "#2A2A2A",
+                        color: "#D4D4D4",
                         border: "none",
                         borderRadius: 3,
                         cursor: "pointer",
@@ -431,8 +431,8 @@ export function DownloadPanel() {
 
 const inputS: React.CSSProperties = {
   width: 110,
-  background: "#0A0E1A",
-  border: "1px solid #1E293B",
+  background: "#0C0C0C",
+  border: "1px solid #2A2A2A",
   color: "#fff",
   padding: "4px 8px",
   borderRadius: 4,

@@ -67,3 +67,35 @@ CI 里 `pnpm tauri build` 的 `working-directory` 必须设为 `packages/app`。
 2. 从 `lib.rs` 移除 `.plugin(tauri_plugin_updater::...)` 
 3. 从 `capabilities/default.json` 移除 `updater:*` 权限
 4. 从 `tauri.conf.json` 移除 `plugins.updater` 配置块
+
+### SQLite WAL 模式 + 优化 PRAGMA
+
+启动时在 migration 中设置以下 PRAGMA 可大幅提升并发性能：
+- `journal_mode=WAL` — 读写不再互斥，多读者+一写者并发
+- `busy_timeout=5000` — 遇到锁自动等待5秒而非立即报错
+- `synchronous=NORMAL` — 写入性能 2-3x 提升（WAL 模式下安全）
+- `cache_size=-8000` — 8MB 页缓存，减少磁盘 I/O
+- `foreign_keys=ON` — 外键约束必须显式开启
+
+### 授权缓存设计（防并行竞态）
+
+`LICENSE_CACHE` 必须是 `Mutex<Option<LicenseStatus>>` 而不能只存 pro 状态。原因：
+- 多个 Tauri 命令并行调用时各自获取 DB 锁检查授权
+- 如果缓存只存 pro 状态，trial/free 每次都走 DB → 锁竞争导致超时/崩溃
+- **所有状态（pro/trial/free/expired）都要缓存**，且 `drop(guard)` 必须在 cache 写入之前
+
+### Professional Terminal 主题迁移注意事项
+
+从霓虹风格迁到专业终端风格时，批量替换 CSS 变量容易遗漏：
+- `rgba(0, 216, 255` 带空格的情况 regex 匹配不到，需单独检查
+- 删除发光效果比改颜色更重要（`boxShadow`、`glow`、`gradient` 全部移除）
+- 等宽字体全局统一后，行高需要微调（monospace 默认行高比 Inter 大）
+- 保留无障碍模式的所有变量不变
+
+### Demo 数据预置模式
+
+`seed_demo_data` 函数放在 `run_migrations` 末尾，migration 之后执行：
+- 先 `SELECT COUNT(*) FROM stocks`，为 0 才写入（幂等）
+- 用 sin/cos 伪随机游走生成合成 OHLCV，确定性强且可重现
+- 只写 stocks + daily_prices 两张表，不写 trades/watchlists
+- 用 `println!` 而非 `log::info!`（log crate 未引入）
