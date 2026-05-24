@@ -99,3 +99,36 @@ CI 里 `pnpm tauri build` 的 `working-directory` 必须设为 `packages/app`。
 - 用 sin/cos 伪随机游走生成合成 OHLCV，确定性强且可重现
 - 只写 stocks + daily_prices 两张表，不写 trades/watchlists
 - 用 `println!` 而非 `log::info!`（log crate 未引入）
+
+### 预警系统架构
+
+SQLite `alert_rules` 表 + Rust 条件评估函数的组合模式：
+- 三种条件类型：`price_breakout`（价格阈值）、`ma_cross`（快慢线交叉）、`volume_spike`（量能异常）
+- 参数存 JSON（`params TEXT`），Rust 端 `serde_json::from_str` 解析
+- `check_alerts()` 逐条加载 enabled 规则，查询该股票最近100条日线，chronological sort 后评估
+- 已触发规则写入 `last_triggered` 防重复通知
+- 前端通过 Tauri `app.emit("alert:triggered", ...)` 接收实时事件
+
+### Textarea 内嵌自动完成
+
+在 monospace textarea 之上做 autocomplete dropdown 的要点：
+- 监听 `onChange` 用 regex `([A-Za-z_]{2,})$` 从光标位置前文本提取前缀
+- dropdown 用 `position: absolute` 相对 textarea 容器定位（`top = row * lineHeight`，`left ≈ col * charWidth`）
+- 拦截 `onKeyDown`：Tab/Enter 接受，Escape 关闭，Arrow Up/Down 导航
+- `acceptAutocomplete()` 计算 wordStart 位置做字符串替换，`setTimeout` 恢复光标位置
+
+### 多渠道图表栅格（2×2 Grid）
+
+多图表布局采用 `gridCells: GridCellData[]` 状态数组 + `activeCellIdx` 模式：
+- 每个 cell 独立存储 stockId/stockCode/data/indicators/drawings
+- 点击 cell 设其为 active（金色边框），左侧 sidebar 的选股操作自动填充 active cell
+- `loadGridCellData()` 异步加载数据并合并到对应 index 的 cell
+- 单图/网格模式切换通过 chartStore 的 `gridMode` boolean，不影响已有的 single-chart 路径
+
+### 前端 CSV 导入导出
+
+面向中国大陆 Excel 用户的 CSV 处理注意事项：
+- 写 BOM `"﻿"`（`﻿`）在 CSV 文件头以保证 Excel 正确识别 UTF-8 编码
+- `blob.type` 设为 `"text/csv;charset=utf-8"`
+- 导入时用 `\r?\n` split 兼容 Windows/Mac 换行
+- 数值列用 `parseFloat` + `isNaN` 校验，跳过非法行而非整体失败
