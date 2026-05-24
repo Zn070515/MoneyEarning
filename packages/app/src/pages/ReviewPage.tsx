@@ -4,7 +4,7 @@ import { TradeJournalPanel } from "@me/ui";
 import { StrategyPanel } from "@me/ui";
 import { useAppStore } from "../stores/appStore";
 
-type ReviewTab = "trades" | "strategies" | "review";
+type ReviewTab = "trades" | "strategies" | "review" | "alerts";
 
 export default function ReviewPage() {
   const selectedStockId = useAppStore((s) => s.selectedStockId);
@@ -50,6 +50,7 @@ export default function ReviewPage() {
           ["trades", "交易记录"],
           ["strategies", "策略管理"],
           ["review", "复盘模板"],
+          ["alerts", "预警管理"],
         ] as [ReviewTab, string][]).map(([tab, label]) => (
           <button
             key={tab}
@@ -85,6 +86,11 @@ export default function ReviewPage() {
         )}
         {activeTab === "review" && (
           <ReviewTemplatePanel selectedStockId={selectedStockId} selectedStockCode={selectedStockCode} />
+        )}
+        {activeTab === "alerts" && (
+          <div style={{ height: "100%", overflow: "auto", padding: 16 }}>
+            <AlertsPanel selectedStockId={selectedStockId} selectedStockCode={selectedStockCode} />
+          </div>
         )}
       </div>
     </div>
@@ -135,6 +141,396 @@ const EMOTION_TAGS = [
   { value: "犹豫错过", label: "犹豫错过", color: "#94a3b8" },
   { value: "躺平持有", label: "躺平持有", color: "#CCAA00" },
 ];
+
+// ── Alerts Panel ──
+
+interface AlertRule {
+  id: number;
+  name: string;
+  stock_id: number;
+  stock_code: string | null;
+  stock_name: string | null;
+  condition_type: string; // price_breakout | ma_cross | volume_spike
+  params: string;         // JSON
+  enabled: boolean;
+  last_triggered: string | null;
+  created_at: string;
+}
+
+interface AlertTrigger {
+  rule: AlertRule;
+  message: string;
+  current_value: number;
+  threshold_value: number;
+}
+
+const CONDITION_LABELS: Record<string, string> = {
+  price_breakout: "价格突破",
+  ma_cross: "均线交叉",
+  volume_spike: "成交量异常",
+};
+
+const CONDITION_PARAMS_HINT: Record<string, string> = {
+  price_breakout: `{"direction": "above", "price": 50}`,
+  ma_cross: `{"short_period": 5, "long_period": 20, "direction": "golden"}`,
+  volume_spike: `{"multiplier": 2.0, "lookback": 20}`,
+};
+
+function AlertsPanel({ selectedStockId, selectedStockCode }: { selectedStockId: number | null; selectedStockCode: string | null }) {
+  const [alerts, setAlerts] = useState<AlertRule[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [triggers, setTriggers] = useState<AlertTrigger[]>([]);
+  const [showForm, setShowForm] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Create form state
+  const [formName, setFormName] = useState("");
+  const [formStockId, setFormStockId] = useState<number | null>(null);
+  const [formStockCode, setFormStockCode] = useState("");
+  const [formType, setFormType] = useState("price_breakout");
+  const [formParams, setFormParams] = useState(CONDITION_PARAMS_HINT.price_breakout);
+
+  const loadAlerts = useCallback(async () => {
+    try {
+      const list = await invoke<AlertRule[]>("list_alerts");
+      setAlerts(list);
+    } catch (e) {
+      console.error("load alerts:", e);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadAlerts();
+  }, [loadAlerts]);
+
+  // Listen for alert:triggered events
+  useEffect(() => {
+    const unlisten = (window as any).__TAURI_INTERNALS__ ? undefined : undefined;
+    let cancelled = false;
+    // Use Tauri event system via invoke polling for now
+    return () => { cancelled = true; };
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToast(msg);
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleCheck = async () => {
+    setLoading(true);
+    try {
+      const t = await invoke<AlertTrigger[]>("check_alerts");
+      setTriggers(t);
+      if (t.length > 0) {
+        showToast(`${t.length} 条预警触发`);
+      } else {
+        showToast("当前无预警触发");
+      }
+      loadAlerts(); // refresh last_triggered
+    } catch (e) {
+      showToast(`检查失败: ${e}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!formName.trim()) { showToast("请输入预警名称"); return; }
+    if (!formStockId) { showToast("请先输入有效股票代码查询"); return; }
+    try {
+      JSON.parse(formParams); // validate JSON
+    } catch {
+      showToast("参数JSON格式错误"); return;
+    }
+    try {
+      await invoke("create_alert", {
+        name: formName.trim(),
+        stockId: formStockId,
+        conditionType: formType,
+        params: formParams,
+      });
+      showToast("预警规则已创建");
+      setShowForm(false);
+      setFormName("");
+      setFormParams(CONDITION_PARAMS_HINT[formType]);
+      loadAlerts();
+    } catch (e) {
+      showToast(`创建失败: ${e}`);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      await invoke("delete_alert", { id });
+      showToast("已删除");
+      loadAlerts();
+    } catch (e) {
+      showToast(`删除失败: ${e}`);
+    }
+  };
+
+  const handleToggle = async (rule: AlertRule) => {
+    try {
+      await invoke("update_alert", {
+        id: rule.id,
+        name: rule.name,
+        conditionType: rule.condition_type,
+        params: rule.params,
+        enabled: !rule.enabled,
+      });
+      showToast(rule.enabled ? "已禁用" : "已启用");
+      loadAlerts();
+    } catch (e) {
+      showToast(`操作失败: ${e}`);
+    }
+  };
+
+  const lookupStock = async () => {
+    if (!formStockCode.trim()) return;
+    try {
+      const stock = await invoke<{ id: number; code: string; name: string } | null>("query_stock_by_code", {
+        code: formStockCode.trim(),
+      });
+      if (stock) {
+        setFormStockId(stock.id);
+        showToast(`找到: ${stock.name || stock.code}`);
+      } else {
+        setFormStockId(null);
+        showToast("未找到该股票，请先导入数据");
+      }
+    } catch (e) {
+      showToast(`查询失败: ${e}`);
+    }
+  };
+
+  // Set stock from parent selection
+  useEffect(() => {
+    if (selectedStockId && selectedStockCode) {
+      setFormStockId(selectedStockId);
+      setFormStockCode(selectedStockCode);
+    }
+  }, [selectedStockId, selectedStockCode]);
+
+  return (
+    <div style={{ maxWidth: 900 }}>
+      {/* Toast */}
+      {toast && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, zIndex: 9999,
+          padding: "8px 18px", background: "#161616", border: "1px solid #CCAA00",
+          borderRadius: 4, color: "#D4D4D4", fontSize: 12, fontFamily: "monospace",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
+        }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <h3 style={{ color: "#CCAA00", fontSize: 13, fontFamily: "monospace", margin: 0 }}>
+          预警规则管理
+        </h3>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={handleCheck} disabled={loading} style={{
+            padding: "6px 14px", background: loading ? "#2A2A2A" : "#CCAA00",
+            color: loading ? "#666666" : "#000", border: "none", borderRadius: 4,
+            cursor: loading ? "not-allowed" : "pointer", fontFamily: "monospace",
+            fontSize: 11, fontWeight: 600,
+          }}>
+            {loading ? "检查中..." : "立即检查"}
+          </button>
+          <button onClick={() => setShowForm(!showForm)} style={{
+            padding: "6px 14px", background: "transparent",
+            color: showForm ? "#CCAA00" : "#858585",
+            border: "1px solid #2A2A2A", borderRadius: 4,
+            cursor: "pointer", fontFamily: "monospace", fontSize: 11,
+          }}>
+            {showForm ? "取消" : "+ 新建预警"}
+          </button>
+        </div>
+      </div>
+
+      {/* Create form */}
+      {showForm && (
+        <div style={{
+          marginBottom: 16, padding: 14,
+          background: "#121212", borderRadius: 6, border: "1px solid #2A2A2A",
+        }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+            <div>
+              <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>预警名称</div>
+              <input
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                placeholder="如：茅台突破压力位"
+                style={{
+                  width: 200, padding: "4px 8px", background: "#0C0C0C", color: "#D4D4D4",
+                  border: "1px solid #2A2A2A", borderRadius: 4, fontFamily: "monospace", fontSize: 11,
+                }}
+              />
+            </div>
+            <div>
+              <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>股票代码</div>
+              <div style={{ display: "flex", gap: 4 }}>
+                <input
+                  value={formStockCode}
+                  onChange={(e) => setFormStockCode(e.target.value)}
+                  placeholder="如: 600519"
+                  style={{
+                    width: 100, padding: "4px 8px", background: "#0C0C0C", color: "#D4D4D4",
+                    border: "1px solid #2A2A2A", borderRadius: 4, fontFamily: "monospace", fontSize: 11,
+                  }}
+                />
+                <button onClick={lookupStock} style={{
+                  padding: "4px 8px", background: "#2A2A2A", color: "#858585",
+                  border: "none", borderRadius: 4, cursor: "pointer", fontFamily: "monospace", fontSize: 10,
+                }}>
+                  查询
+                </button>
+              </div>
+              {formStockId && (
+                <div style={{ color: "#26A69A", fontSize: 10, fontFamily: "monospace", marginTop: 2 }}>
+                  ID:{formStockId}
+                </div>
+              )}
+            </div>
+            <div>
+              <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>条件类型</div>
+              <select
+                value={formType}
+                onChange={(e) => {
+                  setFormType(e.target.value);
+                  setFormParams(CONDITION_PARAMS_HINT[e.target.value]);
+                }}
+                style={{
+                  padding: "4px 8px", background: "#0C0C0C", color: "#D4D4D4",
+                  border: "1px solid #2A2A2A", borderRadius: 4, fontFamily: "monospace", fontSize: 11,
+                }}
+              >
+                {Object.entries(CONDITION_LABELS).map(([v, label]) => (
+                  <option key={v} value={v}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <div style={{ color: "#858585", fontSize: 10, fontFamily: "monospace", marginBottom: 3 }}>参数 (JSON)</div>
+              <input
+                value={formParams}
+                onChange={(e) => setFormParams(e.target.value)}
+                style={{
+                  width: 260, padding: "4px 8px", background: "#0C0C0C", color: "#D4D4D4",
+                  border: "1px solid #2A2A2A", borderRadius: 4, fontFamily: "monospace", fontSize: 11,
+                }}
+              />
+            </div>
+            <button onClick={handleCreate} style={{
+              padding: "6px 16px", background: "#CCAA00", color: "#000",
+              border: "none", borderRadius: 4, cursor: "pointer",
+              fontFamily: "monospace", fontSize: 11, fontWeight: 600,
+            }}>
+              创建
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Triggered alerts */}
+      {triggers.length > 0 && (
+        <div style={{ marginBottom: 16 }}>
+          <div style={{ color: "#EF5350", fontSize: 12, fontFamily: "monospace", marginBottom: 8, fontWeight: 600 }}>
+            ⚠ 触发预警 ({triggers.length})
+          </div>
+          {triggers.map((t, i) => (
+            <div key={i} style={{
+              padding: "8px 12px", marginBottom: 4, background: "rgba(239,83,80,0.08)",
+              border: "1px solid rgba(239,83,80,0.25)", borderRadius: 4,
+            }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                <span style={{ color: "#EF5350", fontSize: 11, fontFamily: "monospace", fontWeight: 600 }}>
+                  {t.rule.stock_code || `#${t.rule.stock_id}`}
+                </span>
+                <span style={{ color: "#D4D4D4", fontSize: 11, fontFamily: "monospace" }}>
+                  {t.rule.name}
+                </span>
+                <span style={{ color: "#858585", fontSize: 10, fontFamily: "monospace" }}>
+                  {t.message}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Alert list */}
+      {alerts.length === 0 ? (
+        <div style={{
+          padding: 32, textAlign: "center", color: "#666666",
+          fontSize: 12, fontFamily: "monospace",
+        }}>
+          暂无预警规则。点击"+ 新建预警"创建第一条规则。
+        </div>
+      ) : (
+        <div style={{ border: "1px solid #2A2A2A", borderRadius: 6, overflow: "hidden" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11, fontFamily: "monospace" }}>
+            <thead>
+              <tr style={{ background: "#161616" }}>
+                <th style={{ padding: "6px 12px", textAlign: "left", color: "#858585", fontWeight: 400, fontSize: 10, borderBottom: "1px solid #2A2A2A" }}>名称</th>
+                <th style={{ padding: "6px 12px", textAlign: "left", color: "#858585", fontWeight: 400, fontSize: 10, borderBottom: "1px solid #2A2A2A" }}>股票</th>
+                <th style={{ padding: "6px 12px", textAlign: "left", color: "#858585", fontWeight: 400, fontSize: 10, borderBottom: "1px solid #2A2A2A" }}>条件</th>
+                <th style={{ padding: "6px 12px", textAlign: "left", color: "#858585", fontWeight: 400, fontSize: 10, borderBottom: "1px solid #2A2A2A" }}>参数</th>
+                <th style={{ padding: "6px 12px", textAlign: "center", color: "#858585", fontWeight: 400, fontSize: 10, borderBottom: "1px solid #2A2A2A" }}>状态</th>
+                <th style={{ padding: "6px 12px", textAlign: "left", color: "#858585", fontWeight: 400, fontSize: 10, borderBottom: "1px solid #2A2A2A" }}>上次触发</th>
+                <th style={{ padding: "6px 12px", textAlign: "center", color: "#858585", fontWeight: 400, fontSize: 10, borderBottom: "1px solid #2A2A2A" }}>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              {alerts.map((a) => (
+                <tr key={a.id} style={{ borderBottom: "1px solid #1A1A1A" }}>
+                  <td style={{ padding: "6px 12px", color: "#D4D4D4" }}>{a.name}</td>
+                  <td style={{ padding: "6px 12px", color: "#CCAA00" }}>
+                    {a.stock_code || `#${a.stock_id}`}
+                    {a.stock_name && <span style={{ color: "#666666", marginLeft: 4 }}>{a.stock_name}</span>}
+                  </td>
+                  <td style={{ padding: "6px 12px", color: "#858585" }}>{CONDITION_LABELS[a.condition_type] || a.condition_type}</td>
+                  <td style={{ padding: "6px 12px", color: "#666666", fontSize: 10, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.params}</td>
+                  <td style={{ padding: "6px 12px", textAlign: "center" }}>
+                    <button onClick={() => handleToggle(a)} style={{
+                      padding: "2px 10px", borderRadius: 8, border: "none", cursor: "pointer",
+                      fontFamily: "monospace", fontSize: 10,
+                      background: a.enabled ? "rgba(38,166,154,0.15)" : "rgba(102,102,102,0.15)",
+                      color: a.enabled ? "#26A69A" : "#666666",
+                    }}>
+                      {a.enabled ? "启用" : "禁用"}
+                    </button>
+                  </td>
+                  <td style={{ padding: "6px 12px", color: "#666666", fontSize: 10 }}>
+                    {a.last_triggered || "从未触发"}
+                  </td>
+                  <td style={{ padding: "6px 12px", textAlign: "center" }}>
+                    <button onClick={() => handleDelete(a.id)} style={{
+                      padding: "2px 8px", background: "transparent", color: "#EF5350",
+                      border: "1px solid rgba(239,83,80,0.3)", borderRadius: 3,
+                      cursor: "pointer", fontFamily: "monospace", fontSize: 10,
+                    }}>
+                      删除
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Sound alert hint */}
+      <div style={{ marginTop: 16, padding: "8px 12px", background: "#121212", borderRadius: 4, border: "1px solid #2A2A2A" }}>
+        <div style={{ color: "#666666", fontSize: 10, fontFamily: "monospace", lineHeight: 1.5 }}>
+          预警在手动检查时触发。计划后续版本支持后台定时扫描和 Windows 系统通知。当前可通过点击"立即检查"手动扫描所有启用的预警规则。
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface ReviewRecord {
   date: string;

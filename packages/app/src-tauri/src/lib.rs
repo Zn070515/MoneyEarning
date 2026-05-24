@@ -6,6 +6,7 @@ mod license;
 mod import;
 mod download;
 mod tdx;
+mod alerts;
 
 // ── License ──
 
@@ -263,6 +264,53 @@ fn trade_pnl(stock_id: Option<i64>, app: tauri::AppHandle) -> Result<PnLSummary,
 fn delete_stock(id: i64, app: tauri::AppHandle) -> Result<(), String> {
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
     db::delete_stock(&db, id).map_err(|e| e.to_string())
+}
+
+// ── Alerts ──
+
+#[tauri::command]
+fn create_alert(name: String, stock_id: i64, condition_type: String, params: String,
+                app: tauri::AppHandle) -> Result<i64, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    alerts::create_alert(&db, &name, stock_id, &condition_type, &params)
+}
+
+#[tauri::command]
+fn list_alerts(app: tauri::AppHandle) -> Result<Vec<alerts::AlertRule>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    alerts::list_alerts(&db)
+}
+
+#[tauri::command]
+fn update_alert(id: i64, name: String, condition_type: String, params: String,
+                enabled: bool, app: tauri::AppHandle) -> Result<(), String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    alerts::update_alert(&db, id, &name, &condition_type, &params, enabled)
+}
+
+#[tauri::command]
+fn delete_alert(id: i64, app: tauri::AppHandle) -> Result<(), String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    alerts::delete_alert(&db, id)
+}
+
+#[tauri::command]
+fn check_alerts(app: tauri::AppHandle) -> Result<Vec<alerts::AlertTrigger>, String> {
+    let db = db::get_db(&app).map_err(|e| e.to_string())?;
+    let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+    let triggers = alerts::check_alerts(&db, &today)?;
+    for t in &triggers {
+        let _ = app.emit("alert:triggered", serde_json::json!({
+            "id": t.rule.id,
+            "name": t.rule.name,
+            "stock_code": t.rule.stock_code,
+            "stock_name": t.rule.stock_name,
+            "message": t.message,
+            "current_value": t.current_value,
+            "threshold_value": t.threshold_value,
+        }));
+    }
+    Ok(triggers)
 }
 
 // ── Portfolio Analysis ──
@@ -1335,6 +1383,7 @@ pub fn run() {
             watchlist_items, watchlist_add_item, watchlist_remove_item,
             trade_create, trade_list, trade_pnl,
             delete_stock,
+            create_alert, list_alerts, update_alert, delete_alert, check_alerts,
             strategy_list, strategy_create, strategy_update, strategy_delete,
             list_strategy_templates,
             compute_indicator, list_indicators,

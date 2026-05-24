@@ -120,6 +120,18 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
             fingerprint TEXT NOT NULL,
             signature TEXT NOT NULL
         );
+
+        CREATE TABLE IF NOT EXISTS alert_rules (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            stock_id INTEGER NOT NULL REFERENCES stocks(id) ON DELETE CASCADE,
+            condition_type TEXT NOT NULL CHECK(condition_type IN ('price_breakout','ma_cross','volume_spike')),
+            params TEXT NOT NULL,
+            enabled INTEGER NOT NULL DEFAULT 1,
+            last_triggered TEXT,
+            created_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_alert_stock ON alert_rules(stock_id);
     ")?;
     add_column_if_missing(conn, "trades", "emotion_tag", "emotion_tag TEXT")?;
     add_column_if_missing(conn, "stocks", "industry", "industry TEXT")?;
