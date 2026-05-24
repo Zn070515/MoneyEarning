@@ -262,34 +262,46 @@ export class ChartEngine {
 
   private onResize = () => this.resize();
 
+  private onCanvasMouseMove = (e: MouseEvent) => {
+    const rect = this.canvas.getBoundingClientRect();
+    this.mouseX = e.clientX - rect.left;
+    this.mouseY = e.clientY - rect.top;
+    if (this.crosshair !== "none") this.draw();
+  };
+
+  private onCanvasMouseLeave = () => {
+    this.crosshair = "none";
+    this.draw();
+  };
+
+  private onCanvasMouseEnter = () => {
+    this.crosshair = "cross";
+    this.draw();
+  };
+
+  private onCanvasWheel = (e: WheelEvent) => {
+    e.preventDefault();
+    if (e.ctrlKey) {
+      this.viewport.zoom(e.deltaY > 0 ? -1 : 1);
+    } else {
+      this.viewport.panH(e.deltaY > 0 ? 3 : -3);
+    }
+    this.draw();
+  };
+
   private bindEvents(): void {
-    this.canvas.addEventListener("mousemove", (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      this.mouseX = e.clientX - rect.left;
-      this.mouseY = e.clientY - rect.top;
-      if (this.crosshair !== "none") this.draw();
-    });
-    this.canvas.addEventListener("mouseleave", () => {
-      this.crosshair = "none";
-      this.draw();
-    });
-    this.canvas.addEventListener("mouseenter", () => {
-      this.crosshair = "cross";
-      this.draw();
-    });
-    this.canvas.addEventListener("wheel", (e) => {
-      e.preventDefault();
-      if (e.ctrlKey) {
-        this.viewport.zoom(e.deltaY > 0 ? -1 : 1);
-      } else {
-        this.viewport.panH(e.deltaY > 0 ? 3 : -3);
-      }
-      this.draw();
-    });
+    this.canvas.addEventListener("mousemove", this.onCanvasMouseMove);
+    this.canvas.addEventListener("mouseleave", this.onCanvasMouseLeave);
+    this.canvas.addEventListener("mouseenter", this.onCanvasMouseEnter);
+    this.canvas.addEventListener("wheel", this.onCanvasWheel, { passive: false });
     window.addEventListener("resize", this.onResize);
   }
 
   destroy(): void {
+    this.canvas.removeEventListener("mousemove", this.onCanvasMouseMove);
+    this.canvas.removeEventListener("mouseleave", this.onCanvasMouseLeave);
+    this.canvas.removeEventListener("mouseenter", this.onCanvasMouseEnter);
+    this.canvas.removeEventListener("wheel", this.onCanvasWheel);
     window.removeEventListener("resize", this.onResize);
   }
 }

@@ -221,10 +221,12 @@ fn seed_demo_data(conn: &Connection) -> Result<()> {
                                 let volume: f64 = parts[5].parse().unwrap_or(0.0);
                                 let amount: f64 = parts[6].parse().unwrap_or(0.0);
                                 if open <= 0.0 || close <= 0.0 { continue; }
-                                let _ = stmt.execute(params![
+                                if let Err(e) = stmt.execute(params![
                                     stock_id, date,
                                     open, high, low, close, volume, amount
-                                ]);
+                                ]) {
+                                    eprintln!("seed_demo_data: insert failed for {}: {}", date, e);
+                                }
                                 inserted += 1;
                             }
                         }
@@ -474,19 +476,21 @@ pub fn bulk_insert_daily(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                          -> Result<usize> {
     let conn = conn(guard)?;
     conn.execute("BEGIN", [])?;
-    let mut count = 0;
-    for row in rows {
-        match conn.execute(
-            "INSERT OR IGNORE INTO daily_prices (stock_id, trade_date, open, high, low, close, volume, amount, turnover)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-            params![stock_id, row.trade_date, row.open, row.high, row.low, row.close, row.volume, row.amount, row.turnover],
-        ) {
-            Ok(c) => count += c,
-            Err(e) => { let _ = conn.execute("ROLLBACK", []); return Err(e); }
+    let result = (|| -> Result<usize> {
+        let mut count = 0;
+        for row in rows {
+            count += conn.execute(
+                "INSERT OR IGNORE INTO daily_prices (stock_id, trade_date, open, high, low, close, volume, amount, turnover)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![stock_id, row.trade_date, row.open, row.high, row.low, row.close, row.volume, row.amount, row.turnover],
+            )?;
         }
+        Ok(count)
+    })();
+    match result {
+        Ok(count) => { conn.execute("COMMIT", [])?; Ok(count) }
+        Err(e) => { conn.execute("ROLLBACK", []).ok(); Err(e) }
     }
-    conn.execute("COMMIT", [])?;
-    Ok(count)
 }
 
 pub fn delete_stock(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
@@ -711,19 +715,21 @@ pub fn bulk_insert_minute(
 ) -> Result<usize> {
     let conn = conn(guard)?;
     conn.execute("BEGIN", [])?;
-    let mut count = 0;
-    for row in rows {
-        match conn.execute(
-            "INSERT OR IGNORE INTO minute_prices (stock_id, trade_time, open, high, low, close, volume, amount)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![stock_id, row.trade_time, row.open, row.high, row.low, row.close, row.volume, row.amount],
-        ) {
-            Ok(c) => count += c,
-            Err(e) => { let _ = conn.execute("ROLLBACK", []); return Err(e); }
+    let result = (|| -> Result<usize> {
+        let mut count = 0;
+        for row in rows {
+            count += conn.execute(
+                "INSERT OR IGNORE INTO minute_prices (stock_id, trade_time, open, high, low, close, volume, amount)
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                params![stock_id, row.trade_time, row.open, row.high, row.low, row.close, row.volume, row.amount],
+            )?;
         }
+        Ok(count)
+    })();
+    match result {
+        Ok(count) => { conn.execute("COMMIT", [])?; Ok(count) }
+        Err(e) => { conn.execute("ROLLBACK", []).ok(); Err(e) }
     }
-    conn.execute("COMMIT", [])?;
-    Ok(count)
 }
 
 #[derive(Debug, Clone)]

@@ -448,8 +448,9 @@ function ProAnalysisSection({ holdings }: { holdings: PortfolioHolding[] }) {
     return () => { cancelled = true; };
   }, [holdings]);
 
-  const ids = holdings.map(h => stockIds[h.code]).filter(Boolean);
-  const weights = holdings.map(h => h.marketValue);
+  const validHoldings = holdings.filter(h => stockIds[h.code] != null);
+  const ids = validHoldings.map(h => stockIds[h.code]!);
+  const weights = validHoldings.map(h => h.marketValue);
 
   if (holdings.length === 0) {
     return (

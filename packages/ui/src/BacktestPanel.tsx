@@ -208,7 +208,7 @@ export function BacktestPanel({ data, isPro, initialTemplate }: BacktestPanelPro
     try {
       const res = await invoke<WalkForwardResult>("run_walk_forward", {
         data: dataForBackend(), template: selectedTemplate,
-        paramGrid: Object.fromEntries(Object.entries(params).map(([k, v]) => [k, [v * 0.5, v * 2, v * 0.5]])),
+        paramGrid: Object.fromEntries(Object.entries(params).map(([k, v]) => [k, [v * 0.5, v, v * 2]])),
         inSample: wfInSample, outSample: wfOutSample, stepSize: wfStep, anchorMode: wfAnchor,
         config: { initial_capital: capital, commission_rate: commission, stamp_tax_rate: stampTax, slippage, position_pct: positionPct },
       });
@@ -243,7 +243,7 @@ export function BacktestPanel({ data, isPro, initialTemplate }: BacktestPanelPro
     try {
       const grid: Record<string, number[]> = {};
       for (const [k, v] of Object.entries(params)) {
-        grid[k] = [v * 0.3, v * 3.0, Math.max(v * 0.3, 1)];
+        grid[k] = [v * 0.3, v, v * 3.0];
       }
       const res = await invoke<OptimizerResult>("run_optimization", {
         data: dataForBackend(), template: selectedTemplate, paramGrid: grid,
@@ -647,7 +647,7 @@ function EquityMiniChart({ data, initialCapital }: { data: number[]; initialCapi
   return (
     <div style={{ marginTop: 8, padding: "6px", background: "#121212", borderRadius: 4 }}>
       <div style={{ color: "#858585", fontSize: 10, marginBottom: 4 }}>权益曲线</div>
-      <svg width="100%" height={h} style={{ display: "block" }}>
+      <svg width="100%" height={h} viewBox={`0 0 ${w} ${h}`} style={{ display: "block" }}>
         <line x1={0} y1={h - ((initialCapital - min) / rng) * h} x2={w} y2={h - ((initialCapital - min) / rng) * h} stroke="#2A2A2A" strokeDasharray="4,4" />
         <polyline points={points} fill="none" stroke={data[data.length - 1] >= initialCapital ? "#EF5350" : "#26A69A"} strokeWidth={1.5} />
       </svg>

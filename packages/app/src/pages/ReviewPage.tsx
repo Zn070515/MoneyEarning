@@ -222,11 +222,14 @@ function AlertsPanel({ selectedStockId, selectedStockCode }: { selectedStockId: 
 
   // Listen for alert:triggered events
   useEffect(() => {
-    const unlisten = listen<AlertEvent>("alert:triggered", (event) => {
+    let cancelled = false;
+    let cleanup: (() => void) | null = null;
+    listen<AlertEvent>("alert:triggered", (event) => {
+      if (cancelled) return;
       const payload = event.payload;
       showToast(`⚠ ${payload.stock_code || "?"}: ${payload.message}`);
-    });
-    return () => { unlisten.then((fn) => fn()).catch(() => {}); };
+    }).then((fn) => { if (!cancelled) cleanup = fn; });
+    return () => { cancelled = true; cleanup?.(); };
   }, []);
 
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);

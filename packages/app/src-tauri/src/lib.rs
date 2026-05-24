@@ -1443,6 +1443,7 @@ fn resample_to_monthly(prices: &[DailyPrice]) -> Vec<ResampledBar> {
 }
 
 fn aggregate_bars(bars: &[&DailyPrice]) -> ResampledBar {
+    assert!(!bars.is_empty(), "aggregate_bars: empty slice");
     let first = bars[0];
     let last = bars[bars.len() - 1];
     let mut high = f64::MIN;
@@ -1471,6 +1472,13 @@ fn aggregate_bars(bars: &[&DailyPrice]) -> ResampledBar {
 
 #[tauri::command]
 fn backup_database(app: tauri::AppHandle, dest_path: String) -> Result<String, String> {
+    // Flush WAL to main DB file before copying
+    {
+        let guard = db::get_db(&app).map_err(|e| format!("数据库锁获取失败: {}", e))?;
+        if let Some(ref conn) = *guard {
+            conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);").ok();
+        }
+    }
     let db_path = app.path().app_data_dir()
         .map(|p| p.join("moneyearning.db"))
         .map_err(|e| e.to_string())?;
@@ -1487,6 +1495,11 @@ fn restore_database(app: tauri::AppHandle, backup_path: String) -> Result<String
     let db_path = app.path().app_data_dir()
         .map(|p| p.join("moneyearning.db"))
         .map_err(|e| e.to_string())?;
+    // Close the active DB connection before overwriting the file
+    {
+        let mut guard = db::get_db(&app).map_err(|e| format!("数据库锁获取失败: {}", e))?;
+        *guard = None;
+    }
     // Backup current DB first (safety net)
     let auto_backup = db_path.with_extension("db.pre_restore");
     std::fs::copy(&db_path, &auto_backup)
@@ -1494,7 +1507,13 @@ fn restore_database(app: tauri::AppHandle, backup_path: String) -> Result<String
     // Restore from backup
     std::fs::copy(&backup_path, &db_path)
         .map_err(|e| format!("恢复失败: {}", e))?;
-    Ok("数据恢复完成。应用将重新加载数据库。".into())
+    // Reopen the database
+    let conn = rusqlite::Connection::open(&db_path)
+        .map_err(|e| format!("恢复后重新打开数据库失败: {}", e))?;
+    db::run_migrations(&conn)
+        .map_err(|e| format!("恢复后数据库迁移失败: {}", e))?;
+    db::set_db(conn);
+    Ok("数据恢复完成。数据库已重新加载。".into())
 }
 
 #[tauri::command]
@@ -1522,12 +1541,12 @@ static ALERT_SCAN_ENABLED: AtomicBool = AtomicBool::new(false);
 
 #[tauri::command]
 fn get_alert_scan_status() -> bool {
-    ALERT_SCAN_ENABLED.load(Ordering::Relaxed)
+    ALERT_SCAN_ENABLED.load(Ordering::Acquire)
 }
 
 #[tauri::command]
 fn set_alert_scan_enabled(enabled: bool) {
-    ALERT_SCAN_ENABLED.store(enabled, Ordering::Relaxed);
+    ALERT_SCAN_ENABLED.store(enabled, Ordering::Release);
 }
 
 // ── File System ──
@@ -1597,8 +1616,8 @@ pub fn run() {
                             }
                         }
                         "toggle_scan" => {
-                            let cur = ALERT_SCAN_ENABLED.load(Ordering::Relaxed);
-                            ALERT_SCAN_ENABLED.store(!cur, Ordering::Relaxed);
+                            let cur = ALERT_SCAN_ENABLED.load(Ordering::Acquire);
+                            ALERT_SCAN_ENABLED.store(!cur, Ordering::Release);
                             if !cur {
                                 let handle = app.clone();
                                 tauri::async_runtime::spawn(async move {
@@ -1607,7 +1626,7 @@ pub fn run() {
                             }
                         }
                         "quit" => {
-                            std::process::exit(0);
+                            app.exit(0);
                         }
                         _ => {}
                     }
@@ -1620,7 +1639,7 @@ pub fn run() {
                 // Initial delay to let app settle
                 std::thread::sleep(std::time::Duration::from_secs(30));
                 loop {
-                    if ALERT_SCAN_ENABLED.load(Ordering::Relaxed) {
+                    if ALERT_SCAN_ENABLED.load(Ordering::Acquire) {
                         let handle_clone = handle.clone();
                         tauri::async_runtime::block_on(async move {
                             run_alert_scan(&handle_clone).await;

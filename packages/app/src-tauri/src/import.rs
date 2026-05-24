@@ -111,7 +111,7 @@ fn normalize_date(date: &str) -> String {
             }
         }
         clean.to_string()
-    } else if clean.len() == 8 {
+    } else if clean.len() == 8 && clean.chars().all(|c| c.is_ascii_digit()) {
         // "20200101" → "2020-01-01"
         format!("{}-{}-{}", &clean[0..4], &clean[4..6], &clean[6..8])
     } else {

@@ -69,7 +69,6 @@ export default function App() {
     } catch (e) {
       console.error("Demo load failed:", e);
       setDemoLoading(false);
-      throw e;
     }
   }, []);
 

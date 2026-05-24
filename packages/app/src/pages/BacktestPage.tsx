@@ -477,7 +477,7 @@ function EquityChart({
       <text x={w - pad.right + 4} y={initY + 3} fill="#CCAA00" fontSize={8} fontFamily="monospace" opacity={0.6}>初始</text>
 
       {/* Equity area fill */}
-      <path d={areaPath} fill="url(#${gradId})" opacity={0.15} />
+      <path d={areaPath} fill={`url(#${gradId})`} opacity={0.15} />
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={values[values.length - 1] >= initialCapital ? "#26A69A" : "#EF5350"} />
