@@ -20,6 +20,7 @@ import {
 import { OHLCV, IndicatorData, ChartType, DrawingObject } from "@me/chart-engine";
 import { useAppStore, type LicenseStatus } from "../stores/appStore";
 import { useChartStore } from "../stores/chartStore";
+import { IconUpload } from "../components/icons";
 
 interface StockInfo {
   id: number;
@@ -59,17 +60,13 @@ type RightPanelTab =
 
 function tierLabel(t: string) {
   switch (t) {
-    case "pro":
-      return "专业版";
-    case "trial":
-      return "试用版";
-    default:
-      return "免费版";
+    case "pro":  return "专业版";
+    case "trial": return "试用版";
+    default:      return "免费版";
   }
 }
 
 export default function ChartPage() {
-  // --- Zustand stores ---
   const selectedStockId = useAppStore((s) => s.selectedStockId);
   const selectedStockCode = useAppStore((s) => s.selectedStockCode);
   const selectedStockName = useAppStore((s) => s.selectedStockName);
@@ -88,7 +85,6 @@ export default function ChartPage() {
   const gridMode = useChartStore((s) => s.gridMode);
   const toggleGridMode = useChartStore((s) => s.toggleGridMode);
 
-  // --- Page-local state ---
   const [sidebarTab, setSidebarTab] = useState<SidebarTab>("stocks");
   const [rightTab, setRightTab] = useState<RightPanelTab>("trades");
   const [selectedWatchlistId, setSelectedWatchlistId] = useState<number | null>(null);
@@ -104,7 +100,6 @@ export default function ChartPage() {
   const [drawings, setDrawings] = useState<DrawingObject[]>([]);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
 
-  // ── Multi-chart grid state ──
   interface GridCellData {
     stockId: number | null;
     stockCode: string | null;
@@ -151,7 +146,6 @@ export default function ChartPage() {
     if (mountedRef.current) setLoading(false);
   }, [activeCellIdx]);
 
-  // When stock is selected from sidebar, assign to active grid cell
   const handleSelectStock = (stock: StockInfo) => {
     selectStock(stock.id, stock.code, stock.name);
     if (gridMode) {
@@ -173,9 +167,7 @@ export default function ChartPage() {
     }
   }, [refreshLicense]);
 
-  useEffect(() => {
-    loadLicense();
-  }, [loadLicense]);
+  useEffect(() => { loadLicense(); }, [loadLicense]);
 
   const loadChartData = useCallback(async (stockId: number) => {
     setLoading(true);
@@ -230,7 +222,6 @@ export default function ChartPage() {
     if (mountedRef.current) setLoading(false);
   }, [period]);
 
-  // Watchlist→chart linkage: auto-load when selectedStockId or period changes (skip in grid mode)
   useEffect(() => {
     if (selectedStockId != null && !gridMode) {
       loadChartData(selectedStockId);
@@ -254,8 +245,6 @@ export default function ChartPage() {
     setRefreshKey((k) => k + 1);
   };
 
-  // ChartType from @me/chart-engine is a superset of the store's ChartType;
-  // only pass through supported values.
   const handleChartTypeChange = (ct: ChartType) => {
     if (ct === "candlestick" || ct === "heikin_ashi" || ct === "line") {
       setChartType(ct);
@@ -289,71 +278,62 @@ export default function ChartPage() {
       <header
         style={{
           padding: "6px 16px",
-          background: "#161616",
-          borderBottom: "1px solid #2A2A2A",
+          background: "var(--bg-default)",
+          borderBottom: "1px solid var(--border-subtle)",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          fontFamily: "monospace",
+          fontFamily: "var(--font-ui)",
           fontSize: 13,
           flexShrink: 0,
         }}
       >
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <span style={{ color: "#CCAA00", fontWeight: 700, fontSize: 15 }}>
+          <span style={{ color: "var(--accent)", fontWeight: 700, fontSize: 14 }}>
             QuantVault
           </span>
           {license && (
             <span
               style={{
-                color: license.tier === "pro" ? "#CCAA00" : "#26A69A",
+                color: license.tier === "pro" ? "var(--accent)" : "var(--positive)",
                 fontSize: 11,
-                background: "#121212",
+                background: "var(--bg-raised)",
                 padding: "2px 8px",
                 borderRadius: 3,
+                border: "1px solid var(--border-subtle)",
               }}
             >
               {tierLabel(license.tier)}
             </span>
           )}
-          <span style={{ color: "#666666" }}>|</span>
-          <span style={{ color: "#858585" }}>
+          <span style={{ color: "var(--border-active)" }}>|</span>
+          <span style={{ color: "var(--text-secondary)" }}>
             {selectedStock
               ? `${selectedStock.code} ${selectedStock.name}`
               : "选择股票开始分析"}
           </span>
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
-          <button onClick={() => setShowImport(true)} style={headerBtn}>
-            + 导入数据
+        <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <button onClick={() => setShowImport(true)} className="btn btn-ghost btn-xs">
+            <IconUpload size={12} />
+            导入数据
           </button>
-          <span style={{ color: "#666666" }}>|</span>
           <button
             onClick={toggleLargeFont}
-            style={{
-              ...headerBtn,
-              background: largeFont ? "#CCAA00" : "transparent",
-              color: largeFont ? "#000" : "#858585",
-              border: largeFont ? "1px solid #CCAA00" : "1px solid #555",
-            }}
+            className={largeFont ? "btn btn-primary btn-xs" : "btn btn-ghost btn-xs"}
             title="大字体模式"
           >
             大字
           </button>
           <button
             onClick={toggleHighContrast}
-            style={{
-              ...headerBtn,
-              background: highContrast ? "#CCAA00" : "transparent",
-              color: highContrast ? "#000" : "#858585",
-              border: highContrast ? "1px solid #CCAA00" : "1px solid #555",
-            }}
+            className={highContrast ? "btn btn-primary btn-xs" : "btn btn-ghost btn-xs"}
             title="高对比度模式"
           >
             高对比
           </button>
-          {loading && <span style={{ color: "#CCAA00" }}>⏳</span>}
-          <span style={{ color: "#858585", fontSize: 12 }}>{dataStatus}</span>
+          {loading && <span style={{ color: "var(--accent)", fontSize: 11 }}>加载中...</span>}
+          <span style={{ color: "var(--text-muted)", fontSize: 11 }}>{dataStatus}</span>
         </div>
       </header>
 
@@ -389,30 +369,24 @@ export default function ChartPage() {
             width: 280,
             display: "flex",
             flexDirection: "column",
-            borderRight: "1px solid #2A2A2A",
+            borderRight: "1px solid var(--border-subtle)",
             flexShrink: 0,
           }}
         >
           <div
             style={{
               display: "flex",
-              borderBottom: "1px solid #2A2A2A",
-              background: "#161616",
+              borderBottom: "1px solid var(--border-subtle)",
+              background: "var(--bg-default)",
             }}
           >
             <TabBtn active={sidebarTab === "stocks"} onClick={() => setSidebarTab("stocks")}>
               股票
             </TabBtn>
-            <TabBtn
-              active={sidebarTab === "watchlist"}
-              onClick={() => setSidebarTab("watchlist")}
-            >
+            <TabBtn active={sidebarTab === "watchlist"} onClick={() => setSidebarTab("watchlist")}>
               自选
             </TabBtn>
-            <TabBtn
-              active={sidebarTab === "indicators"}
-              onClick={() => setSidebarTab("indicators")}
-            >
+            <TabBtn active={sidebarTab === "indicators"} onClick={() => setSidebarTab("indicators")}>
               指标
             </TabBtn>
           </div>
@@ -446,8 +420,7 @@ export default function ChartPage() {
         {/* Main Chart */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {gridMode ? (
-            /* 2×2 Grid Layout */
-            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, background: "#2A2A2A" }}>
+            <div style={{ flex: 1, display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 2, background: "var(--border-subtle)" }}>
               {gridCells.map((cell, idx) => (
                 <div
                   key={idx}
@@ -459,31 +432,29 @@ export default function ChartPage() {
                     }
                   }}
                   style={{
-                    background: "#121212",
+                    background: "var(--bg-deepest)",
                     display: "flex",
                     flexDirection: "column",
                     overflow: "hidden",
-                    border: activeCellIdx === idx ? "2px solid #CCAA00" : "2px solid transparent",
+                    border: activeCellIdx === idx ? "2px solid var(--accent)" : "2px solid transparent",
                     cursor: "pointer",
                   }}
                 >
-                  {/* Cell header */}
                   <div style={{
-                    padding: "4px 8px", background: activeCellIdx === idx ? "#1A1A0A" : "#161616",
+                    padding: "4px 8px", background: activeCellIdx === idx ? "rgba(212,160,23,0.05)" : "var(--bg-default)",
                     display: "flex", justifyContent: "space-between", alignItems: "center",
-                    borderBottom: "1px solid #2A2A2A", flexShrink: 0,
+                    borderBottom: "1px solid var(--border-subtle)", flexShrink: 0,
                   }}>
                     <span style={{
-                      color: cell.stockCode ? "#CCAA00" : "#666666",
-                      fontSize: 11, fontFamily: "monospace", fontWeight: 600,
+                      color: cell.stockCode ? "var(--accent)" : "var(--text-muted)",
+                      fontSize: 11, fontFamily: "var(--font-data)", fontWeight: 600,
                     }}>
                       {cell.stockCode ? `${cell.stockCode} ${cell.stockName || ""}` : `画布 ${idx + 1}`}
                     </span>
                     {activeCellIdx === idx && (
-                      <span style={{ color: "#CCAA00", fontSize: 9, fontFamily: "monospace" }}>● 激活</span>
+                      <span style={{ color: "var(--accent)", fontSize: 9 }}>● 激活</span>
                     )}
                   </div>
-                  {/* Chart content */}
                   <div style={{ flex: 1, overflow: "hidden" }}>
                     {cell.data.length > 0 ? (
                       <KLineChart
@@ -512,7 +483,7 @@ export default function ChartPage() {
                     ) : (
                       <div style={{
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        height: "100%", color: "#555", fontSize: 11, fontFamily: "monospace",
+                        height: "100%", color: "var(--text-muted)", fontSize: 11,
                       }}>
                         点击左侧股票 → 自动加载到激活画布
                       </div>
@@ -522,7 +493,6 @@ export default function ChartPage() {
               ))}
             </div>
           ) : (
-            /* Single chart */
             chartData.length > 0 ? (
               <KLineChart
                 data={chartData}
@@ -545,7 +515,7 @@ export default function ChartPage() {
         <div
           style={{
             width: 300,
-            borderLeft: "1px solid #2A2A2A",
+            borderLeft: "1px solid var(--border-subtle)",
             flexShrink: 0,
             overflow: "hidden",
             display: "flex",
@@ -555,43 +525,23 @@ export default function ChartPage() {
           <div
             style={{
               display: "flex",
-              borderBottom: "1px solid #2A2A2A",
-              background: "#161616",
+              borderBottom: "1px solid var(--border-subtle)",
+              background: "var(--bg-default)",
               flexWrap: "wrap",
             }}
           >
-            <TabBtn active={rightTab === "trades"} onClick={() => setRightTab("trades")}>
-              交易
-            </TabBtn>
-            <TabBtn active={rightTab === "strategies"} onClick={() => setRightTab("strategies")}>
-              策略
-            </TabBtn>
-            <TabBtn active={rightTab === "backtest"} onClick={() => setRightTab("backtest")}>
-              回测 <ProBadge />
-            </TabBtn>
-            <TabBtn active={rightTab === "scanner"} onClick={() => setRightTab("scanner")}>
-              扫描 <ProBadge />
-            </TabBtn>
-            <TabBtn active={rightTab === "distribution"} onClick={() => setRightTab("distribution")}>
-              筹码 <ProBadge />
-            </TabBtn>
-            <TabBtn active={rightTab === "patterns"} onClick={() => setRightTab("patterns")}>
-              形态 <ProBadge />
-            </TabBtn>
-            <TabBtn active={rightTab === "risk"} onClick={() => setRightTab("risk")}>
-              风控 <ProBadge />
-            </TabBtn>
-            <TabBtn active={rightTab === "download"} onClick={() => setRightTab("download")}>
-              下载
-            </TabBtn>
-            <TabBtn active={rightTab === "license"} onClick={() => setRightTab("license")}>
-              授权
-            </TabBtn>
+            <TabBtn active={rightTab === "trades"} onClick={() => setRightTab("trades")}>交易</TabBtn>
+            <TabBtn active={rightTab === "strategies"} onClick={() => setRightTab("strategies")}>策略</TabBtn>
+            <TabBtn active={rightTab === "backtest"} onClick={() => setRightTab("backtest")}>回测<ProBadge /></TabBtn>
+            <TabBtn active={rightTab === "scanner"} onClick={() => setRightTab("scanner")}>扫描<ProBadge /></TabBtn>
+            <TabBtn active={rightTab === "distribution"} onClick={() => setRightTab("distribution")}>筹码<ProBadge /></TabBtn>
+            <TabBtn active={rightTab === "patterns"} onClick={() => setRightTab("patterns")}>形态<ProBadge /></TabBtn>
+            <TabBtn active={rightTab === "risk"} onClick={() => setRightTab("risk")}>风控<ProBadge /></TabBtn>
+            <TabBtn active={rightTab === "download"} onClick={() => setRightTab("download")}>下载</TabBtn>
+            <TabBtn active={rightTab === "license"} onClick={() => setRightTab("license")}>授权</TabBtn>
           </div>
           <div style={{ flex: 1, overflow: "hidden" }}>
-            {rightTab === "trades" && (
-              <TradeJournalPanel selectedStockId={selectedStockId} compact />
-            )}
+            {rightTab === "trades" && <TradeJournalPanel selectedStockId={selectedStockId} compact />}
             {rightTab === "strategies" && (
               <StrategyPanel
                 selectedStockId={selectedStockId}
@@ -609,12 +559,8 @@ export default function ChartPage() {
               />
             )}
             {rightTab === "scanner" && <ScannerPanel />}
-            {rightTab === "distribution" && (
-              <DistributionPanel stockId={selectedStockId} />
-            )}
-            {rightTab === "patterns" && (
-              <PatternPanel stockId={selectedStockId} />
-            )}
+            {rightTab === "distribution" && <DistributionPanel stockId={selectedStockId} />}
+            {rightTab === "patterns" && <PatternPanel stockId={selectedStockId} />}
             {rightTab === "risk" && <RiskPanel stockId={selectedStockId} />}
             {rightTab === "download" && <DownloadPanel />}
             {rightTab === "license" && <LicensePanel onActivated={loadLicense} />}
@@ -622,7 +568,6 @@ export default function ChartPage() {
         </div>
       </div>
 
-      {/* Import Dialog */}
       <ImportDialog
         visible={showImport}
         onClose={() => setShowImport(false)}
@@ -648,13 +593,14 @@ function TabBtn({
         flex: 1,
         padding: "8px 12px",
         border: "none",
-        background: active ? "#121212" : "transparent",
-        color: active ? "#CCAA00" : "#858585",
+        background: active ? "var(--bg-raised)" : "transparent",
+        color: active ? "var(--accent)" : "var(--text-secondary)",
         cursor: "pointer",
-        fontSize: 13,
-        fontFamily: "monospace",
+        fontSize: 12,
+        fontFamily: "var(--font-ui)",
         fontWeight: active ? 600 : 400,
-        borderBottom: active ? "2px solid #CCAA00" : "2px solid transparent",
+        borderBottom: active ? "2px solid var(--accent)" : "2px solid transparent",
+        transition: "all 150ms ease",
       }}
     >
       {children}
@@ -670,30 +616,21 @@ function EmptyChart({ onImport }: { onImport: () => void }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#666666",
-        fontFamily: "monospace",
-        fontSize: 16,
-        background: "#121212",
+        color: "var(--text-muted)",
+        fontFamily: "var(--font-ui)",
+        fontSize: 14,
+        background: "var(--bg-deepest)",
       }}
     >
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16, color: "#2A2A2A" }}>📈</div>
-        <div>从左侧选择一个股票开始分析</div>
-        <div style={{ fontSize: 12, marginTop: 16, color: "#555" }}>
-          <button
-            onClick={onImport}
-            style={{
-              background: "#CCAA00",
-              color: "#000",
-              border: "none",
-              padding: "6px 16px",
-              borderRadius: 4,
-              cursor: "pointer",
-              fontFamily: "monospace",
-              fontSize: 13,
-              fontWeight: 600,
-            }}
-          >
+        <svg width={56} height={56} viewBox="0 0 24 24" fill="none" stroke="var(--border-active)" strokeWidth={1.2} style={{ margin: "0 auto 16px" }}>
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <path d="M3 16l5-5 3 3 5-7 5 6" />
+        </svg>
+        <div style={{ marginBottom: 4 }}>从左侧选择一个股票开始分析</div>
+        <div style={{ fontSize: 12, marginTop: 16 }}>
+          <button onClick={onImport} className="btn btn-primary btn-sm">
+            <IconUpload size={12} />
             导入CSV数据
           </button>
         </div>
@@ -702,24 +639,13 @@ function EmptyChart({ onImport }: { onImport: () => void }) {
   );
 }
 
-const headerBtn: React.CSSProperties = {
-  background: "#2A2A2A",
-  color: "#D4D4D4",
-  border: "none",
-  padding: "4px 12px",
-  borderRadius: 4,
-  cursor: "pointer",
-  fontSize: 12,
-  fontFamily: "monospace",
-};
-
 function ProBadge() {
   return (
     <span style={{
       fontSize: 8, padding: "1px 4px", marginLeft: 2,
-      background: "rgba(126,87,194,0.15)", color: "#7E57C2",
+      background: "rgba(56,189,248,0.1)", color: "var(--accent-secondary)",
       borderRadius: 2, verticalAlign: "middle",
-      fontFamily: "monospace",
+      fontFamily: "var(--font-ui)", fontWeight: 600,
     }}>
       PRO
     </span>

@@ -2,6 +2,8 @@ import { Routes, Route, Outlet, useLocation, Navigate } from "react-router-dom";
 import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import Sidebar from "./components/Sidebar";
+import Titlebar from "./components/Titlebar";
+import CommandPalette from "./components/CommandPalette";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { useAppStore } from "./stores/appStore";
 import { OnboardingWizard } from "@me/ui";
@@ -30,14 +32,20 @@ function Layout() {
     <div
       style={{
         display: "flex",
+        flexDirection: "column",
         height: "100vh",
-        background: "#0C0C0C",
-        color: "#D4D4D4",
-        fontFamily: `"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`,
+        background: "var(--bg-deepest)",
+        color: "var(--text-primary)",
+        fontFamily: "var(--font-ui)",
       }}
     >
-      <Sidebar />
-      <Outlet />
+      <Titlebar />
+      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
+        <Sidebar />
+        <main style={{ flex: 1, overflow: "auto" }}>
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }
@@ -89,6 +97,7 @@ export default function App() {
 
   return (
     <ErrorBoundary>
+      <CommandPalette />
       {showOnboarding && (
         <OnboardingWizard
           onComplete={handleComplete}

@@ -52,20 +52,20 @@ export function ChartToolbar({
 }: ChartToolbarProps) {
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 8,
-      padding: "4px 12px", background: "#161616",
-      borderBottom: "1px solid #2A2A2A",
-      fontFamily: "monospace", fontSize: 12,
+      display: "flex", alignItems: "center", gap: 6,
+      padding: "4px 12px", background: "var(--bg-default)",
+      borderBottom: "1px solid var(--border-subtle)",
+      fontFamily: "var(--font-ui)", fontSize: 11,
       flexShrink: 0, flexWrap: "wrap",
     }}>
       {/* Chart type */}
-      <span style={{ color: "#858585", marginRight: 4 }}>图表:</span>
+      <span style={{ color: "var(--text-muted)", marginRight: 2, fontSize: 11 }}>图表:</span>
       {CHART_TYPES.map(ct => (
         <button key={ct.key} onClick={() => onChartTypeChange(ct.key)}
           style={{
             ...btnBase,
-            background: chartType === ct.key ? "#CCAA00" : "#2A2A2A",
-            color: chartType === ct.key ? "#000" : "#D4D4D4",
+            background: chartType === ct.key ? "var(--accent)" : "var(--bg-raised)",
+            color: chartType === ct.key ? "var(--text-inverse)" : "var(--text-secondary)",
             fontWeight: chartType === ct.key ? 600 : 400,
           }}>
           {ct.label}
@@ -75,14 +75,14 @@ export function ChartToolbar({
       {/* Period selector */}
       {period && onPeriodChange && (
         <>
-          <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
-          <span style={{ color: "#858585", marginRight: 4 }}>周期:</span>
+          <span style={{ color: "var(--border-active)", margin: "0 4px" }}>|</span>
+          <span style={{ color: "var(--text-muted)", marginRight: 2, fontSize: 11 }}>周期:</span>
           {PERIODS.map(p => (
             <button key={p.key} onClick={() => onPeriodChange(p.key)}
               style={{
                 ...btnBase,
-                background: period === p.key ? "#CCAA00" : "#2A2A2A",
-                color: period === p.key ? "#000" : "#D4D4D4",
+                background: period === p.key ? "var(--accent)" : "var(--bg-raised)",
+                color: period === p.key ? "var(--text-inverse)" : "var(--text-secondary)",
                 fontWeight: period === p.key ? 600 : 400,
                 minWidth: 32, textAlign: "center", padding: "4px 6px",
               }}>
@@ -94,28 +94,28 @@ export function ChartToolbar({
 
       {onToggleGridMode && (
         <>
-          <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
+          <span style={{ color: "var(--border-active)", margin: "0 4px" }}>|</span>
           <button onClick={onToggleGridMode} style={{
             ...btnBase,
-            background: gridMode ? "#7E57C2" : "#2A2A2A",
-            color: gridMode ? "#fff" : "#858585",
+            background: gridMode ? "var(--accent-secondary)" : "var(--bg-raised)",
+            color: gridMode ? "#fff" : "var(--text-secondary)",
           }} title="多图表 2×2 布局">
-            {gridMode ? "⊞ 2×2 ✓" : "⊞ 2×2"}
+            {gridMode ? "2×2 ✓" : "2×2"}
           </button>
         </>
       )}
 
-      <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
+      <span style={{ color: "var(--border-active)", margin: "0 4px" }}>|</span>
 
       {/* Drawing tools */}
-      <span style={{ color: "#858585", marginRight: 4 }}>绘图:</span>
+      <span style={{ color: "var(--text-muted)", marginRight: 2, fontSize: 11 }}>绘图:</span>
       {DRAWING_TOOLS.map(dt => (
         <button key={dt.key} onClick={() => onToolChange(activeTool === dt.key ? null : dt.key)}
           title={dt.label}
           style={{
             ...btnBase,
-            background: activeTool === dt.key ? "#CCAA00" : "#2A2A2A",
-            color: activeTool === dt.key ? "#000" : "#858585",
+            background: activeTool === dt.key ? "var(--accent)" : "var(--bg-raised)",
+            color: activeTool === dt.key ? "var(--text-inverse)" : "var(--text-secondary)",
             minWidth: 28, textAlign: "center",
           }}>
           {dt.icon}
@@ -124,9 +124,9 @@ export function ChartToolbar({
 
       {drawingCount > 0 && (
         <>
-          <span style={{ color: "#666666", margin: "0 4px" }}>|</span>
+          <span style={{ color: "var(--border-active)", margin: "0 4px" }}>|</span>
           <button onClick={onClearDrawings} style={{
-            ...btnBase, background: "#3a1a1a", color: "#EF5350",
+            ...btnBase, background: "rgba(244,63,94,0.12)", color: "var(--negative)",
           }}>
             清除全部 ({drawingCount})
           </button>
@@ -138,6 +138,6 @@ export function ChartToolbar({
 
 const btnBase: React.CSSProperties = {
   border: "none", borderRadius: 3, cursor: "pointer",
-  padding: "4px 10px", fontSize: 12, fontFamily: "monospace",
-  lineHeight: "16px",
+  padding: "4px 8px", fontSize: 11, fontFamily: "var(--font-ui)",
+  lineHeight: "16px", transition: "all 120ms ease",
 };
