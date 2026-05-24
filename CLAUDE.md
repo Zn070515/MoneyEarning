@@ -132,3 +132,7 @@ SQLite `alert_rules` 表 + Rust 条件评估函数的组合模式：
 - `blob.type` 设为 `"text/csv;charset=utf-8"`
 - 导入时用 `\r?\n` split 兼容 Windows/Mac 换行
 - 数值列用 `parseFloat` + `isNaN` 校验，跳过非法行而非整体失败
+
+### 版本号规则
+
+修改版本号时严格遵循 `docs/VERSIONING.md`。核心原则：**小改动（bug 修复、UI 调整、性能优化）只动第三位（PATCH），新功能才动第二位（MINOR）。** 每次发版需同步更新 `package.json`、`tauri.conf.json`、`Cargo.toml` 三处版本号。
