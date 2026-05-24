@@ -257,6 +257,7 @@ fn parse_date(s: &str) -> Result<i64, ()> {
     if parts.len() != 3 { return Err(()); }
     let y: i32 = parts[0].parse().map_err(|_| ())?;
     let m: i32 = parts[1].parse().map_err(|_| ())?;
+    if m < 1 || m > 12 { return Err(()); }
     let d: i32 = parts[2].parse().map_err(|_| ())?;
     let days = (y as i64 - 1970) * 365
         + (y as i64 - 1969) / 4

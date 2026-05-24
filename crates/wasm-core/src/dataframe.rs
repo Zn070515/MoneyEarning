@@ -90,10 +90,3 @@ impl DataFrame {
         self.column(col).and_then(|c| c.f64_values()).and_then(|v| v.get(row).copied())
     }
 }
-
-impl std::ops::Index<usize> for DataFrame {
-    type Output = i64;
-    fn index(&self, idx: usize) -> &i64 {
-        &self.index[idx]
-    }
-}

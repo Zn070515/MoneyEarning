@@ -40,7 +40,7 @@ export function KLineChart({
     engineRef.current = engine;
     const ro = new ResizeObserver(() => engine.resize());
     if (containerRef.current) ro.observe(containerRef.current);
-    return () => { ro.disconnect(); };
+    return () => { ro.disconnect(); engine.destroy(); };
   }, []);
 
   // Data updates

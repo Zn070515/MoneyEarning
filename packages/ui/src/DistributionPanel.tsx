@@ -506,7 +506,7 @@ function HistoryFramesView({
           const bh = maxChip > 0 ? (frame.chip_volume[i] / maxChip) * h : 0;
           const x = (i / frame.price_levels.length) * w + 20;
           const barW = (w / frame.price_levels.length) * 0.9;
-          const isCost = Math.abs(p - frame.avg_cost) / frame.avg_cost < 0.02;
+          const isCost = frame.avg_cost !== 0 && Math.abs(p - frame.avg_cost) / frame.avg_cost < 0.02;
           return (
             <rect key={i} x={x - barW / 2} y={h - bh + 10} width={barW} height={bh}
               fill={isCost ? "#CCAA00" : "#3b82f6"} opacity={0.7} rx={1} />

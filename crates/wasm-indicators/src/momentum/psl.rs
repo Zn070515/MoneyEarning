@@ -10,7 +10,7 @@ pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<Indi
     let mut up_count = 0usize;
     for i in 0..n {
         if i > 0 && c[i] > c[i - 1] { up_count += 1; }
-        if i >= period && c[i - period] > c[i - period - 1] { up_count -= 1; }
+        if i > period && c[i - period] > c[i - period - 1] { up_count -= 1; }
         if i >= period - 1 {
             result[i] = up_count as f64 / period as f64 * 100.0;
         }

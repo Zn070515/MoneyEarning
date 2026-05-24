@@ -133,11 +133,13 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
                   placeholder="选择或输入 .csv 文件路径"
                   style={{ ...inputStyle, flex: 1 }} />
                 <button onClick={async () => {
-                  const selected = await open({
-                    multiple: false,
-                    filters: [{ name: "CSV文件", extensions: ["csv"] }],
-                  });
-                  if (selected && typeof selected === "string") setFilePath(selected);
+                  try {
+                    const selected = await open({
+                      multiple: false,
+                      filters: [{ name: "CSV文件", extensions: ["csv"] }],
+                    });
+                    if (selected && typeof selected === "string") setFilePath(selected);
+                  } catch { /* dialog cancelled or IPC error */ }
                 }} style={browseBtnStyle}>浏览...</button>
               </div>
             </div>
@@ -184,10 +186,11 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
                     placeholder="如 sh600519.day"
                     style={{ ...inputStyle, flex: 1 }} />
                   <button onClick={async () => {
-                    const selected = await open({
-                      multiple: false,
-                      filters: [{ name: "通达信日线", extensions: ["day"] }],
-                    });
+                    try {
+                      const selected = await open({
+                        multiple: false,
+                        filters: [{ name: "通达信日线", extensions: ["day"] }],
+                      });
                     if (selected && typeof selected === "string") {
                       setFilePath(selected);
                       // Extract code from filename
@@ -198,6 +201,7 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
                         if (code.length >= 6) setStockCode(code.slice(0, 6));
                       }
                     }
+                    } catch { /* dialog cancelled or IPC error */ }
                   }} style={browseBtnStyle}>浏览...</button>
                 </div>
               </div>
@@ -241,8 +245,10 @@ export function ImportDialog({ visible, onClose, onSuccess }: ImportDialogProps)
                     placeholder="选择通达信数据根目录..."
                     style={{ ...inputStyle, flex: 1 }} />
                   <button onClick={async () => {
-                    const selected = await open({ directory: true, multiple: false });
-                    if (selected && typeof selected === "string") setDirPath(selected);
+                    try {
+                      const selected = await open({ directory: true, multiple: false });
+                      if (selected && typeof selected === "string") setDirPath(selected);
+                    } catch { /* dialog cancelled or IPC error */ }
                   }} style={browseBtnStyle}>浏览...</button>
                 </div>
               </div>

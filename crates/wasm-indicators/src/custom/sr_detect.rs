@@ -11,10 +11,17 @@ pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<Indi
     let l = low.to_f64_vec();
     let v = volume.to_f64_vec();
     let n = h.len();
-
     let mut pivot_h = vec![f64::NAN; n];
     let mut pivot_l = vec![f64::NAN; n];
     let mut vol_zone = vec![f64::NAN; n];
+
+    if n < 2 * period + 1 {
+        return Ok(vec![
+            IndicatorOutput { name: "SR_RESIST".into(), values: Column::F64(pivot_h), style: OutputStyle::Dots },
+            IndicatorOutput { name: "SR_SUPPORT".into(), values: Column::F64(pivot_l), style: OutputStyle::Dots },
+            IndicatorOutput { name: "SR_VOLZONE".into(), values: Column::F64(vol_zone), style: OutputStyle::Line },
+        ]);
+    }
 
     for i in period..n - period {
         let is_pivot_high = (0..period).all(|j| h[i] >= h[i - j - 1]) && (0..period).all(|j| h[i] >= h[i + j + 1]);

@@ -37,7 +37,7 @@ pub fn activate(
         features: payload.features.clone(),
         valid: true,
     };
-    *LICENSE_CACHE.lock().unwrap() = Some(super::LicenseStatus {
+    *LICENSE_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = Some(super::LicenseStatus {
         valid: true,
         tier: payload.tier.clone(),
         expiry: payload.expiry.clone(),
@@ -48,7 +48,7 @@ pub fn activate(
 
 /// Fast check from in-memory cache only. Used for UI polling.
 pub fn check_cached() -> super::LicenseStatus {
-    let guard = LICENSE_CACHE.lock().unwrap();
+    let guard = LICENSE_CACHE.lock().unwrap_or_else(|e| e.into_inner());
     match guard.as_ref() {
         Some(cached) => cached.clone(),
         None => super::LicenseStatus {
@@ -64,7 +64,7 @@ pub fn check_cached() -> super::LicenseStatus {
 pub fn check_with_db(app: &tauri::AppHandle) -> Result<super::LicenseStatus, String> {
     // 1. Memory cache (includes trial status now)
     {
-        let cache = LICENSE_CACHE.lock().unwrap();
+        let cache = LICENSE_CACHE.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(cached) = cache.as_ref() {
             if cached.valid {
                 return Ok(cached.clone());
@@ -88,11 +88,11 @@ pub fn check_with_db(app: &tauri::AppHandle) -> Result<super::LicenseStatus, Str
                     trial_days_left: None,
                 };
                 if valid {
-                    *LICENSE_CACHE.lock().unwrap() = Some(status.clone());
+                    *LICENSE_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = Some(status.clone());
                 } else {
                     // Expired — clear from DB and cache
                     let _ = crate::db::clear_license(&guard);
-                    *LICENSE_CACHE.lock().unwrap() = None;
+                    *LICENSE_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = None;
                 }
                 return Ok(status);
             }
@@ -125,7 +125,7 @@ pub fn check_with_db(app: &tauri::AppHandle) -> Result<super::LicenseStatus, Str
         }
     };
     drop(guard);
-    *LICENSE_CACHE.lock().unwrap() = Some(status.clone());
+    *LICENSE_CACHE.lock().unwrap_or_else(|e| e.into_inner()) = Some(status.clone());
     Ok(status)
 }
 

@@ -12,6 +12,9 @@ pub fn volume_profile(df: &DataFrame, num_buckets: usize) -> VolumeProfileResult
 
     let min_p = close.iter().cloned().fold(f64::INFINITY, f64::min);
     let max_p = close.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+    if max_p - min_p < 1e-12 {
+        return VolumeProfileResult { levels: vec![], poc: 0.0, vah: 0.0, val: 0.0 };
+    }
     let bucket_size = (max_p - min_p) / num_buckets as f64;
 
     let mut bucket_vol: Vec<f64> = vec![0.0; num_buckets];

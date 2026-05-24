@@ -38,7 +38,9 @@ export class ChartEngine {
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     this.dpr = window.devicePixelRatio || 1;
-    this.ctx = canvas.getContext("2d")!;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Failed to get 2D rendering context");
+    this.ctx = ctx;
     this.viewport = new ViewportManager(
       { x: 0, y: 0, width: 0, height: 0 }, 0,
     );
@@ -251,6 +253,8 @@ export class ChartEngine {
 
   // --- Events ---
 
+  private onResize = () => this.resize();
+
   private bindEvents(): void {
     this.canvas.addEventListener("mousemove", (e) => {
       const rect = this.canvas.getBoundingClientRect();
@@ -275,6 +279,10 @@ export class ChartEngine {
       }
       this.draw();
     });
-    window.addEventListener("resize", () => this.resize());
+    window.addEventListener("resize", this.onResize);
+  }
+
+  destroy(): void {
+    window.removeEventListener("resize", this.onResize);
   }
 }

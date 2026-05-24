@@ -335,7 +335,8 @@ fn portfolio_correlation(app: tauri::AppHandle, stock_ids: Vec<i64>,
     let mut codes: Vec<String> = Vec::new();
     let mut series: Vec<(String, Vec<f64>)> = Vec::new();
     {
-        let mut code_stmt = db.as_ref().unwrap().prepare("SELECT code FROM stocks WHERE id=?1")
+        let conn = db.as_ref().ok_or_else(|| "数据库未初始化".to_string())?;
+        let mut code_stmt = conn.prepare("SELECT code FROM stocks WHERE id=?1")
             .map_err(|e| e.to_string())?;
         for &sid in &stock_ids {
             if let Some(closes) = price_map.get(&sid) {
@@ -1095,11 +1096,13 @@ fn compute_indicator(app: tauri::AppHandle, name: String, data: Vec<IndicatorInp
                      -> Result<Vec<wasm_core::IndicatorOutput>, String> {
     // Check license for PRO indicators
     let meta = wasm_indicators::metadata(&name);
-    if meta.as_ref().map_or(false, |m| !m.is_free) {
-        let ls = license::check_with_db(&app)?;
-        if ls.tier != "pro" && ls.tier != "trial" {
-            return Err(format!("「{}」为专业版指标，需要PRO授权。当前授权: 免费版",
-                meta.unwrap().name_cn));
+    if let Some(m) = &meta {
+        if !m.is_free {
+            let ls = license::check_with_db(&app)?;
+            if ls.tier != "pro" && ls.tier != "trial" {
+                return Err(format!("「{}」为专业版指标，需要PRO授权。当前授权: 免费版",
+                    m.name_cn));
+            }
         }
     }
 

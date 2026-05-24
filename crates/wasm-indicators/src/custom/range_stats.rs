@@ -9,6 +9,7 @@ pub fn compute_range_stats(df: &DataFrame, start_idx: usize, end_idx: usize) -> 
     let h = high.to_f64_vec();
     let l = low.to_f64_vec();
 
+    if c.is_empty() { return Err(IndError::DataInsufficient(1)); }
     let end = end_idx.min(c.len() - 1);
     if start_idx > end { return Err(IndError::DataInsufficient(2)); }
 

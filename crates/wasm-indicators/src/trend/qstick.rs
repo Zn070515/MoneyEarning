@@ -8,6 +8,7 @@ pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<Indi
     let o = open.to_f64_vec();
     let c = close.to_f64_vec();
     let n = c.len();
+    if n < period { return Err(IndError::DataInsufficient(period)); }
 
     let mut diff = vec![f64::NAN; n];
     for i in 0..n { diff[i] = c[i] - o[i]; }

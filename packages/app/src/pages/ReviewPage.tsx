@@ -815,7 +815,10 @@ function ReviewTemplatePanel({ selectedStockId, selectedStockCode }: { selectedS
       emotion: selectedEmotion,
       answers,
     };
-    const existing: ReviewRecord[] = JSON.parse(localStorage.getItem("me-reviews") || "[]");
+    let existing: ReviewRecord[] = [];
+    try {
+      existing = JSON.parse(localStorage.getItem("me-reviews") || "[]");
+    } catch { /* corrupted data, start fresh */ }
     existing.push(reviewData);
     localStorage.setItem("me-reviews", JSON.stringify(existing));
     setSaved(true);

@@ -58,15 +58,6 @@ impl Column {
     }
 }
 
-impl std::ops::Index<usize> for Column {
-    type Output = f64;
-    fn index(&self, idx: usize) -> &f64 {
-        match self {
-            Column::F64(v) => &v[idx],
-            _ => panic!("Column type not supported for indexing"),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IndicatorOutput {

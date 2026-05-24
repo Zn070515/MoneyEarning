@@ -84,26 +84,26 @@ export default function BacktestPage() {
       });
       setProgress({ current: 100, total: 100 });
       setResult({
-        totalReturn: raw.total_return as number,
-        annualReturn: raw.annual_return as number,
-        maxDrawdown: raw.max_drawdown as number,
-        sharpeRatio: raw.sharpe_ratio as number,
-        sortinoRatio: raw.sortino_ratio as number,
-        calmarRatio: raw.calmar_ratio as number,
-        winRate: raw.win_rate as number,
-        totalTrades: raw.total_trades as number,
-        equityCurve: raw.equity_curve as [string, number][],
-        trades: (raw.trades as Array<Record<string, unknown>> || []).map((t: Record<string, unknown>) => ({
-          buy_date: t.buy_date as string,
-          sell_date: t.sell_date as string,
-          buy_price: t.buy_price as number,
-          sell_price: t.sell_price as number,
-          pnl: t.pnl as number,
-          pnl_pct: t.pnl_pct as number,
-          holding_days: t.holding_days as number,
+        totalReturn: Number(raw.total_return ?? 0),
+        annualReturn: Number(raw.annual_return ?? 0),
+        maxDrawdown: Number(raw.max_drawdown ?? 0),
+        sharpeRatio: Number(raw.sharpe_ratio ?? 0),
+        sortinoRatio: Number(raw.sortino_ratio ?? 0),
+        calmarRatio: Number(raw.calmar_ratio ?? 0),
+        winRate: Number(raw.win_rate ?? 0),
+        totalTrades: Number(raw.total_trades ?? 0),
+        equityCurve: (Array.isArray(raw.equity_curve) ? raw.equity_curve : []) as [string, number][],
+        trades: (Array.isArray(raw.trades) ? raw.trades : []).map((t: Record<string, unknown>) => ({
+          buy_date: String(t.buy_date ?? ""),
+          sell_date: String(t.sell_date ?? ""),
+          buy_price: Number(t.buy_price ?? 0),
+          sell_price: Number(t.sell_price ?? 0),
+          pnl: Number(t.pnl ?? 0),
+          pnl_pct: Number(t.pnl_pct ?? 0),
+          holding_days: Number(t.holding_days ?? 0),
         })),
-        maxDrawdownDuration: raw.max_drawdown_duration as number,
-        annualVolatility: raw.annual_volatility as number,
+        maxDrawdownDuration: Number(raw.max_drawdown_duration ?? 0),
+        annualVolatility: Number(raw.annual_volatility ?? 0),
       });
     } catch (e) { setRunning(false); setResult(null, String(e)); }
   };

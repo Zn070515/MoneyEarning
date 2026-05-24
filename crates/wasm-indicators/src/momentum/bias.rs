@@ -6,6 +6,7 @@ pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<Indi
     let close = df.column("close").ok_or(IndError::InvalidName)?;
     let c = close.to_f64_vec();
     let n = c.len();
+    if n < period { return Err(IndError::DataInsufficient(period)); }
     let mut result = vec![f64::NAN; n];
 
     let mut sum: f64 = c[0..period].iter().sum();
