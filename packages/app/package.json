@@ -1,12 +1,12 @@
 {
   "name": "@me/app",
-  "version": "0.10.0",
+  "version": "0.10.1",
   "private": true,
   "description": "桌面应用主入口",
   "scripts": {
     "dev": "tauri dev",
     "dev:web": "vite",
-    "build": "tsc && vite build && tauri build",
+    "build": "tauri build",
     "build:web": "tsc && vite build",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src/",

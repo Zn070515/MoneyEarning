@@ -31,6 +31,7 @@ export function KLineChart({
   const [pending, setPending] = useState<PendingDraw | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const pendingRef = useRef<PendingDraw | null>(null);
+  const prevDrawingsRef = useRef<DrawingObject[]>([]);
 
   // Init engine
   useEffect(() => {
@@ -51,6 +52,8 @@ export function KLineChart({
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
+    if (prevDrawingsRef.current === drawings) return;
+    prevDrawingsRef.current = drawings;
     engine.clearDrawings();
     for (const d of drawings) engine.addDrawing(d);
   }, [drawings]);

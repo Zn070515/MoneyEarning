@@ -46,10 +46,9 @@ pub fn import_csv_file(
         let volume: f64 = get_field(&fields, vol_col);
         let amount: f64 = get_field(&fields, amt_col);
 
-        if date.len() < 8 { skipped += 1; continue; }
-        // Normalize date: 2020-01-01 or 20200101 → 2020-01-01
-        let date_norm = if date.contains('-') { date.to_string() }
-            else { format!("{}-{}-{}", &date[0..4], &date[4..6], &date[6..8]) };
+        if date.len() < 7 { skipped += 1; continue; }
+        // Normalize date: handle both "2020-01-01", "2020-1-1", and "20200101"
+        let date_norm = normalize_date(date);
 
         let result = tx.execute(
             "INSERT OR IGNORE INTO daily_prices (stock_id, trade_date, open, high, low, close, volume, amount)
@@ -83,15 +82,41 @@ fn detect_columns(header: &str) -> Result<(usize, usize, usize, usize, usize, us
     let find = |names: &[&str]| -> Option<usize> {
         cols.iter().position(|c| names.iter().any(|n| c.contains(n)))
     };
+    let require = |names: &[&str], label: &str| -> Result<usize, Box<dyn std::error::Error>> {
+        find(names).ok_or_else(|| format!("找不到{}列，表头: {}", label, header).into())
+    };
     Ok((
-        find(&["date", "trade_date", "日期"]).ok_or("找不到日期列")?,
-        find(&["open", "开盘价", "开盘"]).unwrap_or(1),
-        find(&["high", "最高价", "最高"]).unwrap_or(2),
-        find(&["low", "最低价", "最低"]).unwrap_or(3),
-        find(&["close", "收盘价", "收盘"]).unwrap_or(4),
-        find(&["vol", "volume", "成交量"]).unwrap_or(5),
+        require(&["date", "trade_date", "日期"], "日期")?,
+        require(&["open", "开盘价", "开盘"], "开盘价")?,
+        require(&["high", "最高价", "最高"], "最高价")?,
+        require(&["low", "最低价", "最低"], "最低价")?,
+        require(&["close", "收盘价", "收盘"], "收盘价")?,
+        require(&["vol", "volume", "成交量"], "成交量")?,
         find(&["amount", "amt", "成交额", "成交金额"]).unwrap_or(6),
     ))
+}
+
+fn normalize_date(date: &str) -> String {
+    let clean = date.trim().trim_matches('"');
+    if clean.contains('-') {
+        // Handle "2020-1-1" → pad to "2020-01-01"
+        let parts: Vec<&str> = clean.split('-').collect();
+        if parts.len() == 3 {
+            if let (Ok(y), Ok(m), Ok(d)) = (
+                parts[0].parse::<i32>(),
+                parts[1].parse::<u32>(),
+                parts[2].parse::<u32>(),
+            ) {
+                return format!("{:04}-{:02}-{:02}", y, m, d);
+            }
+        }
+        clean.to_string()
+    } else if clean.len() == 8 {
+        // "20200101" → "2020-01-01"
+        format!("{}-{}-{}", &clean[0..4], &clean[4..6], &clean[6..8])
+    } else {
+        clean.to_string()
+    }
 }
 
 fn get_field(fields: &[&str], idx: usize) -> f64 {

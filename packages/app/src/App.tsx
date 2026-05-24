@@ -1,4 +1,5 @@
 import { Routes, Route, Outlet, useLocation, Navigate } from "react-router-dom";
+import { useEffect } from "react";
 import Sidebar from "./components/Sidebar";
 import { useAppStore } from "./stores/appStore";
 import DashboardPage from "./pages/DashboardPage";
@@ -14,11 +15,13 @@ function Layout() {
   const location = useLocation();
   const navigateStore = useAppStore((s) => s.navigate);
 
-  // Sync react-router location → zustand store
+  // Sync react-router location → zustand store (must be in useEffect, not render phase)
   const currentPage = useAppStore((s) => s.currentPage);
-  if (currentPage !== location.pathname) {
-    navigateStore(location.pathname);
-  }
+  useEffect(() => {
+    if (currentPage !== location.pathname) {
+      navigateStore(location.pathname);
+    }
+  }, [location.pathname, currentPage, navigateStore]);
 
   return (
     <div

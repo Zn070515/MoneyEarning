@@ -211,6 +211,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
   const [formParams, setFormParams] = useState("{}");
   const [validateResult, setValidateResult] = useState<string | null>(null);
   const [validating, setValidating] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
 
   const handleValidate = async () => {
     if (!formScript.trim() || !selectedStockId) return;
@@ -298,7 +299,8 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
       setEditing(null);
       load();
     } catch (e) {
-      console.error("Save strategy:", e);
+      setToast(`保存失败: ${e}`);
+      setTimeout(() => setToast(null), 3000);
     }
   };
 
@@ -327,6 +329,15 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
       fontSize: 13, height: "100%", display: "flex", flexDirection: "column",
       overflow: "hidden",
     }}>
+      {toast && (
+        <div style={{
+          position: "fixed", top: 20, right: 20, zIndex: 9999,
+          padding: "8px 18px", background: "#161616", border: "1px solid #EF5350",
+          borderRadius: 4, color: "#EF5350", fontSize: 12, fontFamily: "monospace",
+        }}>
+          {toast}
+        </div>
+      )}
       <div style={{
         padding: "10px 12px", borderBottom: "1px solid #2A2A2A",
         fontWeight: 600, color: "#fff", fontSize: 14,
@@ -477,7 +488,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
         <div style={{ flex: 1, overflow: "auto" }}>
           {strategies.length === 0 ? (
             <div style={{ padding: 24, color: "#666666", fontSize: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 32, marginBottom: 12, color: "#2A2A2A" }}>{ }</div>
+              <div style={{ fontSize: 32, marginBottom: 12, color: "#2A2A2A" }}>📋</div>
               <div style={{ marginBottom: 8 }}>暂无策略</div>
               <div style={{ fontSize: 10, color: "#555", lineHeight: 1.8 }}>
                 点击"+ 新建"编写您的第一个策略脚本<br />

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { OHLCV } from "@me/chart-engine";
 
@@ -139,6 +139,22 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
   }, []);
 
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  // Inject progress animation keyframes once into document head
+  useEffect(() => {
+    const id = "backtest-progress-keyframes";
+    if (document.getElementById(id)) return;
+    const style = document.createElement("style");
+    style.id = id;
+    style.textContent = `
+      @keyframes backtest-progress-slide {
+        0% { left: -30%; }
+        100% { left: 100%; }
+      }
+    `;
+    document.head.appendChild(style);
+    return () => { style.remove(); };
+  }, []);
 
   const handleTemplate = (name: string) => {
     setSelectedTemplate(name);
@@ -430,12 +446,6 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
                 animation: "backtest-progress-slide 1.2s ease-in-out infinite",
               }} />
             </div>
-            <style>{`
-              @keyframes backtest-progress-slide {
-                0% { left: -30%; }
-                100% { left: 100%; }
-              }
-            `}</style>
             <div style={{
               color: "#858585", fontSize: 10, fontFamily: "monospace",
               textAlign: "center", marginTop: 4,

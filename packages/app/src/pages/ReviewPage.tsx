@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { TradeJournalPanel } from "@me/ui";
 import { StrategyPanel } from "@me/ui";
 import { useAppStore } from "../stores/appStore";
@@ -176,6 +177,16 @@ const CONDITION_PARAMS_HINT: Record<string, string> = {
   volume_spike: `{"multiplier": 2.0, "lookback": 20}`,
 };
 
+interface AlertEvent {
+  id: number;
+  name: string;
+  stock_code: string | null;
+  stock_name: string | null;
+  message: string;
+  current_value: number;
+  threshold_value: number;
+}
+
 function AlertsPanel({ selectedStockId, selectedStockCode }: { selectedStockId: number | null; selectedStockCode: string | null }) {
   const [alerts, setAlerts] = useState<AlertRule[]>([]);
   const [loading, setLoading] = useState(false);
@@ -203,17 +214,23 @@ function AlertsPanel({ selectedStockId, selectedStockCode }: { selectedStockId: 
     loadAlerts();
   }, [loadAlerts]);
 
+  // Clear stale triggers on mount
+  useEffect(() => { setTriggers([]); }, []);
+
   // Listen for alert:triggered events
   useEffect(() => {
-    const unlisten = (window as any).__TAURI_INTERNALS__ ? undefined : undefined;
-    let cancelled = false;
-    // Use Tauri event system via invoke polling for now
-    return () => { cancelled = true; };
+    const unlisten = listen<AlertEvent>("alert:triggered", (event) => {
+      const payload = event.payload;
+      showToast(`⚠ ${payload.stock_code || "?"}: ${payload.message}`);
+    });
+    return () => { unlisten.then((fn) => fn()).catch(() => {}); };
   }, []);
 
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const showToast = (msg: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast(msg);
-    setTimeout(() => setToast(null), 3000);
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
   };
 
   const handleCheck = async () => {
@@ -500,7 +517,7 @@ function AlertsPanel({ selectedStockId, selectedStockCode }: { selectedStockId: 
                       background: a.enabled ? "rgba(38,166,154,0.15)" : "rgba(102,102,102,0.15)",
                       color: a.enabled ? "#26A69A" : "#666666",
                     }}>
-                      {a.enabled ? "启用" : "禁用"}
+                      {a.enabled ? "禁用" : "启用"}
                     </button>
                   </td>
                   <td style={{ padding: "6px 12px", color: "#666666", fontSize: 10 }}>

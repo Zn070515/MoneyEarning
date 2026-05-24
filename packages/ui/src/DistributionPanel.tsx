@@ -70,14 +70,13 @@ export function DistributionPanel({ stockId }: { stockId: number | null }) {
     setLoading(true);
     setStatus("计算中...");
     try {
-      const [vp, cd, sr, conc, pl, hist] = await Promise.all([
-        invoke<VolumeProfileResult>("compute_volume_profile", { stockId: sid, numBuckets: 100 }),
-        invoke<DistributionResult>("compute_chip_distribution", { stockId: sid }),
-        invoke<[number, number, string][]>("compute_sr_levels", { stockId: sid, numLevels: 50 }),
-        invoke<ConcentrationOutput>("compute_concentration", { stockId: sid }),
-        invoke<ProfitLossOutput>("compute_profit_loss_ratio", { stockId: sid }),
-        invoke<FrameOutput[]>("compute_historical_frames", { stockId: sid, frameCount: 50 }),
-      ]);
+      // Serialize to avoid concurrent DB lock contention (all commands require PRO, each locks DB)
+      const vp = await invoke<VolumeProfileResult>("compute_volume_profile", { stockId: sid, numBuckets: 100 });
+      const cd = await invoke<DistributionResult>("compute_chip_distribution", { stockId: sid });
+      const sr = await invoke<[number, number, string][]>("compute_sr_levels", { stockId: sid, numLevels: 50 });
+      const conc = await invoke<ConcentrationOutput>("compute_concentration", { stockId: sid });
+      const pl = await invoke<ProfitLossOutput>("compute_profit_loss_ratio", { stockId: sid });
+      const hist = await invoke<FrameOutput[]>("compute_historical_frames", { stockId: sid, frameCount: 50 });
       setProfile(vp);
       setChipDist(cd);
       setSrLevels(sr);
@@ -191,9 +190,11 @@ function VolumeProfileChart({ profile }: { profile: VolumeProfileResult }) {
       </div>
 
       <svg width={280} height={Math.min(levels.length * 4, 400)} style={{ background: "#0C0C0C" }}>
-        {levels.map((l, i) => {
+        {(() => {
+          const chartHeight = Math.min(levels.length * 4, 400);
+          return levels.map((l, i) => {
           const w = maxVol > 0 ? (l.volume / maxVol) * barWidth : 0;
-          const y = ((l.price - minP) / priceRange) * (levels.length * 4);
+          const y = ((l.price - minP) / priceRange) * chartHeight;
           const fill = l.is_poc ? "#CCAA00" : (l.price >= val && l.price <= vah ? "#3b82f6" : "#2A2A2A");
           return (
             <g key={i}>
@@ -203,15 +204,19 @@ function VolumeProfileChart({ profile }: { profile: VolumeProfileResult }) {
               </text>
             </g>
           );
-        })}
+        });})()}
 
         {/* VAH/VAL lines */}
-        <line x1={0} y1={((vah - minP) / priceRange) * levels.length * 4}
-          x2={barWidth} y2={((vah - minP) / priceRange) * levels.length * 4}
+        {(() => {
+          const chartHeight = Math.min(levels.length * 4, 400);
+          return (<>
+        <line x1={0} y1={((vah - minP) / priceRange) * chartHeight}
+          x2={barWidth} y2={((vah - minP) / priceRange) * chartHeight}
           stroke="#EF5350" strokeDasharray="4 2" strokeWidth={1} />
-        <line x1={0} y1={((val - minP) / priceRange) * levels.length * 4}
-          x2={barWidth} y2={((val - minP) / priceRange) * levels.length * 4}
+        <line x1={0} y1={((val - minP) / priceRange) * chartHeight}
+          x2={barWidth} y2={((val - minP) / priceRange) * chartHeight}
           stroke="#26A69A" strokeDasharray="4 2" strokeWidth={1} />
+          </>);})()}
       </svg>
 
       <div style={{ fontSize: 11, color: "#666666", marginTop: 8 }}>

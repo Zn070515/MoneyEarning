@@ -77,9 +77,8 @@ fn parse_kline_line(line: &str) -> Option<KlineRow> {
 pub fn save_kline_to_db(guard: &DbGuard<'_>, code: &str, name: &str, exchange: &str, rows: &[KlineRow]) -> Result<(usize, usize), String> {
     use crate::db;
 
-    // Ensure stock exists
-    let ipo_date = rows.first().map(|r| r.trade_date.clone());
-    let stock_id = db::upsert_stock(guard, code, name, exchange, ipo_date.as_deref())
+    // Ensure stock exists — pass None for ipo_date to avoid overwriting real IPO date
+    let stock_id = db::upsert_stock(guard, code, name, exchange, None)
         .map_err(|e| e.to_string())?;
 
     let inserted = db::bulk_insert_daily(guard, stock_id, rows).map_err(|e| e.to_string())?;

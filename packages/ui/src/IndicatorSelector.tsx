@@ -96,7 +96,11 @@ export function IndicatorSelector({
 
       const indicatorData: IndicatorData[] = result.map((r, idx) => ({
         name: r.name,
-        values: new Float64Array(r.values.F64 ?? r.values.I32?.map(Number) ?? []),
+        values: new Float64Array(
+          Array.isArray(r.values.F64) ? r.values.F64
+            : Array.isArray(r.values.I32) ? r.values.I32.map(Number)
+            : []
+        ),
         style: toOutputStyle(r.style),
         color: COLORS[(activeIndicators.length + idx) % COLORS.length],
       }));

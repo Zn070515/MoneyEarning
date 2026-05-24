@@ -5,11 +5,6 @@ static LICENSE_CACHE: Mutex<Option<super::LicenseStatus>> = Mutex::new(None);
 
 const TRIAL_DAYS: i64 = 14;
 
-#[allow(dead_code)]
-pub fn clear_cache() {
-    *LICENSE_CACHE.lock().unwrap() = None;
-}
-
 pub fn generate_fingerprint() -> Result<String, Box<dyn std::error::Error>> {
     let hostname = hostname::get()?.to_string_lossy().to_string();
     let mac = get_mac_address()?;
@@ -146,7 +141,7 @@ fn check_expiry(expiry: &Option<String>) -> bool {
 fn today_str() -> String {
     let unix_days = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs() as i64
         / 86400;
     days_to_ymd(unix_days)
@@ -155,7 +150,7 @@ fn today_str() -> String {
 fn days_since(date: &str) -> i64 {
     let unix_days = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
+        .unwrap_or_default()
         .as_secs() as i64
         / 86400;
     unix_days - ymd_to_days(date)

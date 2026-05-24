@@ -98,7 +98,7 @@ export default function MEScriptPage() {
   const selectedStockCode = useAppStore((s) => s.selectedStockCode);
   const selectedStockName = useAppStore((s) => s.selectedStockName);
   const licenseTier = useAppStore((s) => s.licenseTier);
-  const isPro = licenseTier === "pro";
+  const isPro = licenseTier === "pro" || licenseTier === "trial";
 
   const [script, setScript] = useState(QUICK_TEMPLATES[0].script);
   const [testStockId, setTestStockId] = useState<number | null>(selectedStockId);
@@ -107,6 +107,7 @@ export default function MEScriptPage() {
   const [compileResult, setCompileResult] = useState<string | null>(null);
   const [rightTab, setRightTab] = useState<"templates" | "reference">("reference");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const charWidthRef = useRef(7.8); // fallback, measured on mount
 
   // Autocomplete state
   const [acVisible, setAcVisible] = useState(false);
@@ -127,6 +128,19 @@ export default function MEScriptPage() {
       setTestStockCode(selectedStockCode ?? "");
     }
   }, [selectedStockId, selectedStockCode]);
+
+  // Measure actual monospace character width for autocomplete positioning
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const computed = getComputedStyle(ta);
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (ctx) {
+      ctx.font = computed.font || `${computed.fontSize} ${computed.fontFamily}`;
+      charWidthRef.current = ctx.measureText("X").width;
+    }
+  }, []);
 
   const handleEditorKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (acVisible) {
@@ -163,27 +177,21 @@ export default function MEScriptPage() {
       const col = cursorPos - lineStart;
       const row = textBeforeCursor.split("\n").length;
       const lineH = 22;
-      setAcPos({ top: row * lineH + 12, left: col * 7.8 + 56 }); // approximate monospace char width
+      setAcPos({ top: (row - 1) * lineH + 12, left: col * charWidthRef.current + 56 });
     }
   };
 
   const acceptAutocomplete = (sig: string) => {
     const ta = textareaRef.current;
     if (!ta) return;
-    const cursorPos = ta.selectionStart ?? script.length;
-    // Find the word boundary before cursor
-    const textBefore = script.substring(0, cursorPos);
-    const wordStart = Math.max(
-      textBefore.lastIndexOf(" "),
-      textBefore.lastIndexOf("\n"),
-      textBefore.lastIndexOf("("),
-      textBefore.lastIndexOf(";"),
-      textBefore.lastIndexOf(":="),
-    ) + 1;
-    const newScript = script.substring(0, wordStart) + sig + script.substring(cursorPos);
+    const cursorPos = ta.selectionStart ?? 0;
+    const currentScript = ta.value;
+    const textBefore = currentScript.substring(0, cursorPos);
+    const m = textBefore.match(/([A-Za-z_]+)$/);
+    const wordStart = m ? cursorPos - m[1].length : cursorPos;
+    const newScript = currentScript.substring(0, wordStart) + sig + currentScript.substring(cursorPos);
     setScript(newScript);
     setAcVisible(false);
-    // Set cursor after the inserted text
     setTimeout(() => {
       const newCursor = wordStart + sig.length;
       ta.setSelectionRange(newCursor, newCursor);
@@ -257,9 +265,11 @@ export default function MEScriptPage() {
         setTestStockId(s.id);
         setCompileResult("已找到: " + s.code + " " + s.name);
       } else {
+        setTestStockId(null);
         setCompileResult("未找到股票: " + testStockCode);
       }
     } catch (e) {
+      setTestStockId(null);
       setCompileResult("查找失败: " + String(e));
     }
   }, [testStockCode]);

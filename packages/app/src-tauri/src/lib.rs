@@ -1,4 +1,5 @@
 use tauri::{Emitter, Manager};
+use rusqlite::params;
 use serde::{Serialize, Deserialize};
 
 mod db;
@@ -331,13 +332,18 @@ fn portfolio_correlation(app: tauri::AppHandle, stock_ids: Vec<i64>,
     let start = recent_start_date(days.unwrap_or(250));
     let price_map = db::fetch_close_prices(&db, &stock_ids, &start, &end)
         .map_err(|e| e.to_string())?;
-    let mut codes = Vec::new();
+    let mut codes: Vec<String> = Vec::new();
     let mut series: Vec<(String, Vec<f64>)> = Vec::new();
-    for &sid in &stock_ids {
-        if let Some(closes) = price_map.get(&sid) {
-            let code = format!("#{}", sid);
-            codes.push(code.clone());
-            series.push((code, closes.clone()));
+    {
+        let mut code_stmt = db.as_ref().unwrap().prepare("SELECT code FROM stocks WHERE id=?1")
+            .map_err(|e| e.to_string())?;
+        for &sid in &stock_ids {
+            if let Some(closes) = price_map.get(&sid) {
+                let code = code_stmt.query_row(params![sid], |r| r.get::<_, String>(0))
+                    .unwrap_or_else(|_| format!("#{}", sid));
+                codes.push(code.clone());
+                series.push((code, closes.clone()));
+            }
         }
     }
     let n = series.len();
@@ -380,17 +386,20 @@ fn portfolio_var(app: tauri::AppHandle, stock_ids: Vec<i64>,
     if price_map.is_empty() {
         return Err("无可用价格数据".into());
     }
-    // Build aligned return matrix
+    // Build aligned return matrix — skip length-mismatched stocks (don't inject zeros)
     let mut all_returns: Vec<Vec<f64>> = Vec::new();
+    let mut valid_indices: Vec<usize> = Vec::new();
+    let mut common_len: Option<usize> = None;
     for (i, &sid) in stock_ids.iter().enumerate() {
         if let Some(closes) = price_map.get(&sid) {
             if closes.len() < 2 { continue; }
             let returns: Vec<f64> = closes.windows(2).map(|w| w[1]/w[0] - 1.0).collect();
-            if all_returns.is_empty() {
-                all_returns = vec![vec![0.0; returns.len()]; stock_ids.len()];
+            if common_len.is_none() {
+                common_len = Some(returns.len());
             }
-            if returns.len() == all_returns[0].len() {
-                all_returns[i] = returns;
+            if Some(returns.len()) == common_len {
+                all_returns.push(returns);
+                valid_indices.push(i);
             }
         }
     }
@@ -398,22 +407,24 @@ fn portfolio_var(app: tauri::AppHandle, stock_ids: Vec<i64>,
         return Err("数据不足，无法计算VaR".into());
     }
     let n_days = all_returns[0].len();
-    let w: Vec<f64> = if weights.len() == stock_ids.len() && weights.iter().sum::<f64>() > 1e-9 {
-        let total: f64 = weights.iter().sum();
-        weights.iter().map(|x| x / total).collect()
-    } else {
-        let n = stock_ids.len() as f64;
-        vec![1.0 / n; stock_ids.len()]
-    };
-    // Portfolio daily returns
-    let mut portfolio_returns: Vec<f64> = (0..n_days).map(|t| {
-        (0..stock_ids.len()).map(|i| w[i] * all_returns[i][t]).sum()
+    let n_valid = all_returns.len();
+    let w: Vec<f64> = valid_indices.iter().map(|&i| {
+        if weights.len() == stock_ids.len() && weights.iter().sum::<f64>() > 1e-9 {
+            let total: f64 = weights.iter().sum();
+            weights[i] / total
+        } else {
+            1.0 / n_valid as f64
+        }
     }).collect();
-    portfolio_returns.sort_by(|a, b| a.partial_cmp(b).unwrap());
-    let var_95_idx = ((1.0 - 0.95) * n_days as f64) as usize;
-    let var_99_idx = ((1.0 - 0.99) * n_days as f64) as usize;
-    let var_95 = -portfolio_returns[var_95_idx.max(0)];
-    let var_99 = -portfolio_returns[var_99_idx.max(0)];
+    // Portfolio daily returns — only sum over valid stocks
+    let mut portfolio_returns: Vec<f64> = (0..n_days).map(|t| {
+        (0..n_valid).map(|i| w[i] * all_returns[i][t]).sum()
+    }).collect();
+    portfolio_returns.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
+    let var_95_idx = ((1.0 - 0.95) * n_days as f64).ceil() as usize;
+    let var_99_idx = ((1.0 - 0.99) * n_days as f64).ceil() as usize;
+    let var_95 = -portfolio_returns[var_95_idx.saturating_sub(1).min(n_days - 1)];
+    let var_99 = -portfolio_returns[var_99_idx.saturating_sub(1).min(n_days - 1)];
     let cvar_95 = if var_95_idx > 0 {
         -portfolio_returns[..var_95_idx].iter().sum::<f64>() / var_95_idx as f64
     } else { var_95 };
@@ -461,7 +472,7 @@ fn portfolio_concentration(app: tauri::AppHandle, stock_ids: Vec<i64>,
     let mut items: Vec<ConcentrationItem> = groups.into_iter().map(|(industry, (count, weight))| {
         ConcentrationItem { industry, stock_count: count, weight: (weight * 100.0 * 100.0).round() / 100.0 }
     }).collect();
-    items.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap());
+    items.sort_by(|a, b| b.weight.partial_cmp(&a.weight).unwrap_or(std::cmp::Ordering::Equal));
     Ok(items)
 }
 
@@ -706,7 +717,7 @@ async fn run_optimization(
             "genetic_algorithm" => wasm_backtest::OptimizerMethod::GeneticAlgorithm,
             _ => wasm_backtest::OptimizerMethod::GridSearch,
         },
-        max_iterations: max_iterations.unwrap_or(5000).min(10000),
+        max_iterations: max_iterations.unwrap_or(5000).max(1).min(10000),
         target_metric: match target_metric.as_str() {
             "total_return" => wasm_backtest::TargetMetric::TotalReturn,
             "calmar_ratio" => wasm_backtest::TargetMetric::CalmarRatio,

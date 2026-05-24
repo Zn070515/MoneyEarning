@@ -62,6 +62,7 @@ export default function BacktestPage() {
         endDate: "2099-12-31",
       });
       if (prices.length === 0) {
+        setRunning(false);
         setResult(null, "该股票无日线数据，请先导入数据"); return;
       }
       setProgress({ current: 30, total: 100 });
@@ -104,7 +105,7 @@ export default function BacktestPage() {
         maxDrawdownDuration: raw.max_drawdown_duration as number,
         annualVolatility: raw.annual_volatility as number,
       });
-    } catch (e) { setResult(null, String(e)); }
+    } catch (e) { setRunning(false); setResult(null, String(e)); }
   };
 
   return (
@@ -390,6 +391,8 @@ function EquityChart({
   const chartW = w - pad.left - pad.right;
   const chartH = h - pad.top - pad.bottom;
 
+  const gradId = `equityGrad-${Math.random().toString(36).slice(2, 8)}`;
+
   const values = equityCurve.map(([, v]) => v);
   const min = Math.min(...values, initialCapital * 0.9);
   const max = Math.max(...values, initialCapital * 1.1);
@@ -420,17 +423,18 @@ function EquityChart({
     return { buyDate: t.buy_date, sellDate: t.sell_date, pnl: t.pnl, buyIdx, sellIdx };
   }).filter((m) => m.buyIdx >= 0 && m.sellIdx >= 0);
 
-  // Estimate drawdown overlay
+  // Estimate drawdown overlay — track peak per point for correct Y positioning
   const ddPath = (() => {
     let peak = values[0];
+    const peaks: number[] = [];
     const ddValues = values.map((v) => {
       if (v > peak) peak = v;
-      return (v - peak) / peak;
+      peaks.push(peak);
+      return peak > 0 ? (v - peak) / peak : 0;
     });
-    // Map drawdown to bottom of chart as zero, negative as filled area
     const scaledDD = ddValues.map((dd, i) => {
       const x = toX(i);
-      const y = toY(initialCapital + dd * initialCapital);
+      const y = toY(peaks[i] * (1 + dd));
       return `${i === 0 ? "M" : "L"} ${x} ${y}`;
     }).join(" ");
     return scaledDD;
@@ -460,9 +464,9 @@ function EquityChart({
       <text x={w - pad.right + 4} y={initY + 3} fill="#CCAA00" fontSize={8} fontFamily="monospace" opacity={0.6}>初始</text>
 
       {/* Equity area fill */}
-      <path d={areaPath} fill="url(#equityGrad)" opacity={0.15} />
+      <path d={areaPath} fill="url(#${gradId})" opacity={0.15} />
       <defs>
-        <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={values[values.length - 1] >= initialCapital ? "#26A69A" : "#EF5350"} />
           <stop offset="100%" stopColor={values[values.length - 1] >= initialCapital ? "#26A69A" : "#EF5350"} stopOpacity={0} />
         </linearGradient>
@@ -475,7 +479,7 @@ function EquityChart({
       {markers.slice(-50).map((m, i) => {
         const isWin = m.pnl >= 0;
         return (
-          <g key={i}>
+          <g key={`${m.buyDate}-${m.sellDate}`}>
             {/* Buy marker */}
             <circle cx={toX(m.buyIdx)} cy={toY(values[m.buyIdx])} r={2.5}
               fill={isWin ? "#26A69A" : "#EF5350"} stroke="#0C0C0C" strokeWidth={0.5} />

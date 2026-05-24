@@ -52,6 +52,12 @@ export const useAppStore = create<AppState>()(
           });
           return s;
         } catch {
+          set({
+            licenseValid: false,
+            licenseExpiry: null,
+            licenseTier: "free",
+            trialDaysLeft: null,
+          });
           return {
             valid: false,
             tier: "free",

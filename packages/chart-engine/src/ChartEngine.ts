@@ -154,6 +154,7 @@ export class ChartEngine {
 
   resize(): void {
     const rect = this.canvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
     this.canvas.width = rect.width * this.dpr;
     this.canvas.height = rect.height * this.dpr;
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -166,6 +167,7 @@ export class ChartEngine {
     const ctx = this.ctx;
     const w = this.canvas.width / this.dpr;
     const h = this.canvas.height / this.dpr;
+    if (w <= 0 || h <= 0) return;
 
     ctx.fillStyle = "#1a1a2e";
     ctx.fillRect(0, 0, w, h);

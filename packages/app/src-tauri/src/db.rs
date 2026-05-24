@@ -4,11 +4,16 @@ use std::sync::{Mutex, MutexGuard};
 static DB: Mutex<Option<Connection>> = Mutex::new(None);
 
 pub fn set_db(conn: Connection) {
-    *DB.lock().unwrap() = Some(conn);
+    *DB.lock().unwrap_or_else(|e| e.into_inner()) = Some(conn);
 }
 
 pub fn get_db(_app: &tauri::AppHandle) -> Result<std::sync::MutexGuard<'static, Option<Connection>>> {
-    Ok(DB.lock().unwrap())
+    DB.lock().map_err(|_| {
+        rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_MISUSE),
+            Some("数据库锁中毒".to_string()),
+        )
+    })
 }
 
 #[inline]
@@ -201,8 +206,8 @@ fn seed_demo_data(conn: &Connection) -> Result<()> {
         while day <= today {
             let dow = day.format("%u").to_string().parse::<u8>().unwrap_or(0);
             if dow >= 1 && dow <= 5 {
-                // Simple pseudo-random walk using day index
-                let seed = (day - start).num_days() as f64 * 0.0174533;
+                // Pseudo-random walk: seed advances ~4 full cycles over 120 days, ensuring both up/down moves
+                let seed = (day - start).num_days() as f64 * 0.2;
                 let r = (seed.sin() * 0.7 + seed.cos() * 0.5 + (seed * 1.3).sin() * 0.4) as f64;
                 let drift = r * *daily_vol;
                 let open = price;
@@ -238,17 +243,6 @@ pub fn get_config(guard: &MutexGuard<'_, Option<Connection>>, key: &str) -> Resu
         Some(r) => Ok(Some(r?)),
         None => Ok(None),
     }
-}
-
-#[allow(dead_code)]
-pub fn set_config(guard: &MutexGuard<'_, Option<Connection>>, key: &str, value: &str) -> Result<()> {
-    let conn = conn(guard)?;
-    conn.execute(
-        "INSERT INTO app_config (key, value, updated_at) VALUES (?1, ?2, datetime('now','localtime'))
-         ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
-        params![key, value],
-    )?;
-    Ok(())
 }
 
 // ── License persistence ──
@@ -608,6 +602,8 @@ pub fn trade_pnl(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
     let mut wins = 0.0f64;
     let mut losses = 0.0f64;
     let mut total_pnl = 0.0f64;
+    let mut gross_profit = 0.0f64;
+    let mut gross_loss = 0.0f64;
     let mut max_win = 0.0f64;
     let mut max_loss = 0.0f64;
     let mut closed_pnl_count = 0.0f64;
@@ -640,8 +636,13 @@ pub fn trade_pnl(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
             }
             // remaining_sell > 0 means short selling (unmatched), skip for simplicity
             total_pnl += sell_pnl;
-            if sell_pnl > 0.0 { wins += 1.0; }
-            else if sell_pnl < 0.0 { losses += 1.0; }
+            if sell_pnl > 0.0 {
+                wins += 1.0;
+                gross_profit += sell_pnl;
+            } else if sell_pnl < 0.0 {
+                losses += 1.0;
+                gross_loss += sell_pnl;
+            }
             max_win = max_win.max(sell_pnl);
             max_loss = max_loss.min(sell_pnl);
             closed_pnl_count += 1.0;
@@ -649,16 +650,10 @@ pub fn trade_pnl(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
     }
 
     let win_rate = if closed_pnl_count > 0.0 { wins / closed_pnl_count * 100.0 } else { 0.0 };
-    let avg_win = if wins > 0.0 {
-        // approximate: total_win / wins where total_win ≈ portion of total_pnl from wins
-        total_pnl / wins.max(1.0)
-    } else { 0.0 };
-    let avg_loss = if losses > 0.0 {
-        total_pnl / losses.max(1.0)
-    } else { 0.0 };
-    let gross_loss = if losses > 0.0 { avg_loss * losses } else { 0.0 };
-    let profit_factor = if gross_loss != 0.0 && gross_loss.abs() > 1e-9 {
-        (avg_win * wins / gross_loss.abs()).abs()
+    let avg_win = if wins > 0.0 { gross_profit / wins } else { 0.0 };
+    let avg_loss = if losses > 0.0 { gross_loss / losses } else { 0.0 };
+    let profit_factor = if gross_loss.abs() > 1e-9 {
+        (gross_profit / gross_loss.abs()).abs()
     } else { 0.0 };
 
     Ok(super::PnLSummary {
@@ -743,10 +738,10 @@ pub fn fetch_close_prices(
 ) -> Result<std::collections::HashMap<i64, Vec<f64>>> {
     let conn = conn(guard)?;
     let mut result: std::collections::HashMap<i64, Vec<f64>> = std::collections::HashMap::new();
+    let mut stmt = conn.prepare(
+        "SELECT close FROM daily_prices WHERE stock_id=?1 AND trade_date>=?2 AND trade_date<=?3 ORDER BY trade_date"
+    )?;
     for &sid in stock_ids {
-        let mut stmt = conn.prepare(
-            "SELECT close FROM daily_prices WHERE stock_id=?1 AND trade_date>=?2 AND trade_date<=?3 ORDER BY trade_date"
-        )?;
         let closes: Vec<f64> = stmt.query_map(params![sid, start_date, end_date], |r| r.get(0))?
             .filter_map(|v| v.ok())
             .collect();
@@ -763,8 +758,8 @@ pub fn fetch_stock_industries(
 ) -> Result<std::collections::HashMap<i64, String>> {
     let conn = conn(guard)?;
     let mut result = std::collections::HashMap::new();
+    let mut stmt = conn.prepare("SELECT code, name, industry FROM stocks WHERE id=?1")?;
     for &sid in stock_ids {
-        let mut stmt = conn.prepare("SELECT code, name, industry FROM stocks WHERE id=?1")?;
         let row: Result<(String, String, Option<String>)> = stmt.query_row(params![sid], |r| {
             Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?, r.get::<_, Option<String>>(2)?))
         });

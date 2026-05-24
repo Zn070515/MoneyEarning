@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
   KLineChart,
@@ -116,6 +116,11 @@ export default function ChartPage() {
   });
   const [gridCells, setGridCells] = useState<GridCellData[]>([emptyCell(), emptyCell(), emptyCell(), emptyCell()]);
   const [activeCellIdx, setActiveCellIdx] = useState(0);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => { mountedRef.current = false; };
+  }, []);
 
   const loadGridCellData = useCallback(async (cellIdx: number, stockId: number, code: string, name: string) => {
     setLoading(true);
@@ -123,6 +128,7 @@ export default function ChartPage() {
       const data = await invoke<DailyPrice[]>("query_daily_prices", {
         stockId, startDate: "2020-01-01", endDate: "2099-12-31",
       });
+      if (!mountedRef.current) return;
       const ohlcv: OHLCV[] = data.map((d) => ({
         time: Math.floor(new Date(d.trade_date).getTime() / 1000),
         open: d.open, high: d.high, low: d.low, close: d.close,
@@ -137,9 +143,9 @@ export default function ChartPage() {
         setChartData(ohlcv);
       }
     } catch (e) {
-      console.error("Grid cell load failed:", e);
+      if (mountedRef.current) console.error("Grid cell load failed:", e);
     }
-    setLoading(false);
+    if (mountedRef.current) setLoading(false);
   }, [activeCellIdx]);
 
   // When stock is selected from sidebar, assign to active grid cell
@@ -177,6 +183,7 @@ export default function ChartPage() {
         startDate: "2020-01-01",
         endDate: "2099-12-31",
       });
+      if (!mountedRef.current) return;
       const ohlcv: OHLCV[] = data.map((d) => ({
         time: Math.floor(new Date(d.trade_date).getTime() / 1000),
         open: d.open,
@@ -190,18 +197,20 @@ export default function ChartPage() {
       setChartData(ohlcv);
       setDataStatus(`${ohlcv.length} 条K线数据`);
     } catch (e) {
-      console.error("Failed to load chart data:", e);
-      setDataStatus("加载失败");
+      if (mountedRef.current) {
+        console.error("Failed to load chart data:", e);
+        setDataStatus("加载失败");
+      }
     }
-    setLoading(false);
+    if (mountedRef.current) setLoading(false);
   }, []);
 
-  // Watchlist→chart linkage: auto-load when selectedStockId changes
+  // Watchlist→chart linkage: auto-load when selectedStockId changes (skip in grid mode)
   useEffect(() => {
-    if (selectedStockId != null) {
+    if (selectedStockId != null && !gridMode) {
       loadChartData(selectedStockId);
     }
-  }, [selectedStockId, loadChartData]);
+  }, [selectedStockId, loadChartData, gridMode]);
 
   const handleSelectWatchlist = (id: number) => {
     setSelectedWatchlistId(id);
@@ -329,7 +338,17 @@ export default function ChartPage() {
         onChartTypeChange={handleChartTypeChange}
         activeTool={drawingTool}
         onToolChange={setDrawingTool}
-        onClearDrawings={() => setDrawings([])}
+        onClearDrawings={() => {
+          if (gridMode) {
+            setGridCells((prev) => {
+              const next = [...prev];
+              next[activeCellIdx] = { ...next[activeCellIdx], drawings: [] };
+              return next;
+            });
+          } else {
+            setDrawings([]);
+          }
+        }}
         drawingCount={drawings.length}
         gridMode={gridMode}
         onToggleGridMode={toggleGridMode}
@@ -407,8 +426,10 @@ export default function ChartPage() {
                   key={idx}
                   onClick={() => {
                     setActiveCellIdx(idx);
-                    selectStock(cell.stockId!, cell.stockCode!, cell.stockName!);
-                    if (cell.data.length > 0) setChartData(cell.data);
+                    if (cell.stockId != null) {
+                      selectStock(cell.stockId, cell.stockCode ?? "", cell.stockName ?? "");
+                      if (cell.data.length > 0) setChartData(cell.data);
+                    }
                   }}
                   style={{
                     background: "#121212",

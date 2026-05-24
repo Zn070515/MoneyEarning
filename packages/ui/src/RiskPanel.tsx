@@ -37,10 +37,9 @@ export function RiskPanel({ stockId }: { stockId: number | null }) {
     setLoading(true);
     setStatus("计算中...");
     try {
-      const [r, p] = await Promise.all([
-        invoke<RiskOutput>("compute_risk", { stockId: sid }),
-        invoke<PatternResult[]>("scan_all_patterns", { stockId: sid }),
-      ]);
+      // Serialize to avoid concurrent DB lock contention on the sync Mutex
+      const r = await invoke<RiskOutput>("compute_risk", { stockId: sid });
+      const p = await invoke<PatternResult[]>("scan_all_patterns", { stockId: sid });
       setRisk(r);
       setPatterns(p);
       setStatus("");

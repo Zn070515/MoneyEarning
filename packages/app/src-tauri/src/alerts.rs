@@ -140,6 +140,7 @@ fn eval_ma_cross(prices: &[crate::DailyPrice], params: &serde_json::Value) -> Op
     let short: usize = params["short_period"].as_u64().unwrap_or(5) as usize;
     let long: usize = params["long_period"].as_u64().unwrap_or(20) as usize;
     let direction = params["direction"].as_str().unwrap_or("golden");
+    if short >= long { return None; } // short must be less than long
     if prices.len() < long + 1 { return None; }
     let closes: Vec<f64> = prices.iter().map(|p| p.close).collect();
     let ma_short_now = closes[closes.len() - short..].iter().sum::<f64>() / short as f64;
