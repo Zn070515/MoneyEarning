@@ -87,27 +87,6 @@ pub fn save_kline_to_db(guard: &DbGuard<'_>, code: &str, name: &str, exchange: &
     Ok((1, inserted))
 }
 
-/// Download and import a single stock's full history
-pub fn download_and_import(guard: &DbGuard<'_>, code: &str, name: Option<&str>) -> Result<ImportSummary, String> {
-    let market = if code.starts_with("60") || code.starts_with("68") { "SH" } else { "SZ" };
-    let rows = download_daily_kline(code, market)?;
-    if rows.is_empty() {
-        return Err("未获取到数据，请检查股票代码".into());
-    }
-    let name = name.unwrap_or(code);
-    let (_, inserted) = save_kline_to_db(guard, code, name, market, &rows)?;
-
-    let first = rows.first().map(|r| r.trade_date.clone());
-    let last = rows.last().map(|r| r.trade_date.clone());
-
-    Ok(ImportSummary {
-        code: code.to_string(),
-        name: name.to_string(),
-        rows_inserted: inserted,
-        date_range: first.zip(last),
-    })
-}
-
 /// Download minute-level K-line data (klt: 1=1min, 5=5min, 15=15min, 30=30min, 60=60min)
 pub fn download_minute_kline(code: &str, market: &str, klt: u32) -> Result<Vec<MinuteKlineRow>, String> {
     let secid = match market.to_uppercase().as_str() {
@@ -154,53 +133,6 @@ fn parse_minute_line(line: &str) -> Option<MinuteKlineRow> {
     })
 }
 
-/// Download and import minute data for a single stock
-pub fn download_minute_and_import(
-    guard: &DbGuard<'_>, code: &str, klt: u32,
-) -> Result<MinuteImportSummary, String> {
-    let market = if code.starts_with("60") || code.starts_with("68") { "SH" } else { "SZ" };
-    let rows = download_minute_kline(code, market, klt)?;
-    if rows.is_empty() {
-        return Err("未获取到分钟数据，请检查股票代码或交易日".into());
-    }
-
-    use crate::db;
-    // Ensure stock exists
-    let stock_id = db::upsert_stock(guard, code, code, market, None)
-        .map_err(|e| e.to_string())?;
-
-    // Convert to db MinuteRow
-    let db_rows: Vec<db::MinuteRow> = rows.iter().map(|r| db::MinuteRow {
-        trade_time: r.trade_time.clone(),
-        open: r.open, high: r.high, low: r.low, close: r.close,
-        volume: r.volume, amount: r.amount,
-    }).collect();
-
-    let inserted = db::bulk_insert_minute(guard, stock_id, &db_rows).map_err(|e| e.to_string())?;
-
-    let first = rows.first().map(|r| r.trade_time.clone());
-    let last = rows.last().map(|r| r.trade_time.clone());
-
-    Ok(MinuteImportSummary {
-        code: code.to_string(),
-        klt,
-        klt_label: klt_label(klt),
-        rows_inserted: inserted,
-        time_range: first.zip(last),
-    })
-}
-
-fn klt_label(klt: u32) -> String {
-    match klt {
-        1 => "1分钟".to_string(),
-        5 => "5分钟".to_string(),
-        15 => "15分钟".to_string(),
-        30 => "30分钟".to_string(),
-        60 => "60分钟".to_string(),
-        _ => format!("{}分钟", klt),
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MinuteImportSummary {
     pub code: String,
@@ -244,14 +176,6 @@ pub struct KlineRow {
     pub change_pct: f64,
     pub change_amount: f64,
     pub turnover: f64,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ImportSummary {
-    pub code: String,
-    pub name: String,
-    pub rows_inserted: usize,
-    pub date_range: Option<(String, String)>,
 }
 
 // ── JSON response types ──

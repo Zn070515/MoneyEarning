@@ -94,6 +94,43 @@ pub fn verify_signature(license_key: &str, fingerprint: &str) -> Result<LicenseP
     Ok(payload)
 }
 
+/// Sign a license payload with the RSA private key (feature-gated: `signing`).
+/// Returns a license key string: `base64(payload).base64(signature)`.
+#[cfg(feature = "signing")]
+pub fn sign_license(
+    fingerprint: &str,
+    tier: &str,
+    expiry: Option<&str>,
+    features: &[String],
+    private_key_pem: &str,
+) -> Result<String, String> {
+    use rsa::pkcs8::DecodePrivateKey;
+    use rsa::pkcs1v15::SigningKey;
+    use rsa::signature::{Signer, SignatureEncoding};
+
+    let private_key = rsa::RsaPrivateKey::from_pkcs8_pem(private_key_pem)
+        .map_err(|e| format!("无法加载私钥: {}", e))?;
+
+    let payload = LicensePayload {
+        fingerprint: fingerprint.to_string(),
+        tier: tier.to_string(),
+        expiry: expiry.map(|s| s.to_string()),
+        issued_at: chrono::Local::now().date_naive().to_string(),
+        features: features.to_vec(),
+    };
+
+    let payload_json = serde_json::to_string(&payload)
+        .map_err(|e| format!("序列化失败: {}", e))?;
+
+    let signing_key = SigningKey::<Sha256>::new_unprefixed(private_key);
+    let signature = signing_key.sign(payload_json.as_bytes());
+
+    let payload_b64 = BASE64.encode(payload_json.as_bytes());
+    let sig_b64 = BASE64.encode(signature.to_bytes());
+
+    Ok(format!("{}.{}", payload_b64, sig_b64))
+}
+
 /// Hash a machine fingerprint from hardware identifiers
 pub fn hash_fingerprint(mac: &str, hostname: &str, os_serial: &str) -> String {
     let mut hasher = Sha256::new();

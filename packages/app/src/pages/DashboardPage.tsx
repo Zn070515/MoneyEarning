@@ -1,13 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useAppStore } from "../stores/appStore";
-
-interface LicenseStatus {
-  valid: boolean;
-  tier: string;
-  expiry: string | null;
-  trial_days_left: number | null;
-}
+import { useAppStore, type LicenseStatus } from "../stores/appStore";
 
 interface DataSummary {
   total_stocks: number;
@@ -41,20 +34,19 @@ function tierLabel(t: string) {
 
 export default function DashboardPage() {
   const navigateTo = useAppStore((s) => s.navigate);
-  const setLicenseTier = useAppStore((s) => s.setLicenseTier);
+  const refreshLicense = useAppStore((s) => s.refreshLicense);
   const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [dataSummary, setDataSummary] = useState<DataSummary | null>(null);
   const [pnl, setPnl] = useState<PnLSummary | null>(null);
 
   const loadLicense = useCallback(async () => {
     try {
-      const s = await invoke<LicenseStatus>("check_license");
+      const s = await refreshLicense();
       setLicense(s);
-      setLicenseTier(s.tier);
     } catch {
       // license check unavailable
     }
-  }, [setLicenseTier]);
+  }, [refreshLicense]);
 
   const loadStats = useCallback(async () => {
     try {

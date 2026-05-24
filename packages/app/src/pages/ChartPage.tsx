@@ -18,7 +18,7 @@ import {
   DownloadPanel,
 } from "@me/ui";
 import { OHLCV, IndicatorData, ChartType, DrawingObject } from "@me/chart-engine";
-import { useAppStore } from "../stores/appStore";
+import { useAppStore, type LicenseStatus } from "../stores/appStore";
 import { useChartStore } from "../stores/chartStore";
 
 interface StockInfo {
@@ -43,13 +43,6 @@ interface DailyPrice {
   volume: number;
   amount: number;
   turnover: number | null;
-}
-
-interface LicenseStatus {
-  valid: boolean;
-  tier: string;
-  expiry: string | null;
-  trial_days_left: number | null;
 }
 
 type SidebarTab = "stocks" | "watchlist" | "indicators";
@@ -99,6 +92,7 @@ export default function ChartPage() {
   const [loading, setLoading] = useState(false);
   const [dataStatus, setDataStatus] = useState("");
   const [showImport, setShowImport] = useState(false);
+  const refreshLicense = useAppStore((s) => s.refreshLicense);
   const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [indicatorsData, setIndicatorsData] = useState<IndicatorData[]>([]);
@@ -106,12 +100,12 @@ export default function ChartPage() {
 
   const loadLicense = useCallback(async () => {
     try {
-      const s = await invoke<LicenseStatus>("check_license");
+      const s = await refreshLicense();
       setLicense(s);
     } catch (e) {
       console.error("License check:", e);
     }
-  }, []);
+  }, [refreshLicense]);
 
   useEffect(() => {
     loadLicense();

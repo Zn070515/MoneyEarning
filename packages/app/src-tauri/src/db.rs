@@ -1,5 +1,5 @@
 use rusqlite::{Connection, Result, params};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 
 static DB: Mutex<Option<Connection>> = Mutex::new(None);
 
@@ -11,8 +11,24 @@ pub fn get_db(_app: &tauri::AppHandle) -> Result<std::sync::MutexGuard<'static, 
     Ok(DB.lock().unwrap())
 }
 
+#[inline]
+fn conn<'a>(guard: &'a MutexGuard<'a, Option<Connection>>) -> Result<&'a Connection> {
+    guard
+        .as_ref()
+        .ok_or_else(|| rusqlite::Error::SqliteFailure(
+            rusqlite::ffi::Error::new(rusqlite::ffi::SQLITE_MISUSE),
+            Some("数据库未初始化".to_string()),
+        ))
+}
+
 pub fn run_migrations(conn: &Connection) -> Result<()> {
     conn.execute_batch("
+        PRAGMA journal_mode=WAL;
+        PRAGMA busy_timeout=5000;
+        PRAGMA synchronous=NORMAL;
+        PRAGMA cache_size=-8000;
+        PRAGMA foreign_keys=ON;
+
         CREATE TABLE IF NOT EXISTS stocks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             code TEXT NOT NULL UNIQUE,
@@ -88,8 +104,29 @@ pub fn run_migrations(conn: &Connection) -> Result<()> {
         );
         CREATE INDEX IF NOT EXISTS idx_minute_stock ON minute_prices(stock_id);
         CREATE INDEX IF NOT EXISTS idx_minute_time ON minute_prices(trade_time);
+
+        CREATE TABLE IF NOT EXISTS app_config (
+            key TEXT PRIMARY KEY,
+            value TEXT,
+            updated_at TEXT DEFAULT (datetime('now','localtime'))
+        );
+
+        CREATE TABLE IF NOT EXISTS license_info (
+            id INTEGER PRIMARY KEY,
+            license_key TEXT NOT NULL,
+            tier TEXT NOT NULL,
+            expiry TEXT,
+            activated_at TEXT NOT NULL,
+            fingerprint TEXT NOT NULL,
+            signature TEXT NOT NULL
+        );
     ")?;
     add_column_if_missing(conn, "trades", "emotion_tag", "emotion_tag TEXT")?;
+    // 首次运行记录安装日期（仅写入一次）
+    conn.execute(
+        "INSERT OR IGNORE INTO app_config (key, value, updated_at) VALUES ('install_date', date('now'), datetime('now','localtime'))",
+        [],
+    )?;
     Ok(())
 }
 
@@ -111,9 +148,85 @@ fn column_exists(conn: &Connection, table: &str, column: &str) -> Result<bool> {
     Ok(false)
 }
 
+// ── Config helpers ──
+
+pub fn get_config(guard: &MutexGuard<'_, Option<Connection>>, key: &str) -> Result<Option<String>> {
+    let conn = conn(guard)?;
+    let mut stmt = conn.prepare("SELECT value FROM app_config WHERE key = ?1")?;
+    let mut rows = stmt.query_map(params![key], |row| row.get(0))?;
+    match rows.next() {
+        Some(r) => Ok(Some(r?)),
+        None => Ok(None),
+    }
+}
+
+#[allow(dead_code)]
+pub fn set_config(guard: &MutexGuard<'_, Option<Connection>>, key: &str, value: &str) -> Result<()> {
+    let conn = conn(guard)?;
+    conn.execute(
+        "INSERT INTO app_config (key, value, updated_at) VALUES (?1, ?2, datetime('now','localtime'))
+         ON CONFLICT(key) DO UPDATE SET value=excluded.value, updated_at=excluded.updated_at",
+        params![key, value],
+    )?;
+    Ok(())
+}
+
+// ── License persistence ──
+
+#[derive(Debug, Clone)]
+#[allow(dead_code)]
+pub struct LicenseRecord {
+    pub license_key: String,
+    pub tier: String,
+    pub expiry: Option<String>,
+    pub activated_at: String,
+    pub fingerprint: String,
+    pub signature: String,
+}
+
+pub fn save_license(guard: &MutexGuard<'_, Option<Connection>>,
+                    license_key: &str, tier: &str, expiry: Option<&str>,
+                    fingerprint: &str, signature: &str) -> Result<()> {
+    let conn = conn(guard)?;
+    conn.execute("DELETE FROM license_info", [])?;
+    conn.execute(
+        "INSERT INTO license_info (license_key, tier, expiry, activated_at, fingerprint, signature)
+         VALUES (?1, ?2, ?3, datetime('now','localtime'), ?4, ?5)",
+        params![license_key, tier, expiry, fingerprint, signature],
+    )?;
+    Ok(())
+}
+
+pub fn load_license(guard: &MutexGuard<'_, Option<Connection>>) -> Result<Option<LicenseRecord>> {
+    let conn = conn(guard)?;
+    let mut stmt = conn.prepare(
+        "SELECT license_key, tier, expiry, activated_at, fingerprint, signature FROM license_info LIMIT 1"
+    )?;
+    let mut rows = stmt.query_map([], |row| {
+        Ok(LicenseRecord {
+            license_key: row.get(0)?,
+            tier: row.get(1)?,
+            expiry: row.get(2)?,
+            activated_at: row.get(3)?,
+            fingerprint: row.get(4)?,
+            signature: row.get(5)?,
+        })
+    })?;
+    match rows.next() {
+        Some(r) => Ok(Some(r?)),
+        None => Ok(None),
+    }
+}
+
+pub fn clear_license(guard: &MutexGuard<'_, Option<Connection>>) -> Result<()> {
+    let conn = conn(guard)?;
+    conn.execute("DELETE FROM license_info", [])?;
+    Ok(())
+}
+
 pub fn query_daily(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                    stock_id: i64, start: &str, end: &str) -> Result<Vec<super::DailyPrice>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let mut stmt = conn.prepare(
         "SELECT id, stock_id, trade_date, open, high, low, close, volume, amount, turnover
          FROM daily_prices WHERE stock_id = ?1 AND trade_date >= ?2 AND trade_date <= ?3
@@ -130,7 +243,7 @@ pub fn query_daily(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 }
 
 pub fn list_stocks(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> Result<Vec<super::StockInfo>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let mut stmt = conn.prepare(
         "SELECT s.id, s.code, s.name, s.exchange, s.ipo_date,
                 COUNT(dp.id), MIN(dp.trade_date), MAX(dp.trade_date)
@@ -149,7 +262,7 @@ pub fn list_stocks(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> Res
 
 pub fn find_stock(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                   code: &str) -> Result<Option<super::StockInfo>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let mut stmt = conn.prepare(
         "SELECT s.id, s.code, s.name, s.exchange, s.ipo_date,
                 COUNT(dp.id), MIN(dp.trade_date), MAX(dp.trade_date)
@@ -170,7 +283,7 @@ pub fn find_stock(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 }
 
 pub fn summary(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> Result<super::DataSummary> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let total_stocks: i64 = conn.query_row("SELECT COUNT(*) FROM stocks", [], |r| r.get(0))?;
     let total_rows: i64 = conn.query_row("SELECT COUNT(*) FROM daily_prices", [], |r| r.get(0))?;
     let db_size: i64 = conn.query_row("PRAGMA page_count", [], |r| r.get::<_,i64>(0))?;
@@ -185,7 +298,7 @@ pub fn summary(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> Result<
 // ── Watchlist CRUD ──
 
 pub fn watchlist_list(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> Result<Vec<super::Watchlist>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let mut stmt = conn.prepare(
         "SELECT w.id, w.name, w.description, w.created_at,
                 COUNT(wi.id) as item_count
@@ -203,7 +316,7 @@ pub fn watchlist_list(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> 
 
 pub fn watchlist_create(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                          name: &str, description: &str) -> Result<i64> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute(
         "INSERT INTO watchlists (name, description) VALUES (?1, ?2)",
         params![name, description],
@@ -213,14 +326,14 @@ pub fn watchlist_create(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 
 pub fn watchlist_delete(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                          id: i64) -> Result<()> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute("DELETE FROM watchlists WHERE id = ?1", params![id])?;
     Ok(())
 }
 
 pub fn watchlist_items(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                         watchlist_id: i64) -> Result<Vec<super::StockInfo>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let mut stmt = conn.prepare(
         "SELECT s.id, s.code, s.name, s.exchange, s.ipo_date,
                 COUNT(dp.id), MIN(dp.trade_date), MAX(dp.trade_date)
@@ -242,7 +355,7 @@ pub fn watchlist_items(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 
 pub fn watchlist_add_item(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                            watchlist_id: i64, stock_id: i64) -> Result<()> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute(
         "INSERT OR IGNORE INTO watchlist_items (watchlist_id, stock_id) VALUES (?1, ?2)",
         params![watchlist_id, stock_id],
@@ -252,7 +365,7 @@ pub fn watchlist_add_item(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 
 pub fn watchlist_remove_item(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                               watchlist_id: i64, stock_id: i64) -> Result<()> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute(
         "DELETE FROM watchlist_items WHERE watchlist_id = ?1 AND stock_id = ?2",
         params![watchlist_id, stock_id],
@@ -265,7 +378,7 @@ pub fn watchlist_remove_item(guard: &std::sync::MutexGuard<'_, Option<Connection
 pub fn upsert_stock(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                     code: &str, name: &str, exchange: &str, ipo_date: Option<&str>)
                     -> Result<i64> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute(
         "INSERT INTO stocks (code, name, exchange, ipo_date)
          VALUES (?1, ?2, ?3, ?4)
@@ -278,22 +391,26 @@ pub fn upsert_stock(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 pub fn bulk_insert_daily(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                          stock_id: i64, rows: &[super::download::KlineRow])
                          -> Result<usize> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
+    conn.execute("BEGIN", [])?;
     let mut count = 0;
     for row in rows {
-        let result = conn.execute(
+        match conn.execute(
             "INSERT OR IGNORE INTO daily_prices (stock_id, trade_date, open, high, low, close, volume, amount, turnover)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![stock_id, row.trade_date, row.open, row.high, row.low, row.close, row.volume, row.amount, row.turnover],
-        );
-        if let Ok(c) = result { count += c; }
+        ) {
+            Ok(c) => count += c,
+            Err(e) => { let _ = conn.execute("ROLLBACK", []); return Err(e); }
+        }
     }
+    conn.execute("COMMIT", [])?;
     Ok(count)
 }
 
 pub fn delete_stock(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                     id: i64) -> Result<()> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute("DELETE FROM stocks WHERE id = ?1", params![id])?;
     Ok(())
 }
@@ -301,7 +418,7 @@ pub fn delete_stock(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 // ── Strategies ──
 
 pub fn strategy_list(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> Result<Vec<super::Strategy>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let mut stmt = conn.prepare(
         "SELECT id, name, script, params, template_type, created_at
          FROM strategies ORDER BY name"
@@ -318,7 +435,7 @@ pub fn strategy_list(guard: &std::sync::MutexGuard<'_, Option<Connection>>) -> R
 pub fn strategy_create(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                         name: &str, script: Option<&str>, params: Option<&str>,
                         template_type: Option<&str>) -> Result<i64> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute(
         "INSERT INTO strategies (name, script, params, template_type) VALUES (?1, ?2, ?3, ?4)",
         params![name, script, params, template_type],
@@ -329,7 +446,7 @@ pub fn strategy_create(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 pub fn strategy_update(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                         id: i64, name: &str, script: Option<&str>,
                         params: Option<&str>, template_type: Option<&str>) -> Result<()> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute(
         "UPDATE strategies SET name=?2, script=?3, params=?4, template_type=?5 WHERE id=?1",
         params![id, name, script, params, template_type],
@@ -339,7 +456,7 @@ pub fn strategy_update(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 
 pub fn strategy_delete(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                         id: i64) -> Result<()> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute("DELETE FROM strategies WHERE id = ?1", params![id])?;
     Ok(())
 }
@@ -351,7 +468,7 @@ pub fn trade_create(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                     price: f64, quantity: f64, commission: f64, stamp_tax: f64,
                     strategy_name: Option<&str>, emotion_tag: Option<&str>,
                     notes: Option<&str>) -> Result<i64> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     conn.execute(
         "INSERT INTO trades (stock_id, trade_date, direction, price, quantity, commission, stamp_tax, strategy_name, emotion_tag, notes)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
@@ -362,7 +479,7 @@ pub fn trade_create(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
 
 pub fn trade_list(guard: &std::sync::MutexGuard<'_, Option<Connection>>,
                    stock_id: Option<i64>) -> Result<Vec<super::Trade>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let sql = if stock_id.map_or(false, |id| id > 0) {
         "SELECT t.id, t.stock_id, s.code, s.name, t.trade_date, t.direction,
                 t.price, t.quantity, t.commission, t.stamp_tax,
@@ -484,7 +601,7 @@ pub fn query_minute_prices(
     guard: &std::sync::MutexGuard<'_, Option<Connection>>,
     stock_id: i64, start: &str, end: &str,
 ) -> Result<Vec<MinutePrice>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
     let mut stmt = conn.prepare(
         "SELECT id, stock_id, trade_time, open, high, low, close, volume, amount
          FROM minute_prices WHERE stock_id = ?1 AND trade_time >= ?2 AND trade_time <= ?3
@@ -510,16 +627,20 @@ pub fn bulk_insert_minute(
     guard: &std::sync::MutexGuard<'_, Option<Connection>>,
     stock_id: i64, rows: &[MinuteRow],
 ) -> Result<usize> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = conn(guard)?;
+    conn.execute("BEGIN", [])?;
     let mut count = 0;
     for row in rows {
-        let result = conn.execute(
+        match conn.execute(
             "INSERT OR IGNORE INTO minute_prices (stock_id, trade_time, open, high, low, close, volume, amount)
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
             params![stock_id, row.trade_time, row.open, row.high, row.low, row.close, row.volume, row.amount],
-        );
-        if let Ok(c) = result { count += c; }
+        ) {
+            Ok(c) => count += c,
+            Err(e) => { let _ = conn.execute("ROLLBACK", []); return Err(e); }
+        }
     }
+    conn.execute("COMMIT", [])?;
     Ok(count)
 }
 

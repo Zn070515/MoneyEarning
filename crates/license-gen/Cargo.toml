@@ -1,0 +1,12 @@
+[package]
+name = "license-gen"
+version = "0.1.0"
+edition = "2021"
+description = "QuantVault license key generator — signs licenses with RSA-4096"
+
+[[bin]]
+name = "license-gen"
+path = "src/main.rs"
+
+[dependencies]
+wasm-license = { path = "../wasm-license", features = ["signing"] }

@@ -1,4 +1,4 @@
-use tauri::Manager;
+use tauri::{Emitter, Manager};
 use serde::{Serialize, Deserialize};
 
 mod db;
@@ -14,13 +14,31 @@ fn get_machine_fingerprint() -> Result<String, String> {
 }
 
 #[tauri::command]
-fn activate_license(license_key: String, fingerprint: String) -> Result<LicenseInfo, String> {
-    license::activate(&license_key, &fingerprint).map_err(|e| e.to_string())
+fn activate_license(app: tauri::AppHandle, license_key: String, fingerprint: String) -> Result<LicenseInfo, String> {
+    license::activate(&app, &license_key, &fingerprint).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn check_license() -> Result<LicenseStatus, String> {
-    license::check().map_err(|e| e.to_string())
+fn check_license(app: tauri::AppHandle) -> Result<LicenseStatus, String> {
+    license::check_with_db(&app)
+}
+
+fn require_pro_tier(app: &tauri::AppHandle) -> Result<(), String> {
+    let ls = license::check_with_db(app)?;
+    if !ls.valid || (ls.tier != "pro" && ls.tier != "trial") {
+        return Err(format!(
+            "此功能需要PRO授权。当前授权: {}（{}天试用剩余）",
+            if ls.tier == "trial" { "试用版" } else { "免费版" },
+            ls.trial_days_left.unwrap_or(0)
+        ));
+    }
+    Ok(())
+}
+
+fn recent_start_date(days_back: i64) -> String {
+    let now = chrono::Local::now().date_naive();
+    let past = now - chrono::Duration::days(days_back);
+    past.format("%Y-%m-%d").to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -244,9 +262,12 @@ struct StrategyTemplate {
 }
 
 #[tauri::command]
-fn list_strategy_templates() -> Vec<StrategyTemplate> {
+fn list_strategy_templates(app: tauri::AppHandle) -> Vec<StrategyTemplate> {
+    let ls = license::check_with_db(&app).unwrap_or(license::check_cached());
+    let is_paid = ls.valid && (ls.tier == "pro" || ls.tier == "trial");
     wasm_backtest::list_strategies()
         .iter()
+        .filter(|m| is_paid || m.is_free)
         .map(|m| StrategyTemplate {
             name: m.name.to_string(),
             name_cn: m.name_cn.to_string(),
@@ -335,36 +356,35 @@ impl From<BtConfig> for wasm_backtest::BacktestConfig {
 }
 
 #[tauri::command]
-fn run_backtest(data: Vec<IndicatorInput>, template: String,
+async fn run_backtest(app: tauri::AppHandle, data: Vec<IndicatorInput>, template: String,
                 params: std::collections::HashMap<String, f64>,
                 config: Option<BtConfig>)
                 -> Result<wasm_core::BtResult, String> {
-    let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
-        open: d.open, high: d.high, low: d.low, close: d.close,
-        volume: d.volume, amount: d.amount, turnover: d.turnover,
-        trade_date: d.time.to_string(),
-    }).collect();
-    let df = wasm_core::DataFrame::new(&ohlcv);
+    require_pro_tier(&app)?;
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
-    Ok(wasm_backtest::run_with_template(&df, &template, &params, &bt_config))
+    tauri::async_runtime::spawn_blocking(move || {
+        let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
+            open: d.open, high: d.high, low: d.low, close: d.close,
+            volume: d.volume, amount: d.amount, turnover: d.turnover,
+            trade_date: d.time.to_string(),
+        }).collect();
+        let df = wasm_core::DataFrame::new(&ohlcv);
+        Ok(wasm_backtest::run_with_template(&df, &template, &params, &bt_config))
+    }).await.map_err(|e| format!("{}", e))?
 }
 
 // ── Walk-Forward ──
 
 #[tauri::command]
-fn run_walk_forward(
+async fn run_walk_forward(
+    app: tauri::AppHandle,
     data: Vec<IndicatorInput>, template: String,
     param_grid: std::collections::HashMap<String, Vec<f64>>,
     in_sample: usize, out_sample: usize, step_size: usize,
     anchor_mode: String,
     config: Option<BtConfig>,
 ) -> Result<wasm_backtest::WalkForwardResult, String> {
-    let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
-        open: d.open, high: d.high, low: d.low, close: d.close,
-        volume: d.volume, amount: d.amount, turnover: d.turnover,
-        trade_date: d.time.to_string(),
-    }).collect();
-    let df = wasm_core::DataFrame::new(&ohlcv);
+    require_pro_tier(&app)?;
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
     let wf_config = wasm_backtest::WalkForwardConfig {
         in_sample_size: in_sample.max(1),
@@ -375,27 +395,30 @@ fn run_walk_forward(
         },
         step_size: step_size.max(1),
     };
-    Ok(wasm_backtest::walk_forward_analysis(&df, &template, &param_grid, &wf_config, &bt_config))
+    tauri::async_runtime::spawn_blocking(move || {
+        let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
+            open: d.open, high: d.high, low: d.low, close: d.close,
+            volume: d.volume, amount: d.amount, turnover: d.turnover,
+            trade_date: d.time.to_string(),
+        }).collect();
+        let df = wasm_core::DataFrame::new(&ohlcv);
+        Ok(wasm_backtest::walk_forward_analysis(&df, &template, &param_grid, &wf_config, &bt_config))
+    }).await.map_err(|e| format!("{}", e))?
 }
 
 // ── Monte Carlo ──
 
 #[tauri::command]
-fn run_monte_carlo(
+async fn run_monte_carlo(
+    app: tauri::AppHandle,
     data: Vec<IndicatorInput>, template: String,
     params: std::collections::HashMap<String, f64>,
     num_simulations: usize, method: String,
     confidence_level: Option<f64>,
     config: Option<BtConfig>,
 ) -> Result<wasm_backtest::MonteCarloResult, String> {
-    let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
-        open: d.open, high: d.high, low: d.low, close: d.close,
-        volume: d.volume, amount: d.amount, turnover: d.turnover,
-        trade_date: d.time.to_string(),
-    }).collect();
-    let df = wasm_core::DataFrame::new(&ohlcv);
+    require_pro_tier(&app)?;
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
-    let signals = wasm_backtest::generate_signals(&df, &template, &params);
     let mc_config = wasm_backtest::MonteCarloConfig {
         num_simulations: num_simulations.max(100).min(5000),
         method: match method.as_str() {
@@ -405,35 +428,37 @@ fn run_monte_carlo(
         },
         confidence_level: confidence_level.unwrap_or(0.95),
     };
-    Ok(wasm_backtest::monte_carlo_simulate(&df, &signals, &bt_config, &mc_config))
+    tauri::async_runtime::spawn_blocking(move || {
+        let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
+            open: d.open, high: d.high, low: d.low, close: d.close,
+            volume: d.volume, amount: d.amount, turnover: d.turnover,
+            trade_date: d.time.to_string(),
+        }).collect();
+        let df = wasm_core::DataFrame::new(&ohlcv);
+        let signals = wasm_backtest::generate_signals(&df, &template, &params);
+        Ok(wasm_backtest::monte_carlo_simulate(&df, &signals, &bt_config, &mc_config))
+    }).await.map_err(|e| format!("{}", e))?
 }
 
 // ── Parameter Optimization ──
 
 #[tauri::command]
-fn run_optimization(
+async fn run_optimization(
+    app: tauri::AppHandle,
     data: Vec<IndicatorInput>, template: String,
     param_grid: std::collections::HashMap<String, Vec<f64>>,
     method: String, target_metric: String,
     max_iterations: Option<usize>,
     config: Option<BtConfig>,
 ) -> Result<wasm_backtest::OptimizerResult, String> {
-    let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
-        open: d.open, high: d.high, low: d.low, close: d.close,
-        volume: d.volume, amount: d.amount, turnover: d.turnover,
-        trade_date: d.time.to_string(),
-    }).collect();
-    let df = wasm_core::DataFrame::new(&ohlcv);
+    require_pro_tier(&app)?;
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
-
-    // Convert Vec<f64> grid to (min, max, step) tuples
     let grid: std::collections::HashMap<String, (f64, f64, f64)> = param_grid.iter().map(|(k, v)| {
         let min = v.first().copied().unwrap_or(0.0);
         let max = v.get(1).copied().unwrap_or(100.0);
         let step = v.get(2).copied().unwrap_or(1.0);
         (k.clone(), (min, max, step.max(0.001)))
     }).collect();
-
     let opt_config = wasm_backtest::OptimizerConfig {
         method: match method.as_str() {
             "genetic_algorithm" => wasm_backtest::OptimizerMethod::GeneticAlgorithm,
@@ -448,44 +473,67 @@ fn run_optimization(
         },
         early_stop_rounds: 50,
     };
-    Ok(wasm_backtest::optimize(&df, &template, &grid, &opt_config, &bt_config))
+    tauri::async_runtime::spawn_blocking(move || {
+        let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
+            open: d.open, high: d.high, low: d.low, close: d.close,
+            volume: d.volume, amount: d.amount, turnover: d.turnover,
+            trade_date: d.time.to_string(),
+        }).collect();
+        let df = wasm_core::DataFrame::new(&ohlcv);
+        Ok(wasm_backtest::optimize(&df, &template, &grid, &opt_config, &bt_config))
+    }).await.map_err(|e| format!("{}", e))?
 }
 
 // ── Scanner ──
 
 #[tauri::command]
-fn run_scanner(stock_ids: Vec<i64>, expr: wasm_core::ScanExpr,
+async fn run_scanner(stock_ids: Vec<i64>, expr: wasm_core::ScanExpr,
                app: tauri::AppHandle) -> Result<Vec<ScanResultItem>, String> {
-    let db = db::get_db(&app).map_err(|e| e.to_string())?;
-
-    // For each stock, load daily data, build DataFrame, evaluate
-    let mut results = Vec::new();
-    for (idx, stock_id) in stock_ids.iter().enumerate() {
-        let prices = db::query_daily(&db, *stock_id, "2020-01-01", "2099-12-31")
-            .map_err(|e| e.to_string())?;
-
-        if prices.is_empty() { continue; }
-
-        let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
-            open: dp.open, high: dp.high, low: dp.low, close: dp.close,
-            volume: dp.volume, amount: Some(dp.amount), turnover: dp.turnover,
-            trade_date: dp.trade_date.clone(),
-        }).collect();
-
-        let df = wasm_core::DataFrame::new(&ohlcv);
-        let matches = wasm_scanner::scan(&[(idx, df)], &expr);
-
-        for m in &matches {
-            results.push(ScanResultItem {
-                stock_id: *stock_id,
-                score: m.score,
-                signals: m.signals.clone(),
-            });
+    require_pro_tier(&app)?;
+    let pairs = {
+        let db = db::get_db(&app).map_err(|e| e.to_string())?;
+        let mut pairs: Vec<(i64, wasm_core::DataFrame)> = Vec::new();
+        for stock_id in &stock_ids {
+            let prices = db::query_daily(&db, *stock_id, &recent_start_date(365), "2099-12-31")
+                .map_err(|e| e.to_string())?;
+            if prices.is_empty() { continue; }
+            let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
+                open: dp.open, high: dp.high, low: dp.low, close: dp.close,
+                volume: dp.volume, amount: Some(dp.amount), turnover: dp.turnover,
+                trade_date: dp.trade_date.clone(),
+            }).collect();
+            pairs.push((*stock_id, wasm_core::DataFrame::new(&ohlcv)));
         }
-    }
+        pairs
+    };
 
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
-    Ok(results)
+    let total = pairs.len();
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    let progress = AtomicUsize::new(0);
+    let app_handle = app.clone();
+
+    tauri::async_runtime::spawn_blocking(move || {
+        use rayon::prelude::*;
+        let mut results: Vec<ScanResultItem> = pairs.par_iter()
+            .flat_map(|(stock_id, df)| {
+                let matches = wasm_scanner::scan(&[(0, df.clone())], &expr);
+                let done = progress.fetch_add(1, Ordering::Relaxed) + 1;
+                if done % 10 == 0 || done == total {
+                    let _ = app_handle.emit("scanner:progress", serde_json::json!({
+                        "current": done,
+                        "total": total,
+                    }));
+                }
+                matches.iter().map(|m| ScanResultItem {
+                    stock_id: *stock_id,
+                    score: m.score,
+                    signals: m.signals.clone(),
+                }).collect::<Vec<_>>()
+            })
+            .collect();
+        results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+        results
+    }).await.map_err(|e| format!("{}", e))
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -504,7 +552,7 @@ fn load_returns_batch(
 ) -> Result<Vec<Vec<f64>>, String> {
     let mut all_returns: Vec<Vec<f64>> = Vec::new();
     for stock_id in stock_ids {
-        let prices = db::query_daily(guard, *stock_id, "2020-01-01", "2099-12-31")
+        let prices = db::query_daily(guard, *stock_id, &recent_start_date(365), "2099-12-31")
             .map_err(|e| e.to_string())?;
         if prices.len() < 20 { continue; }
         let returns: Vec<f64> = prices.windows(2)
@@ -516,67 +564,78 @@ fn load_returns_batch(
 }
 
 #[tauri::command]
-fn run_caps_search(
+async fn run_caps_search(
     stock_ids: Vec<i64>,
     app: tauri::AppHandle,
 ) -> Result<Vec<wasm_scanner::CapsResult>, String> {
-    let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let returns = load_returns_batch(&db, &stock_ids)?;
+    require_pro_tier(&app)?;
+    let returns = {
+        let db = db::get_db(&app).map_err(|e| e.to_string())?;
+        load_returns_batch(&db, &stock_ids)?
+    };
     if returns.is_empty() {
         return Err("No stocks with sufficient data".into());
     }
 
-    let pool_name = format!("Pool_{}_stocks", returns.len());
-    let pools = vec![(pool_name, returns)];
-    let strategies = vec![
-        "risk_parity".to_string(),
-        "min_variance".to_string(),
-        "hierarchical_rp".to_string(),
-    ];
-    let params = std::collections::HashMap::new();
-
-    Ok(wasm_scanner::run_caps(&pools, &strategies, &params))
+    tauri::async_runtime::spawn_blocking(move || {
+        let pool_name = format!("Pool_{}_stocks", returns.len());
+        let pools = vec![(pool_name, returns)];
+        let strategies = vec![
+            "risk_parity".to_string(),
+            "min_variance".to_string(),
+            "hierarchical_rp".to_string(),
+        ];
+        let params = std::collections::HashMap::new();
+        Ok(wasm_scanner::run_caps(&pools, &strategies, &params))
+    }).await.map_err(|e| format!("{}", e))?
 }
 
 #[tauri::command]
-fn run_cgpc_search(
+async fn run_cgpc_search(
     stock_ids: Vec<i64>,
     n_pools: usize,
     pool_size: usize,
     app: tauri::AppHandle,
 ) -> Result<Vec<wasm_scanner::CgpcPool>, String> {
-    let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let returns = load_returns_batch(&db, &stock_ids)?;
+    require_pro_tier(&app)?;
+    let returns = {
+        let db = db::get_db(&app).map_err(|e| e.to_string())?;
+        load_returns_batch(&db, &stock_ids)?
+    };
     if returns.len() < 3 {
         return Err("Need at least 3 stocks with sufficient data".into());
     }
 
-    Ok(wasm_scanner::build_diverse_pools(&returns, n_pools, pool_size))
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(wasm_scanner::build_diverse_pools(&returns, n_pools, pool_size))
+    }).await.map_err(|e| format!("{}", e))?
 }
 
 #[tauri::command]
-fn run_mars_search(
+async fn run_mars_search(
     stock_ids: Vec<i64>,
     n_regimes: usize,
     app: tauri::AppHandle,
 ) -> Result<wasm_scanner::MarsResult, String> {
-    let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let returns = load_returns_batch(&db, &stock_ids)?;
-    if returns.len() < 5 {
-        return Err("Need at least 5 stocks with sufficient data".into());
-    }
+    require_pro_tier(&app)?;
+    let (returns, strategy_returns) = {
+        let db = db::get_db(&app).map_err(|e| e.to_string())?;
+        let returns = load_returns_batch(&db, &stock_ids)?;
+        if returns.len() < 5 {
+            return Err("Need at least 5 stocks with sufficient data".into());
+        }
+        let n = returns[0].len();
+        let mut strategy_returns: std::collections::HashMap<String, Vec<f64>> = std::collections::HashMap::new();
+        let momentum: Vec<f64> = (0..n).map(|d| {
+            returns.iter().map(|r| r[d]).sum::<f64>() / returns.len() as f64
+        }).collect();
+        strategy_returns.insert("momentum".to_string(), momentum);
+        (returns, strategy_returns)
+    };
 
-    // Build strategy returns as HashMap: each strategy → daily returns
-    let n = returns[0].len();
-    let mut strategy_returns: std::collections::HashMap<String, Vec<f64>> = std::collections::HashMap::new();
-
-    // Momentum strategy: equal-weighted average of all stock returns
-    let momentum: Vec<f64> = (0..n).map(|d| {
-        returns.iter().map(|r| r[d]).sum::<f64>() / returns.len() as f64
-    }).collect();
-    strategy_returns.insert("momentum".to_string(), momentum);
-
-    Ok(wasm_scanner::run_mars(&returns, &strategy_returns, n_regimes))
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(wasm_scanner::run_mars(&returns, &strategy_returns, n_regimes))
+    }).await.map_err(|e| format!("{}", e))?
 }
 
 fn get_meta() -> &'static std::sync::Mutex<wasm_scanner::MetaSearcher> {
@@ -615,8 +674,9 @@ fn get_metasearcher_count() -> Result<usize, String> {
 #[tauri::command]
 fn compute_volume_profile(stock_id: i64, num_buckets: Option<usize>,
                           app: tauri::AppHandle) -> Result<wasm_core::VolumeProfileResult, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(1000), "2099-12-31")
         .map_err(|e| e.to_string())?;
 
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
@@ -632,8 +692,9 @@ fn compute_volume_profile(stock_id: i64, num_buckets: Option<usize>,
 #[tauri::command]
 fn compute_chip_distribution(stock_id: i64,
                              app: tauri::AppHandle) -> Result<wasm_core::DistributionResult, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(1000), "2099-12-31")
         .map_err(|e| e.to_string())?;
 
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
@@ -650,7 +711,7 @@ fn compute_chip_distribution(stock_id: i64,
 fn compute_sr_levels(stock_id: i64, num_levels: Option<usize>,
                      app: tauri::AppHandle) -> Result<Vec<(f64, f64, String)>, String> {
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(500), "2099-12-31")
         .map_err(|e| e.to_string())?;
 
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
@@ -668,8 +729,9 @@ fn compute_sr_levels(stock_id: i64, num_levels: Option<usize>,
 #[tauri::command]
 fn compute_concentration(stock_id: i64,
                          app: tauri::AppHandle) -> Result<ConcentrationOutput, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(1000), "2099-12-31")
         .map_err(|e| e.to_string())?;
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
         open: dp.open, high: dp.high, low: dp.low, close: dp.close,
@@ -696,8 +758,9 @@ struct ConcentrationOutput {
 #[tauri::command]
 fn compute_profit_loss_ratio(stock_id: i64,
                              app: tauri::AppHandle) -> Result<ProfitLossOutput, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(1000), "2099-12-31")
         .map_err(|e| e.to_string())?;
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
         open: dp.open, high: dp.high, low: dp.low, close: dp.close,
@@ -727,8 +790,9 @@ struct ProfitLossOutput {
 #[tauri::command]
 fn compute_historical_frames(stock_id: i64, frame_count: Option<usize>,
                              app: tauri::AppHandle) -> Result<Vec<FrameOutput>, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(1000), "2099-12-31")
         .map_err(|e| e.to_string())?;
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
         open: dp.open, high: dp.high, low: dp.low, close: dp.close,
@@ -773,16 +837,16 @@ struct IndicatorInput {
 }
 
 #[tauri::command]
-fn compute_indicator(name: String, data: Vec<IndicatorInput>,
+fn compute_indicator(app: tauri::AppHandle, name: String, data: Vec<IndicatorInput>,
                      params: std::collections::HashMap<String, f64>)
                      -> Result<Vec<wasm_core::IndicatorOutput>, String> {
     // Check license for PRO indicators
     let meta = wasm_indicators::metadata(&name);
     if meta.as_ref().map_or(false, |m| !m.is_free) {
-        let ls = license::check().map_err(|e| e.to_string())?;
-        if ls.tier != "pro" {
-            return Err(format!("「{}」为专业版指标，需要PRO授权。当前授权: {}",
-                meta.unwrap().name_cn, if ls.tier == "trial" { "试用版" } else { "免费版" }));
+        let ls = license::check_with_db(&app)?;
+        if ls.tier != "pro" && ls.tier != "trial" {
+            return Err(format!("「{}」为专业版指标，需要PRO授权。当前授权: 免费版",
+                meta.unwrap().name_cn));
         }
     }
 
@@ -817,8 +881,9 @@ fn list_patterns() -> Vec<PatternDef> {
 #[tauri::command]
 fn scan_all_patterns(stock_id: i64,
                      app: tauri::AppHandle) -> Result<Vec<PatternResult>, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(365), "2099-12-31")
         .map_err(|e| e.to_string())?;
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
         open: dp.open, high: dp.high, low: dp.low, close: dp.close,
@@ -861,8 +926,9 @@ struct PatternResult {
 #[tauri::command]
 fn compute_risk(stock_id: i64,
                 app: tauri::AppHandle) -> Result<RiskOutput, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(500), "2099-12-31")
         .map_err(|e| e.to_string())?;
     let close: Vec<f64> = prices.iter().map(|dp| dp.close).collect();
     let rets = wasm_profile::daily_returns(&close);
@@ -906,8 +972,9 @@ struct RiskOutput {
 #[tauri::command]
 fn execute_custom_script(script: String, stock_id: i64,
                          app: tauri::AppHandle) -> Result<ScriptResult, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
-    let prices = db::query_daily(&db, stock_id, "2020-01-01", "2099-12-31")
+    let prices = db::query_daily(&db, stock_id, &recent_start_date(500), "2099-12-31")
         .map_err(|e| e.to_string())?;
     let ohlcv: Vec<wasm_core::OHLCV> = prices.iter().map(|dp| wasm_core::OHLCV {
         open: dp.open, high: dp.high, low: dp.low, close: dp.close,
@@ -950,17 +1017,27 @@ fn download_stock_list() -> Result<Vec<download::StockListItem>, String> {
 #[tauri::command]
 fn download_stock_data(code: String, name: Option<String>,
                        app: tauri::AppHandle) -> Result<DownloadSummary, String> {
-    let guard = db::get_db(&app).map_err(|e| e.to_string())?;
-    let summary = download::download_and_import(
-        &guard,
-        &code,
-        name.as_deref(),
-    ).map_err(|e| e.to_string())?;
+    // Phase 1: Download (no DB lock — HTTP can be slow)
+    let market = if code.starts_with("60") || code.starts_with("68") { "SH" } else { "SZ" };
+    let rows = download::download_daily_kline(&code, market).map_err(|e| e.to_string())?;
+    if rows.is_empty() {
+        return Err("未获取到数据，请检查股票代码".into());
+    }
+    let stock_name = name.unwrap_or_else(|| code.clone());
+    let date_range = rows.first().and_then(|f| rows.last().map(|l| (f.trade_date.clone(), l.trade_date.clone())));
+
+    // Phase 2: Quick DB import (lock held briefly)
+    let (_, inserted) = {
+        let guard = db::get_db(&app).map_err(|e| e.to_string())?;
+        download::save_kline_to_db(&guard, &code, &stock_name, market, &rows)
+            .map_err(|e| e.to_string())?
+    };
+
     Ok(DownloadSummary {
-        code: summary.code,
-        name: summary.name,
-        rows_inserted: summary.rows_inserted,
-        date_range: summary.date_range,
+        code,
+        name: stock_name,
+        rows_inserted: inserted,
+        date_range,
     })
 }
 
@@ -976,9 +1053,41 @@ fn query_minute_prices(stock_id: i64, start: String, end: String,
 #[tauri::command]
 fn download_minute_data(code: String, klt: Option<u32>,
                         app: tauri::AppHandle) -> Result<download::MinuteImportSummary, String> {
-    let guard = db::get_db(&app).map_err(|e| e.to_string())?;
-    download::download_minute_and_import(&guard, &code, klt.unwrap_or(5))
-        .map_err(|e| e.to_string())
+    let klt = klt.unwrap_or(5);
+    let market = if code.starts_with("60") || code.starts_with("68") { "SH" } else { "SZ" };
+
+    // Phase 1: Download (no DB lock)
+    let rows = download::download_minute_kline(&code, market, klt)
+        .map_err(|e| e.to_string())?;
+    if rows.is_empty() {
+        return Err("未获取到分钟数据，请检查股票代码或交易日".into());
+    }
+    let time_range = rows.first().and_then(|f| rows.last().map(|l| (f.trade_time.clone(), l.trade_time.clone())));
+
+    // Phase 2: Quick DB import
+    let inserted = {
+        let guard = db::get_db(&app).map_err(|e| e.to_string())?;
+        let stock_id = db::upsert_stock(&guard, &code, &code, market, None)
+            .map_err(|e| e.to_string())?;
+        let db_rows: Vec<db::MinuteRow> = rows.iter().map(|r| db::MinuteRow {
+            trade_time: r.trade_time.clone(),
+            open: r.open, high: r.high, low: r.low, close: r.close,
+            volume: r.volume, amount: r.amount,
+        }).collect();
+        db::bulk_insert_minute(&guard, stock_id, &db_rows).map_err(|e| e.to_string())?
+    };
+
+    Ok(download::MinuteImportSummary {
+        code, klt,
+        klt_label: match klt {
+            1 => "1分钟".into(), 5 => "5分钟".into(),
+            15 => "15分钟".into(), 30 => "30分钟".into(),
+            60 => "60分钟".into(),
+            _ => format!("{}分钟", klt),
+        },
+        rows_inserted: inserted,
+        time_range,
+    })
 }
 
 #[tauri::command]
@@ -1006,7 +1115,7 @@ fn get_app_data_dir(app: tauri::AppHandle) -> Result<String, String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let result = tauri::Builder::default()
         .setup(|app| {
             let db_path = app.path().app_data_dir()
                 .map(|p| p.join("moneyearning.db"))?;
@@ -1014,9 +1123,13 @@ pub fn run() {
                 std::fs::create_dir_all(parent).ok();
             }
             let db = rusqlite::Connection::open(&db_path)
-                .expect("无法打开数据库");
-            db::run_migrations(&db).expect("数据库迁移失败");
+                .map_err(|e| format!("无法打开数据库 ({}): {}", db_path.display(), e))?;
+            db::run_migrations(&db)
+                .map_err(|e| format!("数据库迁移失败: {}", e))?;
             db::set_db(db);
+            // Populate license cache at startup (best-effort)
+            let handle = app.handle();
+            let _ = license::check_with_db(&handle);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -1046,6 +1159,12 @@ pub fn run() {
             check_for_app_update,
             get_app_data_dir,
         ])
-        .run(tauri::generate_context!())
-        .expect("启动应用失败");
+        .run(tauri::generate_context!());
+    match result {
+        Ok(_) => {}
+        Err(e) => {
+            eprintln!("QuantVault 启动失败: {}", e);
+            std::process::exit(1);
+        }
+    }
 }

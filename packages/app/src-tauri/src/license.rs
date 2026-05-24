@@ -1,7 +1,14 @@
 use std::sync::Mutex;
 use wasm_license;
 
-static LICENSE_PAYLOAD: Mutex<Option<wasm_license::LicensePayload>> = Mutex::new(None);
+static LICENSE_CACHE: Mutex<Option<wasm_license::LicensePayload>> = Mutex::new(None);
+
+const TRIAL_DAYS: i64 = 14;
+
+#[allow(dead_code)]
+pub fn clear_cache() {
+    *LICENSE_CACHE.lock().unwrap() = None;
+}
 
 pub fn generate_fingerprint() -> Result<String, Box<dyn std::error::Error>> {
     let hostname = hostname::get()?.to_string_lossy().to_string();
@@ -10,81 +17,211 @@ pub fn generate_fingerprint() -> Result<String, Box<dyn std::error::Error>> {
     Ok(wasm_license::hash_fingerprint(&mac, &hostname, &os_serial))
 }
 
-pub fn activate(license_key: &str, fingerprint: &str) -> Result<super::LicenseInfo, Box<dyn std::error::Error>> {
+pub fn activate(
+    app: &tauri::AppHandle,
+    license_key: &str,
+    fingerprint: &str,
+) -> Result<super::LicenseInfo, Box<dyn std::error::Error>> {
     let payload = wasm_license::verify_signature(license_key, fingerprint)
-        .map_err(|e| e.to_string())?;
+        .map_err(|e| format!("激活失败: {}", e))?;
+
+    let guard = crate::db::get_db(app)?;
+    crate::db::save_license(
+        &guard,
+        license_key,
+        &payload.tier,
+        payload.expiry.as_deref(),
+        fingerprint,
+        license_key, // store full license key as signature for re-verification
+    )?;
+    drop(guard);
+
     let info = super::LicenseInfo {
         tier: payload.tier.clone(),
         expiry: payload.expiry.clone(),
         features: payload.features.clone(),
         valid: true,
     };
-    *LICENSE_PAYLOAD.lock().unwrap() = Some(payload);
+    *LICENSE_CACHE.lock().unwrap() = Some(payload);
     Ok(info)
 }
 
-pub fn check() -> Result<super::LicenseStatus, Box<dyn std::error::Error>> {
-    let guard = LICENSE_PAYLOAD.lock().unwrap();
+/// Fast check from in-memory cache only. Used for UI polling.
+pub fn check_cached() -> super::LicenseStatus {
+    let guard = LICENSE_CACHE.lock().unwrap();
     match guard.as_ref() {
-        Some(payload) => {
-            let mut valid = true;
-            if let Some(ref expiry) = payload.expiry {
-                // Simple date comparison
-                let today = today_str();
-                if today > *expiry { valid = false; }
-            }
-            Ok(super::LicenseStatus {
-                valid,
-                tier: payload.tier.clone(),
-                expiry: payload.expiry.clone(),
-                trial_days_left: None,
-            })
-        }
-        None => Ok(super::LicenseStatus {
+        Some(payload) => super::LicenseStatus {
+            valid: check_expiry(&payload.expiry),
+            tier: payload.tier.clone(),
+            expiry: payload.expiry.clone(),
+            trial_days_left: None,
+        },
+        None => super::LicenseStatus {
             valid: false,
             tier: "free".into(),
             expiry: None,
-            trial_days_left: Some(30),
-        }),
+            trial_days_left: Some(TRIAL_DAYS as i32),
+        },
+    }
+}
+
+/// Full check: memory → DB → trial calculation. Called at startup and before PRO ops.
+pub fn check_with_db(app: &tauri::AppHandle) -> Result<super::LicenseStatus, String> {
+    // 1. Memory cache
+    {
+        let cache = LICENSE_CACHE.lock().unwrap();
+        if let Some(payload) = cache.as_ref() {
+            if check_expiry(&payload.expiry) {
+                return Ok(super::LicenseStatus {
+                    valid: true,
+                    tier: payload.tier.clone(),
+                    expiry: payload.expiry.clone(),
+                    trial_days_left: None,
+                });
+            }
+        }
+    }
+
+    // 2. DB-activated license
+    let guard = crate::db::get_db(app).map_err(|e| e.to_string())?;
+    if let Some(record) = crate::db::load_license(&guard).map_err(|e| e.to_string())? {
+        let fingerprint =
+            generate_fingerprint().map_err(|e| format!("指纹生成失败: {}", e))?;
+        match wasm_license::verify_signature(&record.license_key, &fingerprint) {
+            Ok(payload) => {
+                let valid = check_expiry(&payload.expiry);
+                let status = super::LicenseStatus {
+                    valid,
+                    tier: payload.tier.clone(),
+                    expiry: payload.expiry.clone(),
+                    trial_days_left: None,
+                };
+                if valid {
+                    *LICENSE_CACHE.lock().unwrap() = Some(payload);
+                } else {
+                    // Expired — clear from DB
+                    let _ = crate::db::clear_license(&guard);
+                }
+                return Ok(status);
+            }
+            Err(_) => {
+                // Signature invalid — clear stale record
+                let _ = crate::db::clear_license(&guard);
+            }
+        }
+    }
+
+    // 3. Trial from install_date
+    if let Some(install_date) =
+        crate::db::get_config(&guard, "install_date").map_err(|e| e.to_string())?
+    {
+        let elapsed = days_since(&install_date);
+        let left = (TRIAL_DAYS - elapsed).max(0) as i32;
+        let tier = if left > 0 { "trial" } else { "free" };
+        return Ok(super::LicenseStatus {
+            valid: left > 0,
+            tier: tier.into(),
+            expiry: None,
+            trial_days_left: Some(left),
+        });
+    }
+
+    Ok(super::LicenseStatus {
+        valid: false,
+        tier: "free".into(),
+        expiry: None,
+        trial_days_left: Some(14),
+    })
+}
+
+// ── Date helpers ──
+
+fn check_expiry(expiry: &Option<String>) -> bool {
+    match expiry {
+        Some(exp) => today_str().as_str() <= exp.as_str(),
+        None => true,
     }
 }
 
 fn today_str() -> String {
-    let now = std::time::SystemTime::now()
+    let unix_days = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .unwrap();
-    let secs = now.as_secs();
-    let days = secs / 86400;
-    // Convert epoch days to YYYY-MM-DD
-    let y = (days as f64 / 365.2425 + 1970.0) as i64;
-    let day_of_year = ((days as f64 - (y - 1970) as f64 * 365.2425) as i64).max(0);
-    let month_days = if y % 4 == 0 && (y % 100 != 0 || y % 400 == 0) {
-        [31,29,31,30,31,30,31,31,30,31,30,31]
-    } else {
-        [31,28,31,30,31,30,31,31,30,31,30,31]
-    };
-    let mut m = 1;
-    let mut d = day_of_year + 1;
-    for &md in &month_days {
-        if d <= md { break; }
-        d -= md;
-        m += 1;
-    }
-    format!("{:04}-{:02}-{:02}", y, m.min(12).max(1), d.min(31).max(1))
+        .unwrap()
+        .as_secs() as i64
+        / 86400;
+    days_to_ymd(unix_days)
 }
+
+fn days_since(date: &str) -> i64 {
+    let unix_days = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_secs() as i64
+        / 86400;
+    unix_days - ymd_to_days(date)
+}
+
+/// Howard Hinnant algorithm: Y-M-D → days since Unix epoch
+fn ymd_to_days(date: &str) -> i64 {
+    let parts: Vec<i64> = date.split('-').filter_map(|s| s.parse().ok()).collect();
+    if parts.len() != 3 {
+        return 0;
+    }
+    let (y, m, d) = (parts[0], parts[1], parts[2]);
+    let yy = y - if m <= 2 { 1 } else { 0 };
+    let era = if yy >= 0 {
+        yy / 400
+    } else {
+        (yy - 399) / 400
+    };
+    let yoe = yy - era * 400;
+    let doy = (153 * (m + if m > 2 { -3 } else { 9 }) + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    era * 146097 + doe - 719_468
+}
+
+/// Howard Hinnant algorithm: days since Unix epoch → YYYY-MM-DD
+fn days_to_ymd(z: i64) -> String {
+    let z = z + 719_468;
+    let era = if z >= 0 {
+        z / 146_097
+    } else {
+        (z - 146_096) / 146_097
+    };
+    let doe = (z - era * 146_097) as u32;
+    let yoe = ((doe - doe / 1460 + doe / 36524 - doe / 146096) / 365) as i64;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe as u32 + yoe as u32 / 4 - yoe as u32 / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let m = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if m <= 2 { y + 1 } else { y };
+    format!("{:04}-{:02}-{:02}", y, m, d)
+}
+
+// ── Machine identity ──
 
 fn get_mac_address() -> Result<String, Box<dyn std::error::Error>> {
     let ma = mac_address::get_mac_address()
         .map_err(|e| format!("获取MAC地址失败: {:?}", e))?;
-    Ok(format!("{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
-        ma.bytes()[0], ma.bytes()[1], ma.bytes()[2],
-        ma.bytes()[3], ma.bytes()[4], ma.bytes()[5]))
+    Ok(format!(
+        "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}",
+        ma.bytes()[0],
+        ma.bytes()[1],
+        ma.bytes()[2],
+        ma.bytes()[3],
+        ma.bytes()[4],
+        ma.bytes()[5]
+    ))
 }
 
 fn get_os_serial() -> String {
-    // Windows serial placeholder — in production, read from WMI
     #[cfg(target_os = "windows")]
-    { String::from("WIN-UNKNOWN") }
+    {
+        String::from("WIN-UNKNOWN")
+    }
     #[cfg(not(target_os = "windows"))]
-    { String::from("UNKNOWN") }
+    {
+        String::from("UNKNOWN")
+    }
 }

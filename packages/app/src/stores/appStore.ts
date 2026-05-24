@@ -1,15 +1,21 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { invoke } from "@tauri-apps/api/core";
+
+export interface LicenseStatus {
+  valid: boolean;
+  tier: string;
+  expiry: string | null;
+  trial_days_left: number | null;
+}
 
 export interface AppState {
-  // License
+  // License — synced from backend, NOT persisted to localStorage
   licenseValid: boolean;
   licenseExpiry: string | null;
-  setLicense: (valid: boolean, expiry: string | null) => void;
-
-  // License tier
   licenseTier: string;
-  setLicenseTier: (tier: string) => void;
+  trialDaysLeft: number | null;
+  refreshLicense: () => Promise<LicenseStatus>;
 
   // Accessibility
   largeFont: boolean;
@@ -33,11 +39,30 @@ export const useAppStore = create<AppState>()(
     (set) => ({
       licenseValid: false,
       licenseExpiry: null,
-      setLicense: (valid, expiry) => set({ licenseValid: valid, licenseExpiry: expiry }),
+      licenseTier: "free",
+      trialDaysLeft: null,
+      refreshLicense: async () => {
+        try {
+          const s = await invoke<LicenseStatus>("check_license");
+          set({
+            licenseValid: s.valid,
+            licenseExpiry: s.expiry,
+            licenseTier: s.tier,
+            trialDaysLeft: s.trial_days_left,
+          });
+          return s;
+        } catch {
+          return {
+            valid: false,
+            tier: "free",
+            expiry: null,
+            trial_days_left: null,
+          } as LicenseStatus;
+        }
+      },
 
       largeFont: false,
       highContrast: false,
-      licenseTier: "free",
       toggleLargeFont: () =>
         set((s) => {
           const next = !s.largeFont;
@@ -58,7 +83,6 @@ export const useAppStore = create<AppState>()(
           }
           return { highContrast: next };
         }),
-      setLicenseTier: (tier) => set({ licenseTier: tier }),
 
       currentPage: "/",
       navigate: (page) => set({ currentPage: page }),
@@ -74,9 +98,7 @@ export const useAppStore = create<AppState>()(
       partialize: (state) => ({
         largeFont: state.largeFont,
         highContrast: state.highContrast,
-        licenseTier: state.licenseTier,
-        licenseValid: state.licenseValid,
-        licenseExpiry: state.licenseExpiry,
+        // License fields intentionally excluded — backend is the sole source of truth
       }),
     },
   ),

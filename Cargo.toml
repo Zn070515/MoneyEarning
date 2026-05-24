@@ -11,6 +11,7 @@ members = [
     "crates/wasm-license",
     "crates/wasm-custom",
     "crates/wasm-factors",
+    "crates/license-gen",
     "packages/app/src-tauri",
 ]
 
@@ -18,5 +19,4 @@ members = [
 opt-level = "s"       # Optimize for size (good for desktop apps)
 lto = true            # Link-time optimization
 codegen-units = 1     # Better optimization, slower compile
-strip = "debuginfo"   # Strip debug symbols from binary
-panic = "abort"       # Smaller binary, immediate abort on panic
+strip = "debuginfo"   # Strip debug symbols from binary       # Smaller binary, immediate abort on panic

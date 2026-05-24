@@ -6,7 +6,7 @@ pub fn import_csv_file(
     guard: &std::sync::MutexGuard<'static, Option<Connection>>,
     file_path: &str, stock_code: &str, exchange: &str,
 ) -> Result<super::ImportResult, Box<dyn std::error::Error>> {
-    let conn = guard.as_ref().expect("DB not initialized");
+    let conn = guard.as_ref().ok_or("数据库未初始化")?;
     let file = File::open(file_path)?;
     let reader = BufReader::new(file);
     let mut lines = reader.lines();

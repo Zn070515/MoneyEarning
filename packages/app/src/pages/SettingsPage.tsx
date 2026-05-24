@@ -1,14 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { useAppStore } from "../stores/appStore";
+import { useAppStore, type LicenseStatus } from "../stores/appStore";
 import { LicensePanel, DataPanel } from "@me/ui";
-
-interface LicenseStatus {
-  valid: boolean;
-  tier: string;
-  expiry: string | null;
-  trial_days_left: number | null;
-}
 
 function tierLabel(t: string) {
   switch (t) {
@@ -24,20 +17,19 @@ function tierLabel(t: string) {
 export default function SettingsPage() {
   const largeFont = useAppStore((s) => s.largeFont);
   const highContrast = useAppStore((s) => s.highContrast);
-  const setLicenseTier = useAppStore((s) => s.setLicenseTier);
+  const refreshLicense = useAppStore((s) => s.refreshLicense);
   const toggleLargeFont = useAppStore((s) => s.toggleLargeFont);
   const toggleHighContrast = useAppStore((s) => s.toggleHighContrast);
   const [license, setLicense] = useState<LicenseStatus | null>(null);
 
   const loadLicense = useCallback(async () => {
     try {
-      const s = await invoke<LicenseStatus>("check_license");
+      const s = await refreshLicense();
       setLicense(s);
-      setLicenseTier(s.tier);
     } catch {
       // unavailable
     }
-  }, [setLicenseTier]);
+  }, [refreshLicense]);
 
   useEffect(() => {
     loadLicense();
