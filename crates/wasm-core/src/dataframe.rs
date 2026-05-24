@@ -24,9 +24,9 @@ impl DataFrame {
         let mut volume = Vec::with_capacity(n);
         let mut amount = Vec::with_capacity(n);
         let mut turnover = Vec::with_capacity(n);
-        let mut date_idx = Vec::with_capacity(n);
+        let mut dates = Vec::with_capacity(n);
 
-        for (i, r) in records.iter().enumerate() {
+        for r in records.iter() {
             open.push(r.open);
             high.push(r.high);
             low.push(r.low);
@@ -34,7 +34,7 @@ impl DataFrame {
             volume.push(r.volume);
             amount.push(r.amount.unwrap_or(0.0));
             turnover.push(r.turnover.unwrap_or(0.0));
-            date_idx.push(i as i64);
+            dates.push(r.trade_date.clone());
         }
 
         df.columns.insert("open".to_string(), Column::F64(open));
@@ -44,7 +44,8 @@ impl DataFrame {
         df.columns.insert("volume".to_string(), Column::F64(volume));
         df.columns.insert("amount".to_string(), Column::F64(amount));
         df.columns.insert("turnover".to_string(), Column::F64(turnover));
-        df.index = date_idx;
+        df.columns.insert("date".to_string(), Column::String(dates));
+        df.index = (0..n as i64).collect();
 
         df
     }

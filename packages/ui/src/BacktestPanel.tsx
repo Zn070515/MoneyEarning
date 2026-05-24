@@ -14,6 +14,13 @@ interface BtResult {
   total_trades: number;
   equity_curve: [string, number][];
   monthly_returns: [string, number][];
+  trades: Array<{
+    buy_date: string; sell_date: string;
+    buy_price: number; sell_price: number;
+    pnl: number; pnl_pct: number; holding_days: number;
+  }>;
+  max_drawdown_duration: number;
+  annual_volatility: number;
 }
 
 interface WfWindowResult {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { BacktestPanel } from "@me/ui";
-import { useBacktestStore } from "../stores/backtestStore";
+import { useBacktestStore, type TradeRecord } from "../stores/backtestStore";
 import { useAppStore } from "../stores/appStore";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -92,6 +92,17 @@ export default function BacktestPage() {
         winRate: raw.win_rate as number,
         totalTrades: raw.total_trades as number,
         equityCurve: raw.equity_curve as [string, number][],
+        trades: (raw.trades as Array<Record<string, unknown>> || []).map((t: Record<string, unknown>) => ({
+          buy_date: t.buy_date as string,
+          sell_date: t.sell_date as string,
+          buy_price: t.buy_price as number,
+          sell_price: t.sell_price as number,
+          pnl: t.pnl as number,
+          pnl_pct: t.pnl_pct as number,
+          holding_days: t.holding_days as number,
+        })),
+        maxDrawdownDuration: raw.max_drawdown_duration as number,
+        annualVolatility: raw.annual_volatility as number,
       });
     } catch (e) { setResult(null, String(e)); }
   };
@@ -223,9 +234,48 @@ export default function BacktestPage() {
           <Metric label="总收益" value={`${(result.totalReturn * 100).toFixed(2)}%`} positive={result.totalReturn > 0} />
           <Metric label="年化收益" value={`${(result.annualReturn * 100).toFixed(2)}%`} positive={result.annualReturn > 0} />
           <Metric label="最大回撤" value={`${(result.maxDrawdown * 100).toFixed(2)}%`} />
+          <Metric label="回撤持续" value={`${result.maxDrawdownDuration}天`} />
           <Metric label="夏普比率" value={result.sharpeRatio.toFixed(2)} />
+          <Metric label="年化波动率" value={`${(result.annualVolatility * 100).toFixed(2)}%`} />
           <Metric label="胜率" value={`${(result.winRate * 100).toFixed(1)}%`} />
           <Metric label="交易次数" value={String(result.totalTrades)} />
+        </div>
+      )}
+
+      {/* Trades table */}
+      {result && result.trades.length > 0 && (
+        <div style={{
+          margin: "0 20px 8px", padding: "8px 12px",
+          background: "#0C0C0C", borderBottom: "1px solid #2A2A2A",
+          flexShrink: 0,
+        }}>
+          <div style={{
+            color: "#CCAA00", fontSize: 12, fontFamily: "monospace",
+            fontWeight: 600, marginBottom: 6,
+          }}>
+            交易明细 ({result.trades.length}笔)
+          </div>
+          <TradeTable trades={result.trades} />
+        </div>
+      )}
+
+      {/* Equity curve with trade markers */}
+      {result && result.equityCurve.length > 1 && (
+        <div style={{
+          margin: "0 20px 8px", padding: "8px 12px",
+          background: "#0C0C0C", flexShrink: 0,
+        }}>
+          <div style={{
+            color: "#CCAA00", fontSize: 12, fontFamily: "monospace",
+            fontWeight: 600, marginBottom: 6,
+          }}>
+            权益曲线
+          </div>
+          <EquityChart
+            equityCurve={result.equityCurve}
+            trades={result.trades}
+            initialCapital={config.initialCapital}
+          />
         </div>
       )}
 
@@ -272,6 +322,179 @@ function Metric({
         {value}
       </span>
     </div>
+  );
+}
+
+function TradeTable({ trades }: { trades: TradeRecord[] }) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? trades : trades.slice(-10);
+  return (
+    <div>
+      <div style={{
+        display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 90px 1fr 80px",
+        gap: 2, fontSize: 10, fontFamily: "monospace", color: "#858585",
+        padding: "3px 4px", borderBottom: "1px solid #2A2A2A",
+      }}>
+        <span>买入日期</span>
+        <span>卖出日期</span>
+        <span style={{ textAlign: "right" }}>买入价</span>
+        <span style={{ textAlign: "right" }}>卖出价</span>
+        <span style={{ textAlign: "right" }}>盈亏</span>
+        <span style={{ textAlign: "right" }}>盈亏%</span>
+        <span style={{ textAlign: "right" }}>持仓天数</span>
+      </div>
+      {visible.map((t, i) => {
+        const pnlColor = t.pnl >= 0 ? "#26A69A" : "#EF5350";
+        return (
+          <div key={i} style={{
+            display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 90px 1fr 80px",
+            gap: 2, fontSize: 11, fontFamily: "monospace", color: "#D4D4D4",
+            padding: "2px 4px", borderBottom: "1px solid #1A1A1A",
+          }}>
+            <span>{t.buy_date}</span>
+            <span>{t.sell_date}</span>
+            <span style={{ textAlign: "right" }}>{t.buy_price.toFixed(2)}</span>
+            <span style={{ textAlign: "right" }}>{t.sell_price.toFixed(2)}</span>
+            <span style={{ textAlign: "right", color: pnlColor, fontWeight: 600 }}>{t.pnl >= 0 ? "+" : ""}{t.pnl.toFixed(0)}</span>
+            <span style={{ textAlign: "right", color: pnlColor }}>{t.pnl_pct >= 0 ? "+" : ""}{(t.pnl_pct * 100).toFixed(2)}%</span>
+            <span style={{ textAlign: "right" }}>{t.holding_days}天</span>
+          </div>
+        );
+      })}
+      {trades.length > 10 && (
+        <button onClick={() => setShowAll(!showAll)} style={{
+          width: "100%", padding: "4px", marginTop: 4,
+          background: "#121212", border: "1px solid #2A2A2A",
+          color: "#CCAA00", cursor: "pointer", fontSize: 11,
+          fontFamily: "monospace", borderRadius: 3,
+        }}>
+          {showAll ? "收起" : `查看全部 ${trades.length} 笔交易`}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function EquityChart({
+  equityCurve,
+  trades,
+  initialCapital,
+}: {
+  equityCurve: [string, number][];
+  trades: TradeRecord[];
+  initialCapital: number;
+}) {
+  const h = 160;
+  const w = 800;
+  const pad = { top: 10, right: 40, bottom: 30, left: 50 };
+  const chartW = w - pad.left - pad.right;
+  const chartH = h - pad.top - pad.bottom;
+
+  const values = equityCurve.map(([, v]) => v);
+  const min = Math.min(...values, initialCapital * 0.9);
+  const max = Math.max(...values, initialCapital * 1.1);
+  const rng = max - min || 1;
+
+  const toX = (i: number) => pad.left + (i / (values.length - 1)) * chartW;
+  const toY = (v: number) => pad.top + chartH - ((v - min) / rng) * chartH;
+
+  // Build area path and line path
+  const areaPath = values.map((v, i) => {
+    const x = toX(i);
+    const y = toY(v);
+    return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+  }).join(" ") + ` L ${toX(values.length - 1)} ${toY(initialCapital)} L ${toX(0)} ${toY(initialCapital)} Z`;
+
+  const linePath = values.map((v, i) => {
+    const x = toX(i);
+    const y = toY(v);
+    return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+  }).join(" ");
+
+  const initY = toY(initialCapital);
+
+  // Trade markers: find closest equity points
+  const markers = trades.map((t) => {
+    const buyIdx = equityCurve.findIndex(([d]) => d === t.buy_date);
+    const sellIdx = equityCurve.findIndex(([d]) => d === t.sell_date);
+    return { buyDate: t.buy_date, sellDate: t.sell_date, pnl: t.pnl, buyIdx, sellIdx };
+  }).filter((m) => m.buyIdx >= 0 && m.sellIdx >= 0);
+
+  // Estimate drawdown overlay
+  const ddPath = (() => {
+    let peak = values[0];
+    const ddValues = values.map((v) => {
+      if (v > peak) peak = v;
+      return (v - peak) / peak;
+    });
+    // Map drawdown to bottom of chart as zero, negative as filled area
+    const scaledDD = ddValues.map((dd, i) => {
+      const x = toX(i);
+      const y = toY(initialCapital + dd * initialCapital);
+      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+    }).join(" ");
+    return scaledDD;
+  })();
+
+  // Y-axis labels
+  const yTicks = 5;
+  const yLabels = Array.from({ length: yTicks }, (_, i) => {
+    const v = min + (rng / (yTicks - 1)) * i;
+    return { v, y: toY(v) };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} style={{ width: "100%", display: "block", background: "#0C0C0C", borderRadius: 4 }}>
+      {/* Grid lines */}
+      {yLabels.map(({ v, y }) => (
+        <g key={v}>
+          <line x1={pad.left} y1={y} x2={w - pad.right} y2={y} stroke="#1A1A1A" strokeWidth={0.5} />
+          <text x={pad.left - 6} y={y + 3} textAnchor="end" fill="#666666" fontSize={9} fontFamily="monospace">
+            {v >= 10000 ? `${(v / 10000).toFixed(1)}万` : v.toFixed(0)}
+          </text>
+        </g>
+      ))}
+
+      {/* Initial capital reference line */}
+      <line x1={pad.left} y1={initY} x2={w - pad.right} y2={initY} stroke="#CCAA00" strokeWidth={0.5} strokeDasharray="4,3" opacity={0.5} />
+      <text x={w - pad.right + 4} y={initY + 3} fill="#CCAA00" fontSize={8} fontFamily="monospace" opacity={0.6}>初始</text>
+
+      {/* Equity area fill */}
+      <path d={areaPath} fill="url(#equityGrad)" opacity={0.15} />
+      <defs>
+        <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={values[values.length - 1] >= initialCapital ? "#26A69A" : "#EF5350"} />
+          <stop offset="100%" stopColor={values[values.length - 1] >= initialCapital ? "#26A69A" : "#EF5350"} stopOpacity={0} />
+        </linearGradient>
+      </defs>
+
+      {/* Equity line */}
+      <path d={linePath} fill="none" stroke={values[values.length - 1] >= initialCapital ? "#26A69A" : "#EF5350"} strokeWidth={1.5} />
+
+      {/* Trade markers */}
+      {markers.slice(-50).map((m, i) => {
+        const isWin = m.pnl >= 0;
+        return (
+          <g key={i}>
+            {/* Buy marker */}
+            <circle cx={toX(m.buyIdx)} cy={toY(values[m.buyIdx])} r={2.5}
+              fill={isWin ? "#26A69A" : "#EF5350"} stroke="#0C0C0C" strokeWidth={0.5} />
+            <text x={toX(m.buyIdx)} y={toY(values[m.buyIdx]) - 6}
+              textAnchor="middle" fill={isWin ? "#26A69A" : "#EF5350"} fontSize={7} fontFamily="monospace">B</text>
+            {/* Sell marker */}
+            <circle cx={toX(m.sellIdx)} cy={toY(values[m.sellIdx])} r={2.5}
+              fill={isWin ? "#26A69A" : "#EF5350"} stroke="#0C0C0C" strokeWidth={0.5} />
+            <text x={toX(m.sellIdx)} y={toY(values[m.sellIdx]) - 6}
+              textAnchor="middle" fill={isWin ? "#26A69A" : "#EF5350"} fontSize={7} fontFamily="monospace">S</text>
+          </g>
+        );
+      })}
+
+      {/* X-axis label */}
+      <text x={w / 2} y={h - 4} textAnchor="middle" fill="#666666" fontSize={9} fontFamily="monospace">
+        {equityCurve[0][0]} ~ {equityCurve[equityCurve.length - 1][0]} ({equityCurve.length}采样点)
+      </text>
+    </svg>
   );
 }
 

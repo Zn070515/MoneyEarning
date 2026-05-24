@@ -62,7 +62,22 @@ export function generateBacktestReportMarkdown(
   lines.push(`| 卡尔玛比率 | ${fmtNum(result.calmarRatio)} |`);
   lines.push(`| 胜率 | ${fmtPct(result.winRate)} |`);
   lines.push(`| 交易次数 | ${result.totalTrades} |`);
+  lines.push(`| 最大回撤持续 | ${result.maxDrawdownDuration}天 |`);
+  lines.push(`| 年化波动率 | ${fmtPct(result.annualVolatility)} |`);
   lines.push("");
+
+  // ── 交易明细 ──
+  if (result.trades && result.trades.length > 0) {
+    lines.push("## 交易明细");
+    lines.push("");
+    lines.push("| # | 买入日期 | 卖出日期 | 买入价 | 卖出价 | 盈亏 | 盈亏% | 持仓天数 |");
+    lines.push("|---|---------|---------|--------|--------|------|-------|---------|");
+    result.trades.forEach((t, i) => {
+      const pnlSign = t.pnl >= 0 ? "+" : "";
+      lines.push(`| ${i + 1} | ${t.buy_date} | ${t.sell_date} | ${t.buy_price.toFixed(2)} | ${t.sell_price.toFixed(2)} | ${pnlSign}${t.pnl.toFixed(2)} | ${pnlSign}${(t.pnl_pct * 100).toFixed(2)}% | ${t.holding_days}天 |`);
+    });
+    lines.push("");
+  }
 
   // ── 权益曲线摘要 ──
   if (result.equityCurve.length > 0) {

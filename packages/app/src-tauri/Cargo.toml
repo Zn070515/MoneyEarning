@@ -1,6 +1,6 @@
 [package]
 name = "moneyearning"
-version = "0.9.0"
+version = "0.10.0"
 edition = "2021"
 description = "QuantVault — 本地量化分析工作站，完全离线的A股量化分析桌面工具"
 authors = ["QuantVault Team"]

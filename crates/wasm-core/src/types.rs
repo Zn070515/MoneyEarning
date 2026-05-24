@@ -145,6 +145,20 @@ pub struct BtResult {
     pub total_trades: u32,
     pub equity_curve: Vec<(String, f64)>,
     pub monthly_returns: Vec<(String, f64)>,
+    pub trades: Vec<TradeRecord>,
+    pub max_drawdown_duration: i64,
+    pub annual_volatility: f64,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TradeRecord {
+    pub buy_date: String,
+    pub sell_date: String,
+    pub buy_price: f64,
+    pub sell_price: f64,
+    pub pnl: f64,
+    pub pnl_pct: f64,
+    pub holding_days: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

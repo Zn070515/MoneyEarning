@@ -11,6 +11,16 @@ export interface BacktestConfig {
   params: Record<string, number>;
 }
 
+export interface TradeRecord {
+  buy_date: string;
+  sell_date: string;
+  buy_price: number;
+  sell_price: number;
+  pnl: number;
+  pnl_pct: number;
+  holding_days: number;
+}
+
 export interface BacktestResult {
   totalReturn: number;
   annualReturn: number;
@@ -21,6 +31,9 @@ export interface BacktestResult {
   winRate: number;
   totalTrades: number;
   equityCurve: [string, number][];
+  trades: TradeRecord[];
+  maxDrawdownDuration: number;
+  annualVolatility: number;
 }
 
 export interface BacktestState {
