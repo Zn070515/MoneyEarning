@@ -8,6 +8,7 @@ import { GridRenderer } from "./renderer/GridRenderer";
 import { CrosshairRenderer } from "./renderer/CrosshairRenderer";
 import { IndicatorRenderer, IndicatorData } from "./renderer/IndicatorRenderer";
 import { DrawingRenderer, DrawingObject } from "./renderer/DrawingRenderer";
+import { DateAxisRenderer } from "./renderer/DateAxisRenderer";
 
 export type ChartType = "candlestick" | "heikin_ashi" | "line" | "hlc3" | "ohlc4";
 
@@ -28,6 +29,7 @@ export class ChartEngine {
   private crosshairRenderer: CrosshairRenderer;
   private indicatorRenderer: IndicatorRenderer;
   private drawingRenderer: DrawingRenderer;
+  private dateAxisRenderer: DateAxisRenderer;
 
   private chartType: ChartType = "candlestick";
   private crosshair: CrosshairMode = "none";
@@ -53,6 +55,7 @@ export class ChartEngine {
     this.crosshairRenderer = new CrosshairRenderer(this.ctx);
     this.indicatorRenderer = new IndicatorRenderer(this.ctx);
     this.drawingRenderer = new DrawingRenderer(this.ctx);
+    this.dateAxisRenderer = new DateAxisRenderer(this.ctx);
 
     this.bindEvents();
     this.resize();
@@ -124,7 +127,7 @@ export class ChartEngine {
   private getLayout(): LayoutZones {
     const w = this.canvas.width / this.dpr;
     const h = this.canvas.height / this.dpr;
-    const pad = { top: 10, bottom: 10, left: 60, right: 20 };
+    const pad = { top: 10, bottom: 25, left: 60, right: 20 };
 
     const usableH = h - pad.top - pad.bottom;
     const mainH = usableH * LAYOUT_RATIO.main;
@@ -234,6 +237,9 @@ export class ChartEngine {
     // Volume
     this.volumeRenderer.draw(this.data, this.viewport, layout.volume);
 
+    // Date axis
+    this.dateAxisRenderer.draw(this.data, this.viewport, layout.volume);
+
     // Indicators
     for (let i = 0; i < this.indicators.length && i < layout.indicator.length; i++) {
       this.indicatorRenderer.drawIndicator(
@@ -247,6 +253,7 @@ export class ChartEngine {
     if (this.crosshair !== "none") {
       this.crosshairRenderer.draw(
         this.data, this.viewport, layout.main, this.mouseX, this.mouseY,
+        this.indicators, layout.indicator,
       );
     }
   }

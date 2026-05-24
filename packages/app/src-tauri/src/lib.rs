@@ -614,7 +614,8 @@ async fn run_backtest(app: tauri::AppHandle, data: Vec<IndicatorInput>, template
                 params: std::collections::HashMap<String, f64>,
                 config: Option<BtConfig>)
                 -> Result<wasm_core::BtResult, String> {
-    require_pro_tier(&app)?;
+    let is_free = wasm_backtest::list_strategies().iter().any(|m| m.name == template && m.is_free);
+    if !is_free { require_pro_tier(&app)?; }
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
     tauri::async_runtime::spawn_blocking(move || {
         let ohlcv: Vec<wasm_core::OHLCV> = data.iter().map(|d| wasm_core::OHLCV {
@@ -638,7 +639,8 @@ async fn run_walk_forward(
     anchor_mode: String,
     config: Option<BtConfig>,
 ) -> Result<wasm_backtest::WalkForwardResult, String> {
-    require_pro_tier(&app)?;
+    let is_free = wasm_backtest::list_strategies().iter().any(|m| m.name == template && m.is_free);
+    if !is_free { require_pro_tier(&app)?; }
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
     let wf_config = wasm_backtest::WalkForwardConfig {
         in_sample_size: in_sample.max(1),
@@ -671,7 +673,8 @@ async fn run_monte_carlo(
     confidence_level: Option<f64>,
     config: Option<BtConfig>,
 ) -> Result<wasm_backtest::MonteCarloResult, String> {
-    require_pro_tier(&app)?;
+    let is_free = wasm_backtest::list_strategies().iter().any(|m| m.name == template && m.is_free);
+    if !is_free { require_pro_tier(&app)?; }
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
     let mc_config = wasm_backtest::MonteCarloConfig {
         num_simulations: num_simulations.max(100).min(5000),
@@ -705,7 +708,8 @@ async fn run_optimization(
     max_iterations: Option<usize>,
     config: Option<BtConfig>,
 ) -> Result<wasm_backtest::OptimizerResult, String> {
-    require_pro_tier(&app)?;
+    let is_free = wasm_backtest::list_strategies().iter().any(|m| m.name == template && m.is_free);
+    if !is_free { require_pro_tier(&app)?; }
     let bt_config: wasm_backtest::BacktestConfig = config.map(Into::into).unwrap_or_default();
     let grid: std::collections::HashMap<String, (f64, f64, f64)> = param_grid.iter().map(|(k, v)| {
         let min = v.first().copied().unwrap_or(0.0);
@@ -964,6 +968,7 @@ fn compute_chip_distribution(stock_id: i64,
 #[tauri::command]
 fn compute_sr_levels(stock_id: i64, num_levels: Option<usize>,
                      app: tauri::AppHandle) -> Result<Vec<(f64, f64, String)>, String> {
+    require_pro_tier(&app)?;
     let db = db::get_db(&app).map_err(|e| e.to_string())?;
     let prices = db::query_daily(&db, stock_id, &recent_start_date(500), "2099-12-31")
         .map_err(|e| e.to_string())?;

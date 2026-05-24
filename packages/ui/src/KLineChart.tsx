@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from "react";
-import { ChartEngine, OHLCV, ChartType, IndicatorData, DrawingObject } from "@me/chart-engine";
+import { useEffect, useRef, useState, useMemo } from "react";
+import { ChartEngine, OHLCV, ChartType, IndicatorData, DrawingObject, formatVolumeCN, formatAmountCN } from "@me/chart-engine";
 
 export type DrawingTool = "trend_line" | "horiz_line" | "vert_line" | "rect" | "fib_retrace" | "fib_ext";
 
@@ -30,17 +30,22 @@ export function KLineChart({
   const engineRef = useRef<ChartEngine | null>(null);
   const [pending, setPending] = useState<PendingDraw | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [engineError, setEngineError] = useState(false);
   const pendingRef = useRef<PendingDraw | null>(null);
   const prevDrawingsRef = useRef<DrawingObject[]>([]);
 
   // Init engine
   useEffect(() => {
     if (!canvasRef.current) return;
-    const engine = new ChartEngine(canvasRef.current);
-    engineRef.current = engine;
-    const ro = new ResizeObserver(() => engine.resize());
-    if (containerRef.current) ro.observe(containerRef.current);
-    return () => { ro.disconnect(); engine.destroy(); };
+    try {
+      const engine = new ChartEngine(canvasRef.current);
+      engineRef.current = engine;
+      const ro = new ResizeObserver(() => engine.resize());
+      if (containerRef.current) ro.observe(containerRef.current);
+      return () => { ro.disconnect(); engine.destroy(); };
+    } catch (_) {
+      setEngineError(true);
+    }
   }, []);
 
   // Data updates
@@ -165,11 +170,59 @@ export function KLineChart({
     canvasRef.current.style.cursor = activeTool ? "crosshair" : "default";
   }, [activeTool]);
 
+  const lastBar = useMemo(() => {
+    if (data.length === 0) return null;
+    const last = data[data.length - 1];
+    const prevClose = data.length > 1 ? data[data.length - 2].close : last.open;
+    return { last, prevClose };
+  }, [data]);
+
   return (
     <div ref={containerRef} className={className} style={{
       width: "100%", height: "100%", position: "relative",
+      display: "flex", flexDirection: "column",
     }}>
-      <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
+      {lastBar && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 16,
+          padding: "4px 8px", background: "#141414",
+          borderBottom: "1px solid #2A2A2A", flexShrink: 0,
+          fontFamily: "monospace", fontSize: 11, color: "#aaa",
+          overflow: "hidden", flexWrap: "wrap",
+        }}>
+          <SnapShot label="开" value={lastBar.last.open} />
+          <SnapShot label="高" value={lastBar.last.high} />
+          <SnapShot label="低" value={lastBar.last.low} />
+          <SnapShot label="收" value={lastBar.last.close}
+            isUp={lastBar.last.close >= lastBar.prevClose} />
+          <span style={{ color: "#555" }}>|</span>
+          <span style={{ color: "#999" }}>
+            量 {formatVolumeCN(lastBar.last.volume)}
+          </span>
+          <span style={{ color: "#999" }}>
+            额 {formatAmountCN(lastBar.last.amount ?? 0)}
+          </span>
+          <span style={{
+            color: lastBar.last.close >= lastBar.prevClose ? "#ef4444" : "#22c55e",
+            fontWeight: 600,
+          }}>
+            {lastBar.last.close >= lastBar.prevClose ? "+" : ""}
+            {lastBar.prevClose > 0
+              ? ((lastBar.last.close - lastBar.prevClose) / lastBar.prevClose * 100).toFixed(2)
+              : "0.00"}%
+          </span>
+        </div>
+      )}
+      {engineError ? (
+        <div style={{
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#666666", fontFamily: "monospace", fontSize: 14,
+        }}>
+          图表引擎初始化失败，请刷新页面重试
+        </div>
+      ) : (
+        <canvas ref={canvasRef} style={{ width: "100%", height: "100%" }} />
+      )}
       {activeTool && (
         <div style={{
           position: "absolute", top: 8, left: 8,
@@ -204,6 +257,16 @@ export function drawingToolLabel(t: DrawingTool): string {
     rect: "矩形", fib_retrace: "斐波那契回调", fib_ext: "斐波那契扩展",
   };
   return map[t];
+}
+
+function SnapShot({ label, value, isUp }: { label: string; value: number; isUp?: boolean }) {
+  const color = isUp == null ? "#ccc" : isUp ? "#ef4444" : "#22c55e";
+  return (
+    <span>
+      <span style={{ color: "#666" }}>{label}</span>{" "}
+      <span style={{ color }}>{value.toFixed(2)}</span>
+    </span>
+  );
 }
 
 export type { DrawingObject, ChartType, IndicatorData, OHLCV };

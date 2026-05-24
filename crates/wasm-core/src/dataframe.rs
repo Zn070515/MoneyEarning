@@ -67,6 +67,7 @@ impl DataFrame {
     }
 
     pub fn slice(&self, start: usize, end: usize) -> DataFrame {
+        let start = start.min(self.len);
         let end = end.min(self.len);
         let mut new_columns = HashMap::new();
         for (k, v) in &self.columns {

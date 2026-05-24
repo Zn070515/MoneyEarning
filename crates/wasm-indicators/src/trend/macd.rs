@@ -27,6 +27,7 @@ pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<Indi
     let fast = params.get("fast").copied().unwrap_or(12.0) as usize;
     let slow = params.get("slow").copied().unwrap_or(26.0) as usize;
     let signal = params.get("signal").copied().unwrap_or(9.0) as usize;
+    if fast == 0 || slow == 0 || signal == 0 { return Err(IndError::DataInsufficient(slow)); }
 
     let close = df.column("close").ok_or(IndError::InvalidName)?;
     let vals = close.to_f64_vec();

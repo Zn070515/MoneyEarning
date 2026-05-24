@@ -1,5 +1,4 @@
 import { useState, useEffect, useCallback } from "react";
-import { BacktestPanel } from "@me/ui";
 import { useBacktestStore, type TradeRecord } from "../stores/backtestStore";
 import { useAppStore } from "../stores/appStore";
 import { invoke } from "@tauri-apps/api/core";
@@ -289,10 +288,19 @@ export default function BacktestPage() {
         </div>
       )}
 
-      {/* Main content */}
-      <div style={{ flex: 1, overflow: "hidden" }}>
-        <BacktestPanel data={[]} isPro={licenseTier === "pro"} />
-      </div>
+      {/* Main content area — empty state when no results */}
+      {!result && !error && !running && (
+        <div style={{
+          flex: 1, display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#666666", fontFamily: "monospace", fontSize: 13,
+          flexDirection: "column", gap: 8,
+        }}>
+          <span>选择策略模板并点击"运行回测"开始</span>
+          <span style={{ fontSize: 11, color: "#444" }}>
+            提示：请先在图表页面选择一只股票
+          </span>
+        </div>
+      )}
     </div>
   );
 }

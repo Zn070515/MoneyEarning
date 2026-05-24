@@ -10,6 +10,7 @@ pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<Indi
     let l = low.to_f64_vec();
     let c = close.to_f64_vec();
     let n = c.len();
+    if n < period || period == 0 { return Err(IndError::DataInsufficient(period)); }
 
     let mut tr = vec![0.0; n];
     tr[0] = h[0] - l[0];

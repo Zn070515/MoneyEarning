@@ -140,7 +140,7 @@ fn eval_ma_cross(prices: &[crate::DailyPrice], params: &serde_json::Value) -> Op
     let short: usize = params["short_period"].as_u64().unwrap_or(5) as usize;
     let long: usize = params["long_period"].as_u64().unwrap_or(20) as usize;
     let direction = params["direction"].as_str().unwrap_or("golden");
-    if short >= long { return None; } // short must be less than long
+    if short == 0 || long == 0 || short >= long { return None; }
     if prices.len() < long + 1 { return None; }
     let closes: Vec<f64> = prices.iter().map(|p| p.close).collect();
     let ma_short_now = closes[closes.len() - short..].iter().sum::<f64>() / short as f64;
@@ -172,7 +172,7 @@ fn eval_ma_cross(prices: &[crate::DailyPrice], params: &serde_json::Value) -> Op
 fn eval_volume_spike(prices: &[crate::DailyPrice], params: &serde_json::Value) -> Option<AlertTrigger> {
     let multiplier = params["multiplier"].as_f64().unwrap_or(2.0);
     let lookback: usize = params["lookback"].as_u64().unwrap_or(20) as usize;
-    if prices.len() < lookback + 1 { return None; }
+    if lookback == 0 || prices.len() < lookback + 1 { return None; }
     let last_vol = prices[prices.len() - 1].volume;
     let avg_vol = prices[prices.len() - 1 - lookback..prices.len() - 1]
         .iter()

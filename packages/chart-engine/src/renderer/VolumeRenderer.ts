@@ -1,5 +1,6 @@
 import { OHLCV, ViewRect } from "../types";
 import { ViewportManager } from "../layout/ViewportManager";
+import { formatVolumeCN } from "../utils/format";
 
 export class VolumeRenderer {
   private ctx: CanvasRenderingContext2D;
@@ -42,6 +43,13 @@ export class VolumeRenderer {
         : "rgba(34,197,94,0.5)";
       ctx.fillRect(x - bw / 2, barY, bw, barH);
     }
+
+    // Max volume label at top-right of volume pane
+    ctx.fillStyle = "rgba(255,255,255,0.4)";
+    ctx.font = "9px monospace";
+    ctx.textAlign = "right";
+    ctx.fillText(formatVolumeCN(maxV), rect.x + rect.width - 4, rect.y + 10);
+
     ctx.restore();
   }
 }

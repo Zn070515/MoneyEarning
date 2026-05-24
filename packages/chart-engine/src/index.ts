@@ -15,8 +15,11 @@ export type { IndicatorData } from "./renderer/IndicatorRenderer";
 export { DrawingRenderer } from "./renderer/DrawingRenderer";
 export type { DrawingObject } from "./renderer/DrawingRenderer";
 
+export { DateAxisRenderer } from "./renderer/DateAxisRenderer";
+export { formatVolumeCN, formatAmountCN, autoPrecision, formatPriceCN } from "./utils/format";
+
 export type {
   OHLCV, ViewRect, DataRange, IndicatorLine, LayoutZones, CrosshairMode,
 } from "./types";
 
-export const version = "0.2.0";
+export const version = "0.3.0";

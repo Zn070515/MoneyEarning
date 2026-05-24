@@ -3,6 +3,7 @@ use wasm_core::{DataFrame, IndError, IndicatorOutput, Column, OutputStyle};
 
 fn calc_atr(h: &[f64], l: &[f64], c: &[f64], period: usize) -> Vec<f64> {
     let n = c.len();
+    if n < period || period == 0 { return vec![f64::NAN; n]; }
     let mut tr = vec![0.0; n];
     for i in 1..n {
         let a = h[i] - l[i];

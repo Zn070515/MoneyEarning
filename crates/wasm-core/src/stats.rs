@@ -128,6 +128,7 @@ pub fn covariance_matrix(data: &[Vec<f64>]) -> Vec<Vec<f64>> {
     }
     let means: Vec<f64> = data.iter().map(|row| mean(row)).collect();
     let n = data[0].len();
+    if n < 2 { return vec![vec![0.0; m]; m]; }
     let mut cov = vec![vec![0.0; m]; m];
     for i in 0..m {
         for j in 0..m {
@@ -191,6 +192,7 @@ fn matrix_multiply(a: &[Vec<f64>], b: &[Vec<f64>]) -> Vec<Vec<f64>> {
 
 fn eigenvalue_decomp_sym(a: &mut [Vec<f64>]) -> (Vec<f64>, Vec<Vec<f64>>) {
     let n = a.len();
+    if n == 0 { return (vec![], vec![]); }
     let mut v = vec![vec![0.0; n]; n];
     for i in 0..n {
         v[i][i] = 1.0;

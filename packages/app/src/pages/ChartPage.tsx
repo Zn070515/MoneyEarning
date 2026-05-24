@@ -94,6 +94,7 @@ export default function ChartPage() {
   const [loading, setLoading] = useState(false);
   const [dataStatus, setDataStatus] = useState("");
   const [showImport, setShowImport] = useState(false);
+  const [selectedStrategyTemplate, setSelectedStrategyTemplate] = useState<string | undefined>();
   const refreshLicense = useAppStore((s) => s.refreshLicense);
   const [license, setLicense] = useState<LicenseStatus | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -566,9 +567,21 @@ export default function ChartPage() {
               <TradeJournalPanel selectedStockId={selectedStockId} compact />
             )}
             {rightTab === "strategies" && (
-              <StrategyPanel selectedStockId={selectedStockId} />
+              <StrategyPanel
+                selectedStockId={selectedStockId}
+                onSelectStrategy={(s) => {
+                  setSelectedStrategyTemplate(s.template_type ?? s.name);
+                  setRightTab("backtest");
+                }}
+              />
             )}
-            {rightTab === "backtest" && <BacktestPanel data={chartData} isPro={license?.tier === "pro"} />}
+            {rightTab === "backtest" && (
+              <BacktestPanel
+                data={chartData}
+                isPro={license?.tier === "pro"}
+                initialTemplate={selectedStrategyTemplate}
+              />
+            )}
             {rightTab === "scanner" && <ScannerPanel />}
             {rightTab === "distribution" && (
               <DistributionPanel stockId={selectedStockId} />

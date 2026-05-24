@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use wasm_core::{DataFrame, IndError, IndicatorOutput, Column, OutputStyle};
 
-fn ad_line(df: &DataFrame) -> Vec<f64> {
-    let high = df.column("high").unwrap();
-    let low = df.column("low").unwrap();
-    let close = df.column("close").unwrap();
-    let volume = df.column("volume").unwrap();
+fn ad_line(df: &DataFrame) -> Result<Vec<f64>, IndError> {
+    let high = df.column("high").ok_or(IndError::InvalidName)?;
+    let low = df.column("low").ok_or(IndError::InvalidName)?;
+    let close = df.column("close").ok_or(IndError::InvalidName)?;
+    let volume = df.column("volume").ok_or(IndError::InvalidName)?;
     let h = high.to_f64_vec();
     let l = low.to_f64_vec();
     let c = close.to_f64_vec();
@@ -20,7 +20,7 @@ fn ad_line(df: &DataFrame) -> Vec<f64> {
         cum += clv * v[i];
         ad[i] = cum;
     }
-    ad
+    Ok(ad)
 }
 
 fn ema_series(data: &[f64], period: usize) -> Vec<f64> {
@@ -36,7 +36,7 @@ fn ema_series(data: &[f64], period: usize) -> Vec<f64> {
 pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
     let fast = params.get("fast").copied().unwrap_or(3.0) as usize;
     let slow = params.get("slow").copied().unwrap_or(10.0) as usize;
-    let ad = ad_line(df);
+    let ad = ad_line(df)?;
     let ema_f = ema_series(&ad, fast);
     let ema_s = ema_series(&ad, slow);
     let n = ad.len();

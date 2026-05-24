@@ -94,12 +94,13 @@ interface StrategyTemplate {
 interface BacktestPanelProps {
   data: OHLCV[];
   isPro?: boolean;
+  initialTemplate?: string;
 }
 
 const CATEGORY_ORDER = ["趋势跟踪", "均值回归", "动量", "突破", "复合"];
 type SubMode = "backtest" | "walkforward" | "montecarlo" | "optimization";
 
-export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
+export function BacktestPanel({ data, isPro, initialTemplate }: BacktestPanelProps) {
   const [mode, setMode] = useState<SubMode>("backtest");
   const [templates, setTemplates] = useState<StrategyTemplate[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState("ma_cross");
@@ -139,6 +140,10 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
   }, []);
 
   useEffect(() => { loadTemplates(); }, [loadTemplates]);
+
+  useEffect(() => {
+    if (initialTemplate) setSelectedTemplate(initialTemplate);
+  }, [initialTemplate]);
 
   // Inject progress animation keyframes once into document head
   useEffect(() => {

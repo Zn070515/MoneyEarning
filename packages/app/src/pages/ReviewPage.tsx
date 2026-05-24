@@ -705,7 +705,7 @@ function TrainingPanel({ selectedStockId, selectedStockCode }: { selectedStockId
   // state === "playing"
   const bar = bars[currentIdx];
   const prevClose = currentIdx > 0 ? bars[currentIdx - 1].close : bar.open;
-  const change = ((bar.close - prevClose) / prevClose * 100).toFixed(2);
+  const change = prevClose > 0 ? ((bar.close - prevClose) / prevClose * 100).toFixed(2) : "0.00";
   const isUp = bar.close >= prevClose;
   const progress = ((currentIdx + 0) / bars.length * 100).toFixed(0);
 
@@ -752,7 +752,7 @@ function TrainingPanel({ selectedStockId, selectedStockCode }: { selectedStockId
           较前收盘: {change}%
         </div>
         <div style={{ marginTop: 4, color: "#666666", fontSize: 10, fontFamily: "monospace" }}>
-          振幅: {((bar.high - bar.low) / bar.low * 100).toFixed(2)}%
+          振幅: {bar.low > 0 ? ((bar.high - bar.low) / bar.low * 100).toFixed(2) : "0.00"}%
         </div>
       </div>
 

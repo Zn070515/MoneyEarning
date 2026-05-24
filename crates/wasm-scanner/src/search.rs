@@ -176,7 +176,7 @@ pub fn build_pool_cgpc(
     if n == 0 { return vec![]; }
 
     let valid: Vec<usize> = (0..n).filter(|&i| quality[i] > min_quality).collect();
-    if valid.len() < pool_size { return valid; }
+    if valid.len() <= pool_size || pool_size == 0 { return valid; }
 
     let mut selected = Vec::new();
     let mut remaining: Vec<usize> = valid.clone();

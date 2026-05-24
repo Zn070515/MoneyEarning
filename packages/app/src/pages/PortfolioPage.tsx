@@ -209,8 +209,10 @@ function PortfolioAnalysisPanel({ selectedStockCode }: { selectedStockCode: stri
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
+    reader.onerror = () => { alert("文件读取失败，请检查文件是否损坏"); };
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
+      if (!text) { alert("文件内容为空"); return; }
       const lines = text.split(/\r?\n/).filter(l => l.trim());
       if (lines.length < 2) return;
       const newHoldings: PortfolioHolding[] = [];

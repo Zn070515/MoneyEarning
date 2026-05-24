@@ -136,3 +136,22 @@ SQLite `alert_rules` 表 + Rust 条件评估函数的组合模式：
 ### 版本号规则
 
 修改版本号时严格遵循 `docs/VERSIONING.md`。核心原则：**小改动（bug 修复、UI 调整、性能优化）只动第三位（PATCH），新功能才动第二位（MINOR）。** 每次发版需同步更新 `package.json`、`tauri.conf.json`、`Cargo.toml` 三处版本号。
+
+### 变更后多Agent健康审计工作流
+
+每次代码改动（新功能、bug修复、重构）完成后，**必须**执行以下审计循环：
+
+1. **启动 3 个 Agent 并行审计**：
+   - Agent 1：WASM 审计 — 扫描 `crates/` 下所有 `.rs` 文件，逐函数检查 panic/unwrap/索引越界/除零/整数溢出
+   - Agent 2：Rust 审计 — 扫描 `packages/app/src-tauri/src/` 下所有 `.rs` 文件，检查 unwrap/锁竞争/未处理 Result/命令注入/license 边界
+   - Agent 3：前端审计 — 扫描 `packages/` 下所有 `.ts`/`.tsx` 文件，检查 try/catch 缺失/null 解引用/类型断言/内存泄漏
+
+2. **汇总发现** → 按严重性排序（CRITICAL > HIGH > LOW）
+
+3. **修复全部 CRITICAL 和 HIGH 问题**，LOW 问题也一并修复
+
+4. **重跑审计** — 修复后再次启动 3 Agent 审计，确认 0 个 CRITICAL/HIGH/LOW 问题
+
+5. **循环上限 3 轮** — 若 3 轮后仍有残余问题，记录到 `docs/known-issues.md` 并继续
+
+6. **检查通过标准**：0 CRITICAL + 0 HIGH + 0 LOW，TypeScript 编译无错误，Rust `cargo check` 无错误

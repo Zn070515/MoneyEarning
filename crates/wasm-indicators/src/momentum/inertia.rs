@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 use wasm_core::{DataFrame, IndError, IndicatorOutput, Column, OutputStyle};
 
-fn rvgi(df: &DataFrame, period: usize) -> Vec<f64> {
-    let open = df.column("open").unwrap();
-    let high = df.column("high").unwrap();
-    let low = df.column("low").unwrap();
-    let close = df.column("close").unwrap();
+fn rvgi(df: &DataFrame, period: usize) -> Result<Vec<f64>, IndError> {
+    let open = df.column("open").ok_or(IndError::InvalidName)?;
+    let high = df.column("high").ok_or(IndError::InvalidName)?;
+    let low = df.column("low").ok_or(IndError::InvalidName)?;
+    let close = df.column("close").ok_or(IndError::InvalidName)?;
     let o = open.to_f64_vec();
     let h = high.to_f64_vec();
     let l = low.to_f64_vec();
@@ -53,7 +53,7 @@ fn rvgi(df: &DataFrame, period: usize) -> Vec<f64> {
         }
     }
 
-    rvgi_signal
+    Ok(rvgi_signal)
 }
 
 fn ema_series(data: &[f64], period: usize) -> Vec<f64> {
@@ -70,7 +70,7 @@ fn ema_series(data: &[f64], period: usize) -> Vec<f64> {
 
 pub fn compute(df: &DataFrame, params: &HashMap<String, f64>) -> Result<Vec<IndicatorOutput>, IndError> {
     let period = params.get("period").copied().unwrap_or(14.0) as usize;
-    let rvgi_signal = rvgi(df, period);
+    let rvgi_signal = rvgi(df, period)?;
     let result = ema_series(&rvgi_signal, period);
     Ok(vec![IndicatorOutput {
         name: format!("INERTIA({})", period),
