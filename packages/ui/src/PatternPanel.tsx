@@ -93,8 +93,8 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "#1a1a2e",
-        color: "#ccc",
+        background: "#141b2d",
+        color: "#F1F5F9",
         fontFamily: "monospace",
         fontSize: 13,
       }}
@@ -103,8 +103,8 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
       <div
         style={{
           padding: "10px 12px",
-          borderBottom: "1px solid #2a2a4a",
-          background: "#16213e",
+          borderBottom: "1px solid #1E293B",
+          background: "#111827",
           display: "flex",
           alignItems: "center",
           gap: 8,
@@ -116,7 +116,7 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
           disabled={loading}
           style={{
             padding: "5px 14px",
-            background: loading ? "#8a7a3a" : "#fbbf24",
+            background: loading ? "#164E63" : "#00D8FF",
             color: "#000",
             border: "none",
             borderRadius: 4,
@@ -128,15 +128,15 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
         >
           {loading ? "扫描中..." : "▶ 扫描形态"}
         </button>
-        <span style={{ color: "#888", fontSize: 12 }}>{status}</span>
+        <span style={{ color: "#94A3B8", fontSize: 12 }}>{status}</span>
       </div>
 
       {/* View toggle + direction filter */}
       <div
         style={{
           padding: "6px 12px",
-          borderBottom: "1px solid #2a2a4a",
-          background: "#16213e",
+          borderBottom: "1px solid #1E293B",
+          background: "#111827",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -153,8 +153,8 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
               onClick={() => setViewMode(k)}
               style={{
                 padding: "4px 12px",
-                background: viewMode === k ? "#fbbf24" : "transparent",
-                color: viewMode === k ? "#000" : "#888",
+                background: viewMode === k ? "#00D8FF" : "transparent",
+                color: viewMode === k ? "#000" : "#94A3B8",
                 border: "none",
                 borderRadius: 3,
                 cursor: "pointer",
@@ -179,9 +179,9 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
                 onClick={() => setDirFilter(k)}
                 style={{
                   padding: "3px 10px",
-                  background: dirFilter === k ? "#3a3a5a" : "transparent",
-                  color: dirFilter === k ? "#fff" : "#888",
-                  border: "1px solid #3a3a5a",
+                  background: dirFilter === k ? "#1E293B" : "transparent",
+                  color: dirFilter === k ? "#fff" : "#94A3B8",
+                  border: "1px solid #1E293B",
                   borderRadius: 3,
                   cursor: "pointer",
                   fontFamily: "monospace",
@@ -219,11 +219,11 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
                 <thead>
                   <tr
                     style={{
-                      color: "#888",
-                      borderBottom: "1px solid #2a2a4a",
+                      color: "#94A3B8",
+                      borderBottom: "1px solid #1E293B",
                       position: "sticky",
                       top: 0,
-                      background: "#1a1a2e",
+                      background: "#141b2d",
                     }}
                   >
                     <th style={{ ...thS, width: 90 }}>名称</th>
@@ -241,7 +241,7 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
                         borderBottom: "1px solid #1f1f3a",
                         background:
                           r.confidence > 0.8
-                            ? "rgba(251,191,36,0.05)"
+                            ? "rgba(0,216,255,0.05)"
                             : undefined,
                       }}
                     >
@@ -250,10 +250,10 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
                           ...tdS,
                           color:
                             r.direction === "bullish"
-                              ? "#ef4444"
+                              ? "#FF2A7A"
                               : r.direction === "bearish"
-                                ? "#22c55e"
-                                : "#fbbf24",
+                                ? "#00E676"
+                                : "#00D8FF",
                           fontWeight: 600,
                         }}
                       >
@@ -265,10 +265,10 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
                       <td style={{ ...tdS, textAlign: "right" }}>
                         <ConfidenceBar confidence={r.confidence} />
                       </td>
-                      <td style={{ ...tdS, textAlign: "right", color: "#888" }}>
+                      <td style={{ ...tdS, textAlign: "right", color: "#94A3B8" }}>
                         {r.start_idx}–{r.end_idx}
                       </td>
-                      <td style={{ ...tdS, color: "#888", fontSize: 11 }}>
+                      <td style={{ ...tdS, color: "#94A3B8", fontSize: 11 }}>
                         {r.description}
                       </td>
                     </tr>
@@ -288,11 +288,11 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
                 <div key={cat} style={{ marginBottom: 16 }}>
                   <div
                     style={{
-                      color: "#fbbf24",
+                      color: "#00D8FF",
                       fontSize: 12,
                       fontWeight: 600,
                       marginBottom: 8,
-                      borderBottom: "1px solid #2a2a4a",
+                      borderBottom: "1px solid #1E293B",
                       paddingBottom: 4,
                     }}
                   >
@@ -310,10 +310,10 @@ export function PatternPanel({ stockId }: { stockId: number | null }) {
                         key={p.name}
                         style={{
                           padding: "4px 8px",
-                          background: "#16213e",
+                          background: "#111827",
                           borderRadius: 4,
                           fontSize: 11,
-                          color: "#aaa",
+                          color: "#94A3B8",
                         }}
                       >
                         {p.name_cn}
@@ -347,8 +347,8 @@ function DirectionBadge({ dir }: { dir: string }) {
           ? "rgba(239,68,68,0.15)"
           : isBearish
             ? "rgba(34,197,94,0.15)"
-            : "rgba(251,191,36,0.15)",
-        color: isBullish ? "#ef4444" : isBearish ? "#22c55e" : "#fbbf24",
+            : "rgba(0,216,255,0.15)",
+        color: isBullish ? "#FF2A7A" : isBearish ? "#00E676" : "#00D8FF",
       }}
     >
       {isBullish ? "看涨" : isBearish ? "看跌" : "中性"}
@@ -359,7 +359,7 @@ function DirectionBadge({ dir }: { dir: string }) {
 function ConfidenceBar({ confidence }: { confidence: number }) {
   const pct = (confidence * 100).toFixed(0);
   const color =
-    confidence > 0.8 ? "#22c55e" : confidence > 0.6 ? "#fbbf24" : "#888";
+    confidence > 0.8 ? "#00E676" : confidence > 0.6 ? "#00D8FF" : "#94A3B8";
   return (
     <span style={{ color, fontSize: 11 }}>
       {pct}%

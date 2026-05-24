@@ -13,14 +13,14 @@ export default function ScannerPage() {
       <div
         style={{
           padding: "12px 20px",
-          background: "#16213e",
-          borderBottom: "1px solid #2a2a4a",
+          background: "#111827",
+          borderBottom: "1px solid #1E293B",
           flexShrink: 0,
         }}
       >
         <h2
           style={{
-            color: "#fbbf24",
+            color: "#00D8FF",
             fontSize: 16,
             fontFamily: "monospace",
             margin: 0,
@@ -30,7 +30,7 @@ export default function ScannerPage() {
         </h2>
         <p
           style={{
-            color: "#888",
+            color: "#94A3B8",
             fontSize: 11,
             fontFamily: "monospace",
             margin: "4px 0 0",

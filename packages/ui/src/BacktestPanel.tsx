@@ -229,27 +229,27 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
 
   const pct = (v: number) => (v * 100).toFixed(2) + "%";
   const fmt = (v: number) => v.toFixed(4);
-  const color = (v: number) => (v >= 0 ? "#ef4444" : "#22c55e");
+  const color = (v: number) => (v >= 0 ? "#FF2A7A" : "#00E676");
 
   return (
-    <div style={{ background: "#16213e", color: "#ccc", fontFamily: "monospace", fontSize: 13, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ padding: "10px 12px", borderBottom: "1px solid #2a2a4a", fontWeight: 600, color: "#fff", fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+    <div style={{ background: "#111827", color: "#F1F5F9", fontFamily: "monospace", fontSize: 13, height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
+      <div style={{ padding: "10px 12px", borderBottom: "1px solid #1E293B", fontWeight: 600, color: "#fff", fontSize: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>策略回测</span>
-        <span style={{ color: isPro ? "#fbbf24" : "#888", fontSize: 10, fontWeight: 400 }}>{isPro ? "PRO" : "免费版"}</span>
+        <span style={{ color: isPro ? "#00D8FF" : "#94A3B8", fontSize: 10, fontWeight: 400 }}>{isPro ? "PRO" : "免费版"}</span>
       </div>
 
       {/* Sub-mode tabs */}
-      <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a", background: "#1a1a2e" }}>
+      <div style={{ display: "flex", borderBottom: "1px solid #1E293B", background: "#141b2d" }}>
         {([
           ["backtest", "回测"], ["walkforward", "WF验证"], ["montecarlo", "蒙特卡洛"], ["optimization", "参数优化"],
         ] as [SubMode, string][]).map(([m, label]) => (
           <button key={m} onClick={() => { setMode(m); setError(""); }}
             style={{
               flex: 1, padding: "8px 6px", border: "none",
-              background: mode === m ? "#16213e" : "transparent",
-              color: mode === m ? "#fbbf24" : "#888", cursor: "pointer",
+              background: mode === m ? "#111827" : "transparent",
+              color: mode === m ? "#00D8FF" : "#94A3B8", cursor: "pointer",
               fontSize: 12, fontFamily: "monospace", fontWeight: mode === m ? 600 : 400,
-              borderBottom: mode === m ? "2px solid #fbbf24" : "2px solid transparent",
+              borderBottom: mode === m ? "2px solid #00D8FF" : "2px solid transparent",
             }}>
             {label}
           </button>
@@ -277,10 +277,10 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
             const sel = templates.find((s) => s.name === selectedTemplate);
             if (!sel) return null;
             return (
-              <div style={{ marginTop: 6, padding: "6px 8px", background: "#1a1a2e", borderRadius: 4, fontSize: 11, color: "#888", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ marginTop: 6, padding: "6px 8px", background: "#141b2d", borderRadius: 4, fontSize: 11, color: "#94A3B8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span>{sel.description}</span>
-                <span style={{ color: sel.is_free ? "#22c55e" : "#fbbf24", fontSize: 10, fontWeight: 600 }}>
-                  {sel.is_free ? "免费" : "PRO"}{!sel.is_free && !isPro && <span style={{ color: "#ef4444", marginLeft: 4 }}>（需要升级）</span>}
+                <span style={{ color: sel.is_free ? "#00E676" : "#00D8FF", fontSize: 10, fontWeight: 600 }}>
+                  {sel.is_free ? "免费" : "PRO"}{!sel.is_free && !isPro && <span style={{ color: "#FF2A7A", marginLeft: 4 }}>（需要升级）</span>}
                 </span>
               </div>
             );
@@ -293,7 +293,7 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
             {Object.entries(params).map(([k, v]) => (
               <div key={k} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ color: "#aaa", fontSize: 11, width: 80 }}>{k}</span>
+                <span style={{ color: "#94A3B8", fontSize: 11, width: 80 }}>{k}</span>
                 <input type="number" value={v} step={1}
                   onChange={(e) => setParams({ ...params, [k]: parseFloat(e.target.value) || 0 })}
                   style={{ ...inputStyle, width: 80, textAlign: "center" }} />
@@ -316,10 +316,10 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
               </div>
             </div>
             <button onClick={handleRun} disabled={running || data.length === 0}
-              style={{ width: "100%", background: running ? "#8a7a3a" : "#fbbf24", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+              style={{ width: "100%", background: running ? "#8a7a3a" : "#00D8FF", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
               {running ? "回测中..." : "开始回测"}
             </button>
-            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#ef4444", fontSize: 12, marginBottom: 12 }}>{error}</div>}
+            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#FF2A7A", fontSize: 12, marginBottom: 12 }}>{error}</div>}
             {result && <BacktestResults result={result} capital={capital} />}
           </>
         )}
@@ -333,7 +333,7 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
                 <ConfigField label="样本外(K线)" value={wfOutSample} onChange={setWfOutSample} />
                 <ConfigField label="步长(K线)" value={wfStep} onChange={setWfStep} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "#aaa", fontSize: 11, width: 70 }}>窗口模式</span>
+                  <span style={{ color: "#94A3B8", fontSize: 11, width: 70 }}>窗口模式</span>
                   <select value={wfAnchor} onChange={(e) => setWfAnchor(e.target.value)} style={{ ...inputStyle, width: 100, textAlign: "center" }}>
                     <option value="rolling">滑动窗口</option>
                     <option value="anchored">扩展窗口</option>
@@ -342,10 +342,10 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
               </div>
             </div>
             <button onClick={handleWF} disabled={running || data.length === 0}
-              style={{ width: "100%", background: running ? "#8a7a3a" : "#fbbf24", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+              style={{ width: "100%", background: running ? "#8a7a3a" : "#00D8FF", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
               {running ? "验证中..." : "开始WF验证"}
             </button>
-            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#ef4444", fontSize: 12, marginBottom: 12 }}>{error}</div>}
+            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#FF2A7A", fontSize: 12, marginBottom: 12 }}>{error}</div>}
             {wfResult && <WalkForwardResults result={wfResult} />}
           </>
         )}
@@ -357,7 +357,7 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                 <ConfigField label="模拟次数" value={mcTrials} onChange={setMcTrials} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "#aaa", fontSize: 11, width: 70 }}>模拟方法</span>
+                  <span style={{ color: "#94A3B8", fontSize: 11, width: 70 }}>模拟方法</span>
                   <select value={mcMethod} onChange={(e) => setMcMethod(e.target.value)} style={{ ...inputStyle, width: 130, textAlign: "center" }}>
                     <option value="trade_shuffle">交易洗牌</option>
                     <option value="return_bootstrap">收益Bootstrap</option>
@@ -367,10 +367,10 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
               </div>
             </div>
             <button onClick={handleMC} disabled={running || data.length === 0}
-              style={{ width: "100%", background: running ? "#8a7a3a" : "#fbbf24", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+              style={{ width: "100%", background: running ? "#8a7a3a" : "#00D8FF", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
               {running ? "模拟中..." : "开始Monte Carlo模拟"}
             </button>
-            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#ef4444", fontSize: 12, marginBottom: 12 }}>{error}</div>}
+            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#FF2A7A", fontSize: 12, marginBottom: 12 }}>{error}</div>}
             {mcResult && <MonteCarloResults result={mcResult} capital={capital} />}
           </>
         )}
@@ -381,14 +381,14 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
               <label style={labelStyle}>参数优化配置</label>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "#aaa", fontSize: 11, width: 70 }}>优化方法</span>
+                  <span style={{ color: "#94A3B8", fontSize: 11, width: 70 }}>优化方法</span>
                   <select value={optMethod} onChange={(e) => setOptMethod(e.target.value)} style={{ ...inputStyle, width: 130, textAlign: "center" }}>
                     <option value="grid_search">网格搜索</option>
                     <option value="genetic_algorithm">遗传算法</option>
                   </select>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: "#aaa", fontSize: 11, width: 70 }}>目标指标</span>
+                  <span style={{ color: "#94A3B8", fontSize: 11, width: 70 }}>目标指标</span>
                   <select value={optMetric} onChange={(e) => setOptMetric(e.target.value)} style={{ ...inputStyle, width: 130, textAlign: "center" }}>
                     <option value="sharpe_ratio">夏普比率</option>
                     <option value="total_return">年化收益</option>
@@ -400,10 +400,10 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
               </div>
             </div>
             <button onClick={handleOpt} disabled={running || data.length === 0}
-              style={{ width: "100%", background: running ? "#8a7a3a" : "#fbbf24", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
+              style={{ width: "100%", background: running ? "#8a7a3a" : "#00D8FF", color: "#000", border: "none", padding: "8px 16px", borderRadius: 4, cursor: running ? "not-allowed" : "pointer", fontSize: 14, fontWeight: 600, marginBottom: 12 }}>
               {running ? "优化中..." : "开始参数优化"}
             </button>
-            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#ef4444", fontSize: 12, marginBottom: 12 }}>{error}</div>}
+            {error && <div style={{ padding: 8, background: "#3a1a2e", borderRadius: 4, color: "#FF2A7A", fontSize: 12, marginBottom: 12 }}>{error}</div>}
             {optResult && <OptimizationResults result={optResult} capital={capital} />}
           </>
         )}
@@ -412,7 +412,7 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
         {running && (
           <div style={{ marginBottom: 12 }}>
             <div style={{
-              height: 3, background: "#2a2a4a", borderRadius: 2,
+              height: 3, background: "#1E293B", borderRadius: 2,
               overflow: "hidden", position: "relative",
             }}>
               <div style={{
@@ -430,7 +430,7 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
               }
             `}</style>
             <div style={{
-              color: "#888", fontSize: 10, fontFamily: "monospace",
+              color: "#94A3B8", fontSize: 10, fontFamily: "monospace",
               textAlign: "center", marginTop: 4,
             }}>
               正在计算中...
@@ -446,20 +446,20 @@ export function BacktestPanel({ data, isPro }: BacktestPanelProps) {
 function BacktestResults({ result, capital }: { result: BtResult; capital: number }) {
   const pct = (v: number) => (v * 100).toFixed(2) + "%";
   const fmt = (v: number) => v.toFixed(4);
-  const c = (v: number) => (v >= 0 ? "#ef4444" : "#22c55e");
+  const c = (v: number) => (v >= 0 ? "#FF2A7A" : "#00E676");
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
         <MetricBox label="总收益率" value={pct(result.total_return)} color={c(result.total_return)} />
         <MetricBox label="年化收益" value={pct(result.annual_return)} color={c(result.annual_return)} />
-        <MetricBox label="最大回撤" value={pct(result.max_drawdown)} color="#ef4444" />
+        <MetricBox label="最大回撤" value={pct(result.max_drawdown)} color="#FF2A7A" />
         <MetricBox label="夏普比率" value={fmt(result.sharpe_ratio)} />
         <MetricBox label="索提诺比率" value={fmt(result.sortino_ratio)} />
         <MetricBox label="卡玛比率" value={fmt(result.calmar_ratio)} />
-        <MetricBox label="胜率" value={pct(result.win_rate)} color="#fbbf24" />
+        <MetricBox label="胜率" value={pct(result.win_rate)} color="#00D8FF" />
         <MetricBox label="盈亏比" value={fmt(result.profit_loss_ratio)} />
       </div>
-      <div style={{ padding: 8, background: "#1a1a2e", borderRadius: 4, fontSize: 12, color: "#aaa", textAlign: "center" }}>
+      <div style={{ padding: 8, background: "#141b2d", borderRadius: 4, fontSize: 12, color: "#94A3B8", textAlign: "center" }}>
         总交易：{result.total_trades} 笔{result.equity_curve.length > 0 && <span> · 权益曲线：{result.equity_curve.length}点</span>}
       </div>
       {result.equity_curve.length > 1 && <EquityMiniChart data={result.equity_curve.map(([, v]) => v)} initialCapital={capital} />}
@@ -472,32 +472,32 @@ function WalkForwardResults({ result }: { result: WalkForwardResult }) {
   const pct = (v: number) => (v * 100).toFixed(2) + "%";
   const fmt = (v: number) => v.toFixed(4);
   if (result.windows.length === 0) {
-    return <div style={{ padding: 12, color: "#ef4444", fontSize: 12, background: "#1a1a2e", borderRadius: 4 }}>{result.assessment}</div>;
+    return <div style={{ padding: 12, color: "#FF2A7A", fontSize: 12, background: "#141b2d", borderRadius: 4 }}>{result.assessment}</div>;
   }
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
-        <MetricBox label="平均OOS收益" value={pct(result.avg_oos_return)} color={result.avg_oos_return >= 0 ? "#ef4444" : "#22c55e"} />
+        <MetricBox label="平均OOS收益" value={pct(result.avg_oos_return)} color={result.avg_oos_return >= 0 ? "#FF2A7A" : "#00E676"} />
         <MetricBox label="平均OOS Sharpe" value={fmt(result.avg_oos_sharpe)} />
-        <MetricBox label="平均IS收益" value={pct(result.avg_is_return)} color={result.avg_is_return >= 0 ? "#ef4444" : "#22c55e"} />
+        <MetricBox label="平均IS收益" value={pct(result.avg_is_return)} color={result.avg_is_return >= 0 ? "#FF2A7A" : "#00E676"} />
         <MetricBox label="平均IS Sharpe" value={fmt(result.avg_is_sharpe)} />
-        <MetricBox label="参数稳定性" value={fmt(1.0 - result.param_stability_score)} color={result.param_stability_score < 0.3 ? "#22c55e" : "#ef4444"} />
-        <MetricBox label="IS/OOS相关性" value={fmt(result.is_oos_correlation)} color={result.is_oos_correlation > 0.5 ? "#22c55e" : "#ef4444"} />
+        <MetricBox label="参数稳定性" value={fmt(1.0 - result.param_stability_score)} color={result.param_stability_score < 0.3 ? "#00E676" : "#FF2A7A"} />
+        <MetricBox label="IS/OOS相关性" value={fmt(result.is_oos_correlation)} color={result.is_oos_correlation > 0.5 ? "#00E676" : "#FF2A7A"} />
       </div>
-      <div style={{ padding: 8, background: "#1a1a2e", borderRadius: 4, fontSize: 12, lineHeight: 1.8, marginBottom: 12 }}>
-        <div style={{ color: "#fbbf24", fontWeight: 600, marginBottom: 4 }}>综合评估</div>
-        <div style={{ color: "#ccc" }}>{result.assessment}</div>
+      <div style={{ padding: 8, background: "#141b2d", borderRadius: 4, fontSize: 12, lineHeight: 1.8, marginBottom: 12 }}>
+        <div style={{ color: "#00D8FF", fontWeight: 600, marginBottom: 4 }}>综合评估</div>
+        <div style={{ color: "#F1F5F9" }}>{result.assessment}</div>
       </div>
-      <div style={{ color: "#888", fontSize: 11, marginBottom: 4 }}>窗口详情 ({result.windows.length}个窗口)</div>
+      <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 4 }}>窗口详情 ({result.windows.length}个窗口)</div>
       {result.windows.slice(0, 10).map((w) => (
-        <div key={w.window_idx} style={{ padding: "6px 8px", background: "#1a1a2e", borderRadius: 4, marginBottom: 4, fontSize: 11, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span style={{ color: "#aaa" }}>#{w.window_idx + 1}</span>
-          <span style={{ color: "#666" }}>IS [{w.is_start}-{w.is_end}] OOS [{w.oos_start}-{w.oos_end}]</span>
-          <span style={{ color: w.oos_annual_return >= 0 ? "#ef4444" : "#22c55e" }}>OOS {pct(w.oos_annual_return)}</span>
-          <span style={{ color: "#fbbf24" }}>S {fmt(w.oos_sharpe)}</span>
+        <div key={w.window_idx} style={{ padding: "6px 8px", background: "#141b2d", borderRadius: 4, marginBottom: 4, fontSize: 11, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span style={{ color: "#94A3B8" }}>#{w.window_idx + 1}</span>
+          <span style={{ color: "#64748B" }}>IS [{w.is_start}-{w.is_end}] OOS [{w.oos_start}-{w.oos_end}]</span>
+          <span style={{ color: w.oos_annual_return >= 0 ? "#FF2A7A" : "#00E676" }}>OOS {pct(w.oos_annual_return)}</span>
+          <span style={{ color: "#00D8FF" }}>S {fmt(w.oos_sharpe)}</span>
         </div>
       ))}
-      {result.windows.length > 10 && <div style={{ color: "#666", fontSize: 10, textAlign: "center" }}>... 还有 {result.windows.length - 10} 个窗口</div>}
+      {result.windows.length > 10 && <div style={{ color: "#64748B", fontSize: 10, textAlign: "center" }}>... 还有 {result.windows.length - 10} 个窗口</div>}
     </div>
   );
 }
@@ -508,24 +508,24 @@ function MonteCarloResults({ result, capital }: { result: MonteCarloResult; capi
   const fmt = (v: number) => v.toFixed(4);
   return (
     <div>
-      <div style={{ padding: 8, background: "#1a1a2e", borderRadius: 4, fontSize: 11, color: "#888", marginBottom: 12, textAlign: "center" }}>
+      <div style={{ padding: 8, background: "#141b2d", borderRadius: 4, fontSize: 11, color: "#94A3B8", marginBottom: 12, textAlign: "center" }}>
         方法：{result.method} · 模拟次数：{result.num_simulations}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
-        <MetricBox label="中位年化收益" value={pct(result.median_return)} color={result.median_return >= 0 ? "#ef4444" : "#22c55e"} />
-        <MetricBox label="平均年化收益" value={pct(result.mean_return)} color={result.mean_return >= 0 ? "#ef4444" : "#22c55e"} />
-        <MetricBox label="收益CI下限" value={pct(result.ci_lower_return)} color={result.ci_lower_return >= 0 ? "#ef4444" : "#22c55e"} />
-        <MetricBox label="收益CI上限" value={pct(result.ci_upper_return)} color={result.ci_upper_return >= 0 ? "#ef4444" : "#22c55e"} />
-        <MetricBox label="中位回撤" value={pct(result.median_dd)} color="#ef4444" />
-        <MetricBox label="回撤CI下限" value={pct(result.ci_lower_dd)} color="#ef4444" />
+        <MetricBox label="中位年化收益" value={pct(result.median_return)} color={result.median_return >= 0 ? "#FF2A7A" : "#00E676"} />
+        <MetricBox label="平均年化收益" value={pct(result.mean_return)} color={result.mean_return >= 0 ? "#FF2A7A" : "#00E676"} />
+        <MetricBox label="收益CI下限" value={pct(result.ci_lower_return)} color={result.ci_lower_return >= 0 ? "#FF2A7A" : "#00E676"} />
+        <MetricBox label="收益CI上限" value={pct(result.ci_upper_return)} color={result.ci_upper_return >= 0 ? "#FF2A7A" : "#00E676"} />
+        <MetricBox label="中位回撤" value={pct(result.median_dd)} color="#FF2A7A" />
+        <MetricBox label="回撤CI下限" value={pct(result.ci_lower_dd)} color="#FF2A7A" />
         <MetricBox label="中位Sharpe" value={fmt(result.median_sharpe)} />
         <MetricBox label="Sharpe CI上限" value={fmt(result.ci_upper_sharpe)} />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 6, marginBottom: 12 }}>
-        <MetricBox label="VaR 95%" value={pct(result.var_95)} color="#ef4444" />
-        <MetricBox label="CVaR 95%" value={pct(result.cvar_95)} color="#ef4444" />
-        <MetricBox label="盈利概率" value={pct(result.prob_profit)} color={result.prob_profit > 0.5 ? "#22c55e" : "#ef4444"} />
-        <MetricBox label="破产概率" value={pct(result.prob_ruin)} color={result.prob_ruin < 0.1 ? "#22c55e" : "#ef4444"} />
+        <MetricBox label="VaR 95%" value={pct(result.var_95)} color="#FF2A7A" />
+        <MetricBox label="CVaR 95%" value={pct(result.cvar_95)} color="#FF2A7A" />
+        <MetricBox label="盈利概率" value={pct(result.prob_profit)} color={result.prob_profit > 0.5 ? "#00E676" : "#FF2A7A"} />
+        <MetricBox label="破产概率" value={pct(result.prob_ruin)} color={result.prob_ruin < 0.1 ? "#00E676" : "#FF2A7A"} />
       </div>
       {result.annual_returns.length > 1 && <DistHistogram data={result.annual_returns} label="年化收益分布" />}
     </div>
@@ -538,21 +538,21 @@ function OptimizationResults({ result, capital }: { result: OptimizerResult; cap
   const fmt = (v: number) => v.toFixed(4);
   return (
     <div>
-      <div style={{ padding: 8, background: "#1a1a2e", borderRadius: 4, fontSize: 11, color: "#888", marginBottom: 12, textAlign: "center" }}>
+      <div style={{ padding: 8, background: "#141b2d", borderRadius: 4, fontSize: 11, color: "#94A3B8", marginBottom: 12, textAlign: "center" }}>
         迭代 {result.iterations} 次 · 收敛于第 {result.convergence_generation} 代
       </div>
-      <div style={{ padding: "6px 8px", background: "#1a1a2e", borderRadius: 4, marginBottom: 12 }}>
-        <div style={{ color: "#fbbf24", fontSize: 11, marginBottom: 4, fontWeight: 600 }}>最优参数</div>
+      <div style={{ padding: "6px 8px", background: "#141b2d", borderRadius: 4, marginBottom: 12 }}>
+        <div style={{ color: "#00D8FF", fontSize: 11, marginBottom: 4, fontWeight: 600 }}>最优参数</div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4 }}>
           {Object.entries(result.best_params).map(([k, v]) => (
-            <div key={k} style={{ fontSize: 11, color: "#ccc" }}><span style={{ color: "#888" }}>{k}:</span> {typeof v === "number" ? v.toFixed(2) : String(v)}</div>
+            <div key={k} style={{ fontSize: 11, color: "#F1F5F9" }}><span style={{ color: "#94A3B8" }}>{k}:</span> {typeof v === "number" ? v.toFixed(2) : String(v)}</div>
           ))}
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 12 }}>
-        <MetricBox label="最优得分" value={fmt(result.best_score)} color="#fbbf24" />
-        <MetricBox label="年化收益" value={pct(result.best_result.annual_return)} color={result.best_result.annual_return >= 0 ? "#ef4444" : "#22c55e"} />
-        <MetricBox label="最大回撤" value={pct(result.best_result.max_drawdown)} color="#ef4444" />
+        <MetricBox label="最优得分" value={fmt(result.best_score)} color="#00D8FF" />
+        <MetricBox label="年化收益" value={pct(result.best_result.annual_return)} color={result.best_result.annual_return >= 0 ? "#FF2A7A" : "#00E676"} />
+        <MetricBox label="最大回撤" value={pct(result.best_result.max_drawdown)} color="#FF2A7A" />
         <MetricBox label="夏普比率" value={fmt(result.best_result.sharpe_ratio)} />
         <MetricBox label="胜率" value={pct(result.best_result.win_rate)} />
         <MetricBox label="总交易" value={String(result.best_result.total_trades)} />
@@ -576,14 +576,14 @@ function DistHistogram({ data, label }: { data: number[]; label: string }) {
   const barW = w / bins;
 
   return (
-    <div style={{ marginTop: 8, padding: "6px", background: "#1a1a2e", borderRadius: 4 }}>
-      <div style={{ color: "#888", fontSize: 10, marginBottom: 4 }}>{label}</div>
+    <div style={{ marginTop: 8, padding: "6px", background: "#141b2d", borderRadius: 4 }}>
+      <div style={{ color: "#94A3B8", fontSize: 10, marginBottom: 4 }}>{label}</div>
       <svg width="100%" height={h} style={{ display: "block" }}>
         {counts.map((c, i) => (
           <rect key={i} x={i * barW} y={h - (c / maxCount) * h} width={barW - 1} height={(c / maxCount) * h}
-            fill={i < bins / 2 ? "#22c55e" : "#ef4444"} opacity={0.7} />
+            fill={i < bins / 2 ? "#00E676" : "#FF2A7A"} opacity={0.7} />
         ))}
-        <line x1={0} y1={h} x2={w} y2={h} stroke="#3a3a5a" strokeWidth={1} />
+        <line x1={0} y1={h} x2={w} y2={h} stroke="#1E293B" strokeWidth={1} />
       </svg>
     </div>
   );
@@ -594,7 +594,7 @@ function DistHistogram({ data, label }: { data: number[]; label: string }) {
 function ConfigField({ label, value, onChange, step = 1 }: { label: string; value: number; onChange: (v: number) => void; step?: number }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <span style={{ color: "#aaa", fontSize: 11, width: 70 }}>{label}</span>
+      <span style={{ color: "#94A3B8", fontSize: 11, width: 70 }}>{label}</span>
       <input type="number" value={value} step={step} onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
         style={{ ...inputStyle, width: 100, textAlign: "center" }} />
     </div>
@@ -603,8 +603,8 @@ function ConfigField({ label, value, onChange, step = 1 }: { label: string; valu
 
 function MetricBox({ label, value, color: c }: { label: string; value: string; color?: string }) {
   return (
-    <div style={{ padding: "6px 8px", background: "#1a1a2e", borderRadius: 4, textAlign: "center" }}>
-      <div style={{ color: "#888", fontSize: 10, marginBottom: 2 }}>{label}</div>
+    <div style={{ padding: "6px 8px", background: "#141b2d", borderRadius: 4, textAlign: "center" }}>
+      <div style={{ color: "#94A3B8", fontSize: 10, marginBottom: 2 }}>{label}</div>
       <div style={{ color: c ?? "#fff", fontSize: 14, fontWeight: 600 }}>{value}</div>
     </div>
   );
@@ -618,16 +618,16 @@ function EquityMiniChart({ data, initialCapital }: { data: number[]; initialCapi
   const w = 280;
   const points = data.map((v, i) => { const x = (i / (data.length - 1)) * w; const y = h - ((v - min) / rng) * h; return `${x},${y}`; }).join(" ");
   return (
-    <div style={{ marginTop: 8, padding: "6px", background: "#1a1a2e", borderRadius: 4 }}>
-      <div style={{ color: "#888", fontSize: 10, marginBottom: 4 }}>权益曲线</div>
+    <div style={{ marginTop: 8, padding: "6px", background: "#141b2d", borderRadius: 4 }}>
+      <div style={{ color: "#94A3B8", fontSize: 10, marginBottom: 4 }}>权益曲线</div>
       <svg width="100%" height={h} style={{ display: "block" }}>
-        <line x1={0} y1={h - ((initialCapital - min) / rng) * h} x2={w} y2={h - ((initialCapital - min) / rng) * h} stroke="#3a3a5a" strokeDasharray="4,4" />
-        <polyline points={points} fill="none" stroke={data[data.length - 1] >= initialCapital ? "#ef4444" : "#22c55e"} strokeWidth={1.5} />
+        <line x1={0} y1={h - ((initialCapital - min) / rng) * h} x2={w} y2={h - ((initialCapital - min) / rng) * h} stroke="#1E293B" strokeDasharray="4,4" />
+        <polyline points={points} fill="none" stroke={data[data.length - 1] >= initialCapital ? "#FF2A7A" : "#00E676"} strokeWidth={1.5} />
       </svg>
     </div>
   );
 }
 
-const labelStyle: React.CSSProperties = { fontSize: 11, color: "#888", marginBottom: 4, display: "block" };
+const labelStyle: React.CSSProperties = { fontSize: 11, color: "#94A3B8", marginBottom: 4, display: "block" };
 
-const inputStyle: React.CSSProperties = { background: "#1a1a2e", border: "1px solid #3a3a5a", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12, fontFamily: "monospace", outline: "none" };
+const inputStyle: React.CSSProperties = { background: "#141b2d", border: "1px solid #1E293B", color: "#fff", padding: "4px 8px", borderRadius: 4, fontSize: 12, fontFamily: "monospace", outline: "none" };

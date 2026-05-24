@@ -16,19 +16,19 @@ export default function ReviewPage() {
       <div
         style={{
           padding: "12px 20px",
-          background: "#16213e",
-          borderBottom: "1px solid #2a2a4a",
+          background: "#111827",
+          borderBottom: "1px solid #1E293B",
           display: "flex",
           alignItems: "center",
           gap: 16,
           flexShrink: 0,
         }}
       >
-        <h2 style={{ color: "#fbbf24", fontSize: 16, fontFamily: "monospace", margin: 0 }}>
+        <h2 style={{ color: "#00D8FF", fontSize: 16, fontFamily: "monospace", margin: 0 }}>
           交易复盘
         </h2>
         {selectedStockCode && (
-          <span style={{ color: "#888", fontSize: 12, fontFamily: "monospace" }}>
+          <span style={{ color: "#94A3B8", fontSize: 12, fontFamily: "monospace" }}>
             当前标的: {selectedStockCode}
           </span>
         )}
@@ -38,8 +38,8 @@ export default function ReviewPage() {
       <div
         style={{
           padding: "4px 20px",
-          background: "#1a1a2e",
-          borderBottom: "1px solid #2a2a4a",
+          background: "#141b2d",
+          borderBottom: "1px solid #1E293B",
           display: "flex",
           gap: 4,
           flexShrink: 0,
@@ -55,8 +55,8 @@ export default function ReviewPage() {
             onClick={() => setActiveTab(tab)}
             style={{
               padding: "6px 16px",
-              background: activeTab === tab ? "#fbbf24" : "transparent",
-              color: activeTab === tab ? "#000" : "#888",
+              background: activeTab === tab ? "#00D8FF" : "transparent",
+              color: activeTab === tab ? "#000" : "#94A3B8",
               border: "none",
               borderRadius: "4px 4px 0 0",
               cursor: "pointer",
@@ -125,14 +125,14 @@ const REVIEW_QUESTIONS = [
 ];
 
 const EMOTION_TAGS = [
-  { value: "理性建仓", label: "理性建仓", color: "#22c55e" },
-  { value: "冲动追高", label: "冲动追高", color: "#ef4444" },
-  { value: "恐慌割肉", label: "恐慌割肉", color: "#f87171" },
+  { value: "理性建仓", label: "理性建仓", color: "#00E676" },
+  { value: "冲动追高", label: "冲动追高", color: "#FF2A7A" },
+  { value: "恐慌割肉", label: "恐慌割肉", color: "#FF2A7A" },
   { value: "盲目跟风", label: "盲目跟风", color: "#fb923c" },
   { value: "纪律止盈", label: "纪律止盈", color: "#4ade80" },
   { value: "纪律止损", label: "纪律止损", color: "#a78bfa" },
   { value: "犹豫错过", label: "犹豫错过", color: "#94a3b8" },
-  { value: "躺平持有", label: "躺平持有", color: "#60a5fa" },
+  { value: "躺平持有", label: "躺平持有", color: "#00D8FF" },
 ];
 
 interface ReviewRecord {
@@ -183,9 +183,9 @@ function ReviewTemplatePanel() {
       {history.length > 0 && (
         <div style={{
           marginBottom: 20, padding: 14,
-          background: "#1a1a2e", borderRadius: 8, border: "1px solid #2a2a4a",
+          background: "#141b2d", borderRadius: 8, border: "1px solid #1E293B",
         }}>
-          <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
+          <div style={{ color: "#00D8FF", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
             复盘情绪分布 ({history.length} 条记录)
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -198,21 +198,21 @@ function ReviewTemplatePanel() {
                   <span style={{ color: tag.color, fontSize: 11, fontFamily: "monospace", width: 72, textAlign: "right" }}>
                     {tag.label}
                   </span>
-                  <div style={{ flex: 1, background: "#0f0f23", borderRadius: 4, height: 14, overflow: "hidden" }}>
+                  <div style={{ flex: 1, background: "#0A0E1A", borderRadius: 4, height: 14, overflow: "hidden" }}>
                     <div style={{
                       width: `${(count / maxCount) * 100}%`, height: "100%",
                       background: tag.color, borderRadius: 4, opacity: 0.7,
                       transition: "width 0.5s",
                     }} />
                   </div>
-                  <span style={{ color: "#888", fontSize: 10, fontFamily: "monospace", width: 40 }}>
+                  <span style={{ color: "#94A3B8", fontSize: 10, fontFamily: "monospace", width: 40 }}>
                     {count} ({pct}%)
                   </span>
                 </div>
               );
             })}
           </div>
-          <div style={{ color: "#666", fontSize: 10, fontFamily: "monospace", marginTop: 8 }}>
+          <div style={{ color: "#64748B", fontSize: 10, fontFamily: "monospace", marginTop: 8 }}>
             提示：观察情绪分布，找出导致亏损的主要情绪模式。纪律性交易（理性建仓 + 纪律止盈/止损）占比越高，长期盈利概率越大。
           </div>
         </div>
@@ -221,15 +221,15 @@ function ReviewTemplatePanel() {
       {/* New review form */}
       <div style={{
         marginBottom: 16, padding: 14,
-        background: "#16213e", borderRadius: 8, border: "1px solid #2a2a4a",
+        background: "#111827", borderRadius: 8, border: "1px solid #1E293B",
       }}>
-        <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
+        <div style={{ color: "#00D8FF", fontSize: 13, fontFamily: "monospace", marginBottom: 10 }}>
           新建复盘记录
         </div>
 
         {/* Emotion tag selector */}
         <div style={{ marginBottom: 16 }}>
-          <div style={{ color: "#888", fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>
+          <div style={{ color: "#94A3B8", fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>
             本次交易情绪标签
           </div>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -239,7 +239,7 @@ function ReviewTemplatePanel() {
                 onClick={() => setSelectedEmotion(tag.value)}
                 style={{
                   padding: "4px 10px",
-                  background: selectedEmotion === tag.value ? tag.color : "#1a1a2e",
+                  background: selectedEmotion === tag.value ? tag.color : "#141b2d",
                   color: selectedEmotion === tag.value ? "#000" : tag.color,
                   border: `1px solid ${tag.color}`,
                   borderRadius: 12,
@@ -258,14 +258,14 @@ function ReviewTemplatePanel() {
         {REVIEW_QUESTIONS.map((section) => (
           <div key={section.category} style={{ marginBottom: 16 }}>
             <div style={{
-              color: "#fbbf24", fontSize: 12, fontFamily: "monospace",
-              marginBottom: 6, borderBottom: "1px solid #2a2a4a", paddingBottom: 4,
+              color: "#00D8FF", fontSize: 12, fontFamily: "monospace",
+              marginBottom: 6, borderBottom: "1px solid #1E293B", paddingBottom: 4,
             }}>
               {section.category}
             </div>
             {section.questions.map((q) => (
               <div key={q} style={{ marginBottom: 8 }}>
-                <div style={{ color: "#aaa", fontSize: 11, fontFamily: "monospace", marginBottom: 3 }}>
+                <div style={{ color: "#94A3B8", fontSize: 11, fontFamily: "monospace", marginBottom: 3 }}>
                   {q}
                 </div>
                 <textarea
@@ -274,7 +274,7 @@ function ReviewTemplatePanel() {
                   rows={2}
                   style={{
                     width: "100%", maxWidth: 600, padding: "6px 8px",
-                    background: "#0f0f23", color: "#ccc", border: "1px solid #2a2a4a",
+                    background: "#0A0E1A", color: "#F1F5F9", border: "1px solid #1E293B",
                     borderRadius: 4, fontFamily: "monospace", fontSize: 12, resize: "vertical",
                     boxSizing: "border-box",
                   }}
@@ -285,7 +285,7 @@ function ReviewTemplatePanel() {
         ))}
 
         <button onClick={handleSave} style={{
-          padding: "8px 24px", background: saved ? "#22c55e" : "#fbbf24",
+          padding: "8px 24px", background: saved ? "#00E676" : "#00D8FF",
           color: "#000", border: "none", borderRadius: 4, cursor: "pointer",
           fontFamily: "monospace", fontSize: 13, fontWeight: 600,
         }}>
@@ -297,7 +297,7 @@ function ReviewTemplatePanel() {
       {history.length > 0 && (
         <div style={{ marginBottom: 16 }}>
           <button onClick={() => setShowHistory(!showHistory)} style={{
-            background: "transparent", color: "#888", border: "1px solid #2a2a4a",
+            background: "transparent", color: "#94A3B8", border: "1px solid #1E293B",
             padding: "6px 16px", borderRadius: 4, cursor: "pointer",
             fontFamily: "monospace", fontSize: 12,
           }}>
@@ -309,18 +309,18 @@ function ReviewTemplatePanel() {
       {showHistory && history.slice().reverse().map((r, i) => (
         <div key={i} style={{
           marginBottom: 8, padding: "10px 14px",
-          background: "#16213e", borderRadius: 6, border: "1px solid #2a2a4a",
+          background: "#111827", borderRadius: 6, border: "1px solid #1E293B",
         }}>
           <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6 }}>
-            <span style={{ color: "#888", fontSize: 11, fontFamily: "monospace" }}>
+            <span style={{ color: "#94A3B8", fontSize: 11, fontFamily: "monospace" }}>
               {new Date(r.date).toLocaleDateString("zh-CN")}
             </span>
             {r.emotion && (
               <span style={{
                 fontSize: 10, fontFamily: "monospace",
-                color: EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#888",
+                color: EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#94A3B8",
                 padding: "1px 8px", borderRadius: 8,
-                border: `1px solid ${EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#888"}`,
+                border: `1px solid ${EMOTION_TAGS.find(e => e.value === r.emotion)?.color || "#94A3B8"}`,
               }}>
                 {r.emotion}
               </span>
@@ -328,8 +328,8 @@ function ReviewTemplatePanel() {
           </div>
           {Object.entries(r.answers).filter(([, v]) => v).slice(0, 3).map(([q, a]) => (
             <div key={q} style={{ marginBottom: 3, fontSize: 11, fontFamily: "monospace" }}>
-              <span style={{ color: "#666" }}>{q.slice(0, 20)}...: </span>
-              <span style={{ color: "#aaa" }}>{a.slice(0, 80)}{a.length > 80 ? "..." : ""}</span>
+              <span style={{ color: "#64748B" }}>{q.slice(0, 20)}...: </span>
+              <span style={{ color: "#94A3B8" }}>{a.slice(0, 80)}{a.length > 80 ? "..." : ""}</span>
             </div>
           ))}
         </div>
@@ -337,13 +337,13 @@ function ReviewTemplatePanel() {
 
       {/* Training mode placeholder */}
       <div style={{
-        marginTop: 24, padding: 16, background: "#1a1a2e",
-        border: "1px solid #2a2a4a", borderRadius: 8,
+        marginTop: 24, padding: 16, background: "#141b2d",
+        border: "1px solid #1E293B", borderRadius: 8,
       }}>
-        <div style={{ color: "#fbbf24", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>
+        <div style={{ color: "#00D8FF", fontSize: 13, fontFamily: "monospace", marginBottom: 8 }}>
           训练模式（付费功能）
         </div>
-        <div style={{ color: "#666", fontSize: 12, fontFamily: "monospace", lineHeight: 1.6 }}>
+        <div style={{ color: "#64748B", fontSize: 12, fontFamily: "monospace", lineHeight: 1.6 }}>
           使用历史数据逐根K线判断买卖点，隐藏后续走势，完成后对照实际走势检验判断准确性。
           帮助训练盘感，改善入场/离场时机把握。
         </div>
@@ -351,7 +351,7 @@ function ReviewTemplatePanel() {
           title="前往设置页面激活授权"
           onClick={() => alert("请在「设置 → 授权管理」页面激活专业版授权以解锁训练模式。")}
           style={{
-            marginTop: 12, padding: "4px 16px", background: "#fbbf24",
+            marginTop: 12, padding: "4px 16px", background: "#00D8FF",
             color: "#000", border: "none", borderRadius: 4,
             cursor: "pointer", fontFamily: "monospace", fontSize: 12, fontWeight: 600,
           }}

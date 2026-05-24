@@ -263,8 +263,8 @@ export function ScannerPanel() {
         display: "flex",
         flexDirection: "column",
         height: "100%",
-        background: "#1a1a2e",
-        color: "#ccc",
+        background: "#141b2d",
+        color: "#F1F5F9",
         fontFamily: "monospace",
         fontSize: 13,
       }}
@@ -273,8 +273,8 @@ export function ScannerPanel() {
       <div
         style={{
           display: "flex",
-          borderBottom: "1px solid #2a2a4a",
-          background: "#16213e",
+          borderBottom: "1px solid #1E293B",
+          background: "#111827",
           flexShrink: 0,
         }}
       >
@@ -292,13 +292,13 @@ export function ScannerPanel() {
               flex: 1,
               padding: "8px 6px",
               border: "none",
-              background: activeTab === key ? "#1a1a2e" : "transparent",
-              color: activeTab === key ? "#fbbf24" : "#888",
+              background: activeTab === key ? "#141b2d" : "transparent",
+              color: activeTab === key ? "#00D8FF" : "#94A3B8",
               cursor: "pointer",
               fontSize: 12,
               fontFamily: "monospace",
               fontWeight: activeTab === key ? 600 : 400,
-              borderBottom: activeTab === key ? "2px solid #fbbf24" : "2px solid transparent",
+              borderBottom: activeTab === key ? "2px solid #00D8FF" : "2px solid transparent",
             }}
           >
             {label}
@@ -307,7 +307,7 @@ export function ScannerPanel() {
       </div>
 
       {/* Tab Content */}
-      <div style={{ padding: "12px", borderBottom: "1px solid #2a2a4a", background: "#16213e", flexShrink: 0 }}>
+      <div style={{ padding: "12px", borderBottom: "1px solid #1E293B", background: "#111827", flexShrink: 0 }}>
         {activeTab === "condition" && (
           <>
             <div style={{ marginBottom: 10 }}>
@@ -315,8 +315,8 @@ export function ScannerPanel() {
                 onClick={() => setScanOp("COMPARE")}
                 style={{
                   ...opBtn,
-                  background: scanOp === "COMPARE" ? "#fbbf24" : "#2a2a4a",
-                  color: scanOp === "COMPARE" ? "#000" : "#888",
+                  background: scanOp === "COMPARE" ? "#00D8FF" : "#1E293B",
+                  color: scanOp === "COMPARE" ? "#000" : "#94A3B8",
                 }}
               >
                 指标比较
@@ -325,8 +325,8 @@ export function ScannerPanel() {
                 onClick={() => setScanOp("CROSS")}
                 style={{
                   ...opBtn,
-                  background: scanOp === "CROSS" ? "#fbbf24" : "#2a2a4a",
-                  color: scanOp === "CROSS" ? "#000" : "#888",
+                  background: scanOp === "CROSS" ? "#00D8FF" : "#1E293B",
+                  color: scanOp === "CROSS" ? "#000" : "#94A3B8",
                   marginLeft: 8,
                 }}
               >
@@ -393,7 +393,7 @@ export function ScannerPanel() {
                 disabled={loading}
                 style={{
                   ...opBtn,
-                  background: "#fbbf24",
+                  background: "#00D8FF",
                   color: "#000",
                   fontWeight: 600,
                   opacity: loading ? 0.5 : 1,
@@ -404,9 +404,9 @@ export function ScannerPanel() {
             </div>
             {selectedMeta && selectedMeta.params.length > 0 && (
               <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                <span style={{ color: "#888", fontSize: 12 }}>参数:</span>
+                <span style={{ color: "#94A3B8", fontSize: 12 }}>参数:</span>
                 {selectedMeta.params.map((p) => (
-                  <label key={p.name} style={{ fontSize: 12, color: "#aaa" }}>
+                  <label key={p.name} style={{ fontSize: 12, color: "#94A3B8" }}>
                     {p.name}
                     <input
                       type="number"
@@ -426,7 +426,7 @@ export function ScannerPanel() {
 
         {activeTab === "caps" && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <span style={{ color: "#888", fontSize: 12 }}>
+            <span style={{ color: "#94A3B8", fontSize: 12 }}>
               CAPS — 协方差解析投影搜索：对所有策略×组合估计零回测夏普比率
             </span>
             <button
@@ -434,7 +434,7 @@ export function ScannerPanel() {
               disabled={loading}
               style={{
                 ...opBtn,
-                background: "#fbbf24",
+                background: "#00D8FF",
                 color: "#000",
                 fontWeight: 600,
                 opacity: loading ? 0.5 : 1,
@@ -447,7 +447,7 @@ export function ScannerPanel() {
 
         {activeTab === "cgpc" && (
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <label style={{ fontSize: 12, color: "#aaa" }}>
+            <label style={{ fontSize: 12, color: "#94A3B8" }}>
               池数量:
               <input
                 type="number"
@@ -458,7 +458,7 @@ export function ScannerPanel() {
                 max="10"
               />
             </label>
-            <label style={{ fontSize: 12, color: "#aaa" }}>
+            <label style={{ fontSize: 12, color: "#94A3B8" }}>
               池大小:
               <input
                 type="number"
@@ -474,7 +474,7 @@ export function ScannerPanel() {
               disabled={loading}
               style={{
                 ...opBtn,
-                background: "#fbbf24",
+                background: "#00D8FF",
                 color: "#000",
                 fontWeight: 600,
                 opacity: loading ? 0.5 : 1,
@@ -482,7 +482,7 @@ export function ScannerPanel() {
             >
               {loading ? "运行中..." : "▶ 构建池"}
             </button>
-            <span style={{ color: "#666", fontSize: 11 }}>
+            <span style={{ color: "#64748B", fontSize: 11 }}>
               CGPC — 协方差引导池构建 (贪心选股)
             </span>
           </div>
@@ -490,7 +490,7 @@ export function ScannerPanel() {
 
         {activeTab === "mars" && (
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-            <label style={{ fontSize: 12, color: "#aaa" }}>
+            <label style={{ fontSize: 12, color: "#94A3B8" }}>
               体制数量:
               <input
                 type="number"
@@ -506,7 +506,7 @@ export function ScannerPanel() {
               disabled={loading}
               style={{
                 ...opBtn,
-                background: "#fbbf24",
+                background: "#00D8FF",
                 color: "#000",
                 fontWeight: 600,
                 opacity: loading ? 0.5 : 1,
@@ -514,7 +514,7 @@ export function ScannerPanel() {
             >
               {loading ? "运行中..." : "▶ 运行 MARS"}
             </button>
-            <span style={{ color: "#666", fontSize: 11 }}>
+            <span style={{ color: "#64748B", fontSize: 11 }}>
               MARS — 市场自适应体制切换 (K-Means + 策略映射)
             </span>
           </div>
@@ -527,7 +527,7 @@ export function ScannerPanel() {
               disabled={loading}
               style={{
                 ...opBtn,
-                background: "#fbbf24",
+                background: "#00D8FF",
                 color: "#000",
                 fontWeight: 600,
                 opacity: loading ? 0.5 : 1,
@@ -537,7 +537,7 @@ export function ScannerPanel() {
             </button>
             {metaNode && (
               <>
-                <span style={{ color: "#aaa", fontSize: 12 }}>反馈夏普:</span>
+                <span style={{ color: "#94A3B8", fontSize: 12 }}>反馈夏普:</span>
                 <input
                   type="number"
                   value={metaSharpeInput}
@@ -549,7 +549,7 @@ export function ScannerPanel() {
                   onClick={metaRecord}
                   style={{
                     ...opBtn,
-                    background: "#22c55e",
+                    background: "#00E676",
                     color: "#000",
                     fontWeight: 600,
                   }}
@@ -558,7 +558,7 @@ export function ScannerPanel() {
                 </button>
               </>
             )}
-            <span style={{ color: "#666", fontSize: 11 }}>
+            <span style={{ color: "#64748B", fontSize: 11 }}>
               已探索: {metaCount}/{270}
             </span>
           </div>
@@ -571,7 +571,7 @@ export function ScannerPanel() {
           style={{
             padding: "4px 8px",
             fontSize: 12,
-            color: "#888",
+            color: "#94A3B8",
             display: "flex",
             justifyContent: "space-between",
           }}
@@ -584,7 +584,7 @@ export function ScannerPanel() {
         {activeTab === "condition" && results.length > 0 && (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ color: "#888", borderBottom: "1px solid #2a2a4a" }}>
+              <tr style={{ color: "#94A3B8", borderBottom: "1px solid #1E293B" }}>
                 <th style={thStyle}>排名</th>
                 <th style={thStyle}>代码</th>
                 <th style={thStyle}>名称</th>
@@ -598,16 +598,16 @@ export function ScannerPanel() {
                   key={i}
                   style={{
                     borderBottom: "1px solid #1f1f3a",
-                    background: i < 5 ? "rgba(251,191,36,0.05)" : undefined,
+                    background: i < 5 ? "rgba(0,216,255,0.05)" : undefined,
                   }}
                 >
-                  <td style={{ ...tdStyle, color: i < 3 ? "#fbbf24" : "#888" }}>{i + 1}</td>
-                  <td style={{ ...tdStyle, color: "#aaa" }}>{r.code}</td>
+                  <td style={{ ...tdStyle, color: i < 3 ? "#00D8FF" : "#94A3B8" }}>{i + 1}</td>
+                  <td style={{ ...tdStyle, color: "#94A3B8" }}>{r.code}</td>
                   <td style={tdStyle}>{r.name}</td>
-                  <td style={{ ...tdStyle, textAlign: "right", color: "#22c55e" }}>
+                  <td style={{ ...tdStyle, textAlign: "right", color: "#00E676" }}>
                     {r.score.toFixed(2)}
                   </td>
-                  <td style={{ ...tdStyle, color: "#888", fontSize: 11 }}>
+                  <td style={{ ...tdStyle, color: "#94A3B8", fontSize: 11 }}>
                     {r.signals.join(", ")}
                   </td>
                 </tr>
@@ -620,7 +620,7 @@ export function ScannerPanel() {
         {activeTab === "caps" && capsResults.length > 0 && (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ color: "#888", borderBottom: "1px solid #2a2a4a" }}>
+              <tr style={{ color: "#94A3B8", borderBottom: "1px solid #1E293B" }}>
                 <th style={thStyle}>排名</th>
                 <th style={thStyle}>组合</th>
                 <th style={thStyle}>策略</th>
@@ -634,22 +634,22 @@ export function ScannerPanel() {
                   key={i}
                   style={{
                     borderBottom: "1px solid #1f1f3a",
-                    background: i < 5 ? "rgba(251,191,36,0.05)" : undefined,
+                    background: i < 5 ? "rgba(0,216,255,0.05)" : undefined,
                   }}
                 >
-                  <td style={{ ...tdStyle, color: i < 3 ? "#fbbf24" : "#888" }}>{i + 1}</td>
-                  <td style={{ ...tdStyle, color: "#aaa" }}>{r.pool}</td>
+                  <td style={{ ...tdStyle, color: i < 3 ? "#00D8FF" : "#94A3B8" }}>{i + 1}</td>
+                  <td style={{ ...tdStyle, color: "#94A3B8" }}>{r.pool}</td>
                   <td style={tdStyle}>{strategyLabel(r.strategy)}</td>
                   <td
                     style={{
                       ...tdStyle,
                       textAlign: "right",
-                      color: r.projected_sharpe > 1.0 ? "#22c55e" : "#ef4444",
+                      color: r.projected_sharpe > 1.0 ? "#00E676" : "#FF2A7A",
                     }}
                   >
                     {r.projected_sharpe.toFixed(3)}
                   </td>
-                  <td style={{ ...tdStyle, textAlign: "right", color: "#888" }}>
+                  <td style={{ ...tdStyle, textAlign: "right", color: "#94A3B8" }}>
                     {r.n_assets}
                   </td>
                 </tr>
@@ -662,7 +662,7 @@ export function ScannerPanel() {
         {activeTab === "cgpc" && cgpcResults.length > 0 && (
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
             <thead>
-              <tr style={{ color: "#888", borderBottom: "1px solid #2a2a4a" }}>
+              <tr style={{ color: "#94A3B8", borderBottom: "1px solid #1E293B" }}>
                 <th style={thStyle}>池名称</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>资产数</th>
                 <th style={{ ...thStyle, textAlign: "right" }}>平均质量</th>
@@ -675,18 +675,18 @@ export function ScannerPanel() {
                   key={i}
                   style={{
                     borderBottom: "1px solid #1f1f3a",
-                    background: i < 3 ? "rgba(251,191,36,0.05)" : undefined,
+                    background: i < 3 ? "rgba(0,216,255,0.05)" : undefined,
                   }}
                 >
-                  <td style={{ ...tdStyle, color: "#fbbf24" }}>{r.name}</td>
-                  <td style={{ ...tdStyle, textAlign: "right", color: "#aaa" }}>
+                  <td style={{ ...tdStyle, color: "#00D8FF" }}>{r.name}</td>
+                  <td style={{ ...tdStyle, textAlign: "right", color: "#94A3B8" }}>
                     {r.indices.length}
                   </td>
                   <td
                     style={{
                       ...tdStyle,
                       textAlign: "right",
-                      color: r.avg_quality > 0.5 ? "#22c55e" : "#ef4444",
+                      color: r.avg_quality > 0.5 ? "#00E676" : "#FF2A7A",
                     }}
                   >
                     {r.avg_quality.toFixed(3)}
@@ -695,7 +695,7 @@ export function ScannerPanel() {
                     style={{
                       ...tdStyle,
                       textAlign: "right",
-                      color: r.avg_corr < 0.5 ? "#22c55e" : "#fbbf24",
+                      color: r.avg_corr < 0.5 ? "#00E676" : "#00D8FF",
                     }}
                   >
                     {r.avg_corr.toFixed(3)}
@@ -719,27 +719,27 @@ export function ScannerPanel() {
               }}
             >
               <div>
-                <span style={{ color: "#888" }}>体制数: </span>
-                <span style={{ color: "#fbbf24", fontWeight: 600 }}>
+                <span style={{ color: "#94A3B8" }}>体制数: </span>
+                <span style={{ color: "#00D8FF", fontWeight: 600 }}>
                   {marsResult.n_regimes}
                 </span>
               </div>
               <div>
-                <span style={{ color: "#888" }}>当前体制: </span>
-                <span style={{ color: "#22c55e", fontWeight: 600 }}>
+                <span style={{ color: "#94A3B8" }}>当前体制: </span>
+                <span style={{ color: "#00E676", fontWeight: 600 }}>
                   {marsResult.current_regime}
                 </span>
               </div>
               <div>
-                <span style={{ color: "#888" }}>推荐策略: </span>
-                <span style={{ color: "#fbbf24", fontWeight: 600 }}>
+                <span style={{ color: "#94A3B8" }}>推荐策略: </span>
+                <span style={{ color: "#00D8FF", fontWeight: 600 }}>
                   {strategyLabel(marsResult.recommended_strategy)}
                 </span>
               </div>
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
               <thead>
-                <tr style={{ color: "#888", borderBottom: "1px solid #2a2a4a" }}>
+                <tr style={{ color: "#94A3B8", borderBottom: "1px solid #1E293B" }}>
                   <th style={thStyle}>体制</th>
                   <th style={thStyle}>推荐策略</th>
                   <th style={{ ...thStyle, textAlign: "right" }}>样本数</th>
@@ -753,23 +753,23 @@ export function ScannerPanel() {
                       borderBottom: "1px solid #1f1f3a",
                       background:
                         r === marsResult.current_regime
-                          ? "rgba(251,191,36,0.08)"
+                          ? "rgba(0,216,255,0.08)"
                           : undefined,
                     }}
                   >
                     <td
                       style={{
                         ...tdStyle,
-                        color: r === marsResult.current_regime ? "#fbbf24" : "#888",
+                        color: r === marsResult.current_regime ? "#00D8FF" : "#94A3B8",
                         fontWeight: r === marsResult.current_regime ? 600 : 400,
                       }}
                     >
                       {r === marsResult.current_regime ? `体制 ${r} ◀` : `体制 ${r}`}
                     </td>
-                    <td style={{ ...tdStyle, color: "#aaa" }}>
+                    <td style={{ ...tdStyle, color: "#94A3B8" }}>
                       {strategyLabel(marsResult.regime_strategies[r] ?? "-")}
                     </td>
-                    <td style={{ ...tdStyle, textAlign: "right", color: "#888" }}>
+                    <td style={{ ...tdStyle, textAlign: "right", color: "#94A3B8" }}>
                       {marsResult.regime_sizes[r] ?? 0}
                     </td>
                   </tr>
@@ -786,14 +786,14 @@ export function ScannerPanel() {
               <div
                 style={{
                   padding: "12px",
-                  background: "#16213e",
+                  background: "#111827",
                   borderRadius: 6,
-                  border: "1px solid #2a2a4a",
+                  border: "1px solid #1E293B",
                   marginBottom: 12,
                   fontSize: 13,
                 }}
               >
-                <div style={{ color: "#fbbf24", fontWeight: 600, marginBottom: 8 }}>
+                <div style={{ color: "#00D8FF", fontWeight: 600, marginBottom: 8 }}>
                   当前选中节点
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -810,13 +810,13 @@ export function ScannerPanel() {
               <div
                 style={{
                   padding: "12px",
-                  background: "#16213e",
+                  background: "#111827",
                   borderRadius: 6,
-                  border: "1px solid #2a2a4a",
+                  border: "1px solid #1E293B",
                   fontSize: 13,
                 }}
               >
-                <div style={{ color: "#22c55e", fontWeight: 600, marginBottom: 8 }}>
+                <div style={{ color: "#00E676", fontWeight: 600, marginBottom: 8 }}>
                   历史最优节点
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
@@ -853,8 +853,8 @@ export function ScannerPanel() {
 function NodeField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <span style={{ color: "#888", fontSize: 11 }}>{label}: </span>
-      <span style={{ color: "#aaa", fontSize: 12 }}>{value}</span>
+      <span style={{ color: "#94A3B8", fontSize: 11 }}>{label}: </span>
+      <span style={{ color: "#94A3B8", fontSize: 12 }}>{value}</span>
     </div>
   );
 }
@@ -882,9 +882,9 @@ const opBtn: React.CSSProperties = {
 };
 
 const selectStyle: React.CSSProperties = {
-  background: "#0f0f23",
-  color: "#ccc",
-  border: "1px solid #2a2a4a",
+  background: "#0A0E1A",
+  color: "#F1F5F9",
+  border: "1px solid #1E293B",
   padding: "4px 8px",
   borderRadius: 4,
   fontSize: 13,
@@ -893,9 +893,9 @@ const selectStyle: React.CSSProperties = {
 };
 
 const inputStyle: React.CSSProperties = {
-  background: "#0f0f23",
-  color: "#ccc",
-  border: "1px solid #2a2a4a",
+  background: "#0A0E1A",
+  color: "#F1F5F9",
+  border: "1px solid #1E293B",
   padding: "4px 8px",
   borderRadius: 4,
   fontSize: 13,

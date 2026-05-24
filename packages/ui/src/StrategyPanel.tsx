@@ -323,19 +323,19 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
 
   return (
     <div style={{
-      background: "#16213e", color: "#ccc", fontFamily: "monospace",
+      background: "#111827", color: "#F1F5F9", fontFamily: "monospace",
       fontSize: 13, height: "100%", display: "flex", flexDirection: "column",
       overflow: "hidden",
     }}>
       <div style={{
-        padding: "10px 12px", borderBottom: "1px solid #2a2a4a",
+        padding: "10px 12px", borderBottom: "1px solid #1E293B",
         fontWeight: 600, color: "#fff", fontSize: 14,
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <span>ME Script 编辑器</span>
         {!showNew && (
           <button onClick={handleNew} style={{
-            background: "#fbbf24", color: "#000", border: "none",
+            background: "#00D8FF", color: "#000", border: "none",
             padding: "3px 10px", borderRadius: 4, cursor: "pointer",
             fontSize: 12, fontWeight: 600,
           }}>
@@ -348,7 +348,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
         <div style={{ flex: 1, overflow: "auto", padding: 12 }}>
           {/* Name */}
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: "#888", marginBottom: 3, display: "block" }}>
+            <label style={{ fontSize: 11, color: "#94A3B8", marginBottom: 3, display: "block" }}>
               策略名称
             </label>
             <input value={formName} onChange={(e) => setFormName(e.target.value)}
@@ -358,7 +358,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
 
           {/* Template */}
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: "#888", marginBottom: 3, display: "block" }}>
+            <label style={{ fontSize: 11, color: "#94A3B8", marginBottom: 3, display: "block" }}>
               模板
             </label>
             <select value={formTemplate} onChange={(e) => handleTemplate(e.target.value)}
@@ -367,25 +367,25 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
                 <option key={key} value={key}>{t.label}</option>
               ))}
             </select>
-            <div style={{ color: "#666", fontSize: 10, marginTop: 4 }}>
+            <div style={{ color: "#64748B", fontSize: 10, marginTop: 4 }}>
               支持通达信兼容语法：MA/EMA/RSI/MACD/CROSS/REF/HHV/LLV/STD/ATR 等40+函数
             </div>
           </div>
 
           {/* Script editor with line numbers */}
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: "#888", marginBottom: 3, display: "block" }}>
+            <label style={{ fontSize: 11, color: "#94A3B8", marginBottom: 3, display: "block" }}>
               策略脚本
             </label>
             <div style={{
-              display: "flex", background: "#1a1a2e",
-              border: "1px solid #3a3a5a", borderRadius: 4,
+              display: "flex", background: "#141b2d",
+              border: "1px solid #1E293B", borderRadius: 4,
               overflow: "hidden",
             }}>
               {/* Line numbers */}
               <div style={{
                 padding: "8px 0", background: "#111122",
-                borderRight: "1px solid #2a2a4a", minWidth: 36,
+                borderRight: "1px solid #1E293B", minWidth: 36,
                 textAlign: "right", userSelect: "none",
                 fontSize: 12, lineHeight: "19px", color: "#555",
                 fontFamily: "monospace",
@@ -417,7 +417,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
 
           {/* Params */}
           <div style={{ marginBottom: 12 }}>
-            <label style={{ fontSize: 11, color: "#888", marginBottom: 3, display: "block" }}>
+            <label style={{ fontSize: 11, color: "#94A3B8", marginBottom: 3, display: "block" }}>
               参数覆盖 (JSON)
             </label>
             <input value={formParams} onChange={(e) => setFormParams(e.target.value)}
@@ -437,7 +437,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
               {validating ? "编译中..." : "编译并验证"}
             </button>
             {!selectedStockId && (
-              <span style={{ color: "#666", fontSize: 10, marginLeft: 8 }}>
+              <span style={{ color: "#64748B", fontSize: 10, marginLeft: 8 }}>
                 请先在图表中选择一只股票
               </span>
             )}
@@ -445,8 +445,8 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
               <div style={{
                 marginTop: 8, padding: 8, borderRadius: 4,
                 background: validateResult.includes("✓") ? "#0a2a1a" : "#2a1a1a",
-                border: "1px solid #3a3a5a",
-                color: validateResult.includes("✓") ? "#22c55e" : "#ef4444",
+                border: "1px solid #1E293B",
+                color: validateResult.includes("✓") ? "#00E676" : "#FF2A7A",
                 fontSize: 11, whiteSpace: "pre-wrap", lineHeight: "18px",
               }}>
                 {validateResult}
@@ -457,14 +457,14 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
           {/* Actions */}
           <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
             <button onClick={() => { setShowNew(false); setEditing(null); setValidateResult(null); }} style={{
-              background: "transparent", border: "1px solid #3a3a5a",
-              color: "#ccc", padding: "6px 16px", borderRadius: 4,
+              background: "transparent", border: "1px solid #1E293B",
+              color: "#F1F5F9", padding: "6px 16px", borderRadius: 4,
               cursor: "pointer", fontSize: 12, fontFamily: "monospace",
             }}>
               取消
             </button>
             <button onClick={handleSave} disabled={!formName.trim()} style={{
-              background: formName.trim() ? "#fbbf24" : "#8a7a3a",
+              background: formName.trim() ? "#00D8FF" : "#164E63",
               color: "#000", border: "none", padding: "6px 16px",
               borderRadius: 4, cursor: "pointer", fontSize: 12,
               fontWeight: 600, fontFamily: "monospace",
@@ -476,8 +476,8 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
       ) : (
         <div style={{ flex: 1, overflow: "auto" }}>
           {strategies.length === 0 ? (
-            <div style={{ padding: 24, color: "#666", fontSize: 12, textAlign: "center" }}>
-              <div style={{ fontSize: 32, marginBottom: 12, color: "#3a3a5a" }}>{ }</div>
+            <div style={{ padding: 24, color: "#64748B", fontSize: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 32, marginBottom: 12, color: "#1E293B" }}>{ }</div>
               <div style={{ marginBottom: 8 }}>暂无策略</div>
               <div style={{ fontSize: 10, color: "#555", lineHeight: 1.8 }}>
                 点击"+ 新建"编写您的第一个策略脚本<br />
@@ -489,7 +489,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
               <div key={s.id} style={{
                 padding: "8px 12px", cursor: "pointer",
                 background: selectedId === s.id ? "#2a3a5e" : "transparent",
-                borderBottom: "1px solid #1a1a2e",
+                borderBottom: "1px solid #141b2d",
               }} onClick={() => {
                 setSelectedId(s.id);
                 onSelectStrategy?.(s);
@@ -499,27 +499,27 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
                   alignItems: "center", marginBottom: 4,
                 }}>
                   <span style={{
-                    color: selectedId === s.id ? "#fbbf24" : "#ccc",
+                    color: selectedId === s.id ? "#00D8FF" : "#F1F5F9",
                     fontWeight: 600,
                   }}>
                     {s.name}
                   </span>
                   <span style={{ display: "flex", gap: 4 }}>
                     {s.template_type && (
-                      <span style={{ color: "#888", fontSize: 10 }}>
+                      <span style={{ color: "#94A3B8", fontSize: 10 }}>
                         {s.template_type}
                       </span>
                     )}
                     <button onClick={(e) => { e.stopPropagation(); handleEdit(s); }}
                       style={{
-                        background: "none", border: "none", color: "#666",
+                        background: "none", border: "none", color: "#64748B",
                         cursor: "pointer", fontSize: 12,
                       }}>
                       ✎
                     </button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(s.id); }}
                       style={{
-                        background: "none", border: "none", color: "#666",
+                        background: "none", border: "none", color: "#64748B",
                         cursor: "pointer", fontSize: 12,
                       }}>
                       ×
@@ -544,7 +544,7 @@ export function StrategyPanel({ onSelectStrategy, selectedStockId }: StrategyPan
 }
 
 const inputStyle: React.CSSProperties = {
-  width: "100%", background: "#1a1a2e", border: "1px solid #3a3a5a",
+  width: "100%", background: "#141b2d", border: "1px solid #1E293B",
   color: "#fff", padding: "6px 8px", borderRadius: 4, fontSize: 12,
   fontFamily: "monospace", outline: "none",
 };

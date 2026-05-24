@@ -46,15 +46,15 @@ export function StockListPanel({ onSelectStock, selectedWatchlistId, onAddToWatc
 
   return (
     <div style={{
-      background: "#16213e", color: "#ccc", fontFamily: "monospace",
+      background: "#111827", color: "#F1F5F9", fontFamily: "monospace",
       fontSize: 13, height: "100%", display: "flex", flexDirection: "column",
     }}>
       <div style={{
-        padding: "10px 12px", borderBottom: "1px solid #2a2a4a",
+        padding: "10px 12px", borderBottom: "1px solid #1E293B",
         fontWeight: 600, color: "#fff", fontSize: 14,
       }}>
         股票列表
-        <span style={{ color: "#888", fontSize: 11, marginLeft: 8 }}>
+        <span style={{ color: "#94A3B8", fontSize: 11, marginLeft: 8 }}>
           ({stocks.length})
         </span>
       </div>
@@ -65,7 +65,7 @@ export function StockListPanel({ onSelectStock, selectedWatchlistId, onAddToWatc
           onChange={e => setSearch(e.target.value)}
           placeholder="搜索代码或名称..."
           style={{
-            width: "100%", background: "#1a1a2e", border: "1px solid #3a3a5a",
+            width: "100%", background: "#141b2d", border: "1px solid #1E293B",
             color: "#fff", padding: "6px 8px", borderRadius: 4, fontSize: 12,
             fontFamily: "monospace", outline: "none",
             boxSizing: "border-box",
@@ -80,25 +80,25 @@ export function StockListPanel({ onSelectStock, selectedWatchlistId, onAddToWatc
             style={{
               padding: "7px 12px", cursor: "pointer",
               background: selectedId === s.id ? "#2a3a5e" : "transparent",
-              borderBottom: "1px solid #1a1a2e",
+              borderBottom: "1px solid #141b2d",
               display: "flex", justifyContent: "space-between", alignItems: "center",
             }}
           >
             <span>
-              <span style={{ color: selectedId === s.id ? "#fbbf24" : "#ccc" }}>
+              <span style={{ color: selectedId === s.id ? "#00D8FF" : "#F1F5F9" }}>
                 {s.code}
               </span>
-              <span style={{ color: "#aaa", marginLeft: 8, fontSize: 12 }}>
+              <span style={{ color: "#94A3B8", marginLeft: 8, fontSize: 12 }}>
                 {s.name}
               </span>
             </span>
             <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <span style={{ color: "#888", fontSize: 10 }}>{s.exchange}</span>
+              <span style={{ color: "#94A3B8", fontSize: 10 }}>{s.exchange}</span>
               {selectedWatchlistId && onAddToWatchlist && (
                 <button
                   onClick={e => { e.stopPropagation(); onAddToWatchlist(s.id); }}
                   style={{
-                    background: "#3a3a5a", border: "none", color: "#ccc",
+                    background: "#1E293B", border: "none", color: "#F1F5F9",
                     cursor: "pointer", fontSize: 11, padding: "2px 6px",
                     borderRadius: 3,
                   }}
@@ -111,7 +111,7 @@ export function StockListPanel({ onSelectStock, selectedWatchlistId, onAddToWatc
           </div>
         ))}
         {filtered.length === 0 && (
-          <div style={{ padding: 12, color: "#666", fontSize: 11, textAlign: "center" }}>
+          <div style={{ padding: 12, color: "#64748B", fontSize: 11, textAlign: "center" }}>
             {search ? "无匹配结果" : "暂无数据，请先导入CSV"}
           </div>
         )}

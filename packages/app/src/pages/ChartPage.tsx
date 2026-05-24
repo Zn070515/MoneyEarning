@@ -202,8 +202,8 @@ export default function ChartPage() {
       <header
         style={{
           padding: "6px 16px",
-          background: "#16213e",
-          borderBottom: "1px solid #2a2a4a",
+          background: "#111827",
+          borderBottom: "1px solid #1E293B",
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
@@ -213,15 +213,15 @@ export default function ChartPage() {
         }}
       >
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: 15 }}>
+          <span style={{ color: "#00D8FF", fontWeight: 700, fontSize: 15 }}>
             QuantVault
           </span>
           {license && (
             <span
               style={{
-                color: license.tier === "pro" ? "#fbbf24" : "#22c55e",
+                color: license.tier === "pro" ? "#00D8FF" : "#00E676",
                 fontSize: 11,
-                background: "#1a1a2e",
+                background: "#141b2d",
                 padding: "2px 8px",
                 borderRadius: 3,
               }}
@@ -229,8 +229,8 @@ export default function ChartPage() {
               {tierLabel(license.tier)}
             </span>
           )}
-          <span style={{ color: "#666" }}>|</span>
-          <span style={{ color: "#aaa" }}>
+          <span style={{ color: "#64748B" }}>|</span>
+          <span style={{ color: "#94A3B8" }}>
             {selectedStock
               ? `${selectedStock.code} ${selectedStock.name}`
               : "选择股票开始分析"}
@@ -240,14 +240,14 @@ export default function ChartPage() {
           <button onClick={() => setShowImport(true)} style={headerBtn}>
             + 导入数据
           </button>
-          <span style={{ color: "#666" }}>|</span>
+          <span style={{ color: "#64748B" }}>|</span>
           <button
             onClick={toggleLargeFont}
             style={{
               ...headerBtn,
-              background: largeFont ? "#fbbf24" : "transparent",
-              color: largeFont ? "#000" : "#aaa",
-              border: largeFont ? "1px solid #fbbf24" : "1px solid #555",
+              background: largeFont ? "#00D8FF" : "transparent",
+              color: largeFont ? "#000" : "#94A3B8",
+              border: largeFont ? "1px solid #00D8FF" : "1px solid #555",
             }}
             title="大字体模式"
           >
@@ -257,16 +257,16 @@ export default function ChartPage() {
             onClick={toggleHighContrast}
             style={{
               ...headerBtn,
-              background: highContrast ? "#fbbf24" : "transparent",
-              color: highContrast ? "#000" : "#aaa",
-              border: highContrast ? "1px solid #fbbf24" : "1px solid #555",
+              background: highContrast ? "#00D8FF" : "transparent",
+              color: highContrast ? "#000" : "#94A3B8",
+              border: highContrast ? "1px solid #00D8FF" : "1px solid #555",
             }}
             title="高对比度模式"
           >
             高对比
           </button>
-          {loading && <span style={{ color: "#fbbf24" }}>⏳</span>}
-          <span style={{ color: "#888", fontSize: 12 }}>{dataStatus}</span>
+          {loading && <span style={{ color: "#00D8FF" }}>⏳</span>}
+          <span style={{ color: "#94A3B8", fontSize: 12 }}>{dataStatus}</span>
         </div>
       </header>
 
@@ -288,15 +288,15 @@ export default function ChartPage() {
             width: 280,
             display: "flex",
             flexDirection: "column",
-            borderRight: "1px solid #2a2a4a",
+            borderRight: "1px solid #1E293B",
             flexShrink: 0,
           }}
         >
           <div
             style={{
               display: "flex",
-              borderBottom: "1px solid #2a2a4a",
-              background: "#16213e",
+              borderBottom: "1px solid #1E293B",
+              background: "#111827",
             }}
           >
             <TabBtn active={sidebarTab === "stocks"} onClick={() => setSidebarTab("stocks")}>
@@ -365,7 +365,7 @@ export default function ChartPage() {
         <div
           style={{
             width: 300,
-            borderLeft: "1px solid #2a2a4a",
+            borderLeft: "1px solid #1E293B",
             flexShrink: 0,
             overflow: "hidden",
             display: "flex",
@@ -375,8 +375,8 @@ export default function ChartPage() {
           <div
             style={{
               display: "flex",
-              borderBottom: "1px solid #2a2a4a",
-              background: "#16213e",
+              borderBottom: "1px solid #1E293B",
+              background: "#111827",
               flexWrap: "wrap",
             }}
           >
@@ -456,13 +456,13 @@ function TabBtn({
         flex: 1,
         padding: "8px 12px",
         border: "none",
-        background: active ? "#1a1a2e" : "transparent",
-        color: active ? "#fbbf24" : "#888",
+        background: active ? "#141b2d" : "transparent",
+        color: active ? "#00D8FF" : "#94A3B8",
         cursor: "pointer",
         fontSize: 13,
         fontFamily: "monospace",
         fontWeight: active ? 600 : 400,
-        borderBottom: active ? "2px solid #fbbf24" : "2px solid transparent",
+        borderBottom: active ? "2px solid #00D8FF" : "2px solid transparent",
       }}
     >
       {children}
@@ -478,20 +478,20 @@ function EmptyChart({ onImport }: { onImport: () => void }) {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        color: "#666",
+        color: "#64748B",
         fontFamily: "monospace",
         fontSize: 16,
-        background: "#1a1a2e",
+        background: "#141b2d",
       }}
     >
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 48, marginBottom: 16, color: "#3a3a5a" }}>📈</div>
+        <div style={{ fontSize: 48, marginBottom: 16, color: "#1E293B" }}>📈</div>
         <div>从左侧选择一个股票开始分析</div>
         <div style={{ fontSize: 12, marginTop: 16, color: "#555" }}>
           <button
             onClick={onImport}
             style={{
-              background: "#fbbf24",
+              background: "#00D8FF",
               color: "#000",
               border: "none",
               padding: "6px 16px",
@@ -511,8 +511,8 @@ function EmptyChart({ onImport }: { onImport: () => void }) {
 }
 
 const headerBtn: React.CSSProperties = {
-  background: "#3a3a5a",
-  color: "#ccc",
+  background: "#1E293B",
+  color: "#F1F5F9",
   border: "none",
   padding: "4px 12px",
   borderRadius: 4,

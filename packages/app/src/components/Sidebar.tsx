@@ -29,8 +29,8 @@ export default function Sidebar() {
     <nav
       style={{
         width: 56,
-        background: "#16213e",
-        borderRight: "1px solid #2a2a4a",
+        background: "#111827",
+        borderRight: "1px solid #1E293B",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -59,12 +59,13 @@ export default function Sidebar() {
               justifyContent: "center",
               border: "none",
               borderRadius: 6,
-              background: active ? "#1a1a2e" : "transparent",
-              color: active ? "#fbbf24" : "#888",
+              background: active ? "#1a1f2e" : "transparent",
+              color: active ? "#00D8FF" : "#64748B",
               cursor: "pointer",
               fontSize: 18,
               fontFamily: "monospace",
               position: "relative",
+              transition: "color 0.2s, background 0.2s",
             }}
           >
             <span style={{ fontSize: 16, lineHeight: 1 }}>{item.icon}</span>
@@ -79,8 +80,9 @@ export default function Sidebar() {
                   top: "25%",
                   bottom: "25%",
                   width: 3,
-                  background: "#fbbf24",
+                  background: "#00D8FF",
                   borderRadius: "0 2px 2px 0",
+                  boxShadow: "0 0 8px rgba(0, 216, 255, 0.5)",
                 }}
               />
             )}
@@ -95,10 +97,11 @@ export default function Sidebar() {
             marginTop: "auto",
             marginBottom: 12,
             padding: "4px 6px",
-            background: "#1a1a2e",
+            background: "#1a1f2e",
+            border: "1px solid #1E293B",
             borderRadius: 4,
             fontSize: 10,
-            color: "#fbbf24",
+            color: "#00D8FF",
             fontFamily: "monospace",
             textAlign: "center",
             maxWidth: 48,

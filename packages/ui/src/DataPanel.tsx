@@ -57,12 +57,12 @@ export function DataPanel() {
 
   return (
     <div style={{
-      background: "#16213e", color: "#ccc", fontFamily: "monospace",
+      background: "#111827", color: "#F1F5F9", fontFamily: "monospace",
       fontSize: 13, height: "100%", display: "flex", flexDirection: "column",
       overflow: "hidden",
     }}>
       <div style={{
-        padding: "10px 12px", borderBottom: "1px solid #2a2a4a",
+        padding: "10px 12px", borderBottom: "1px solid #1E293B",
         fontWeight: 600, color: "#fff", fontSize: 14,
       }}>
         数据管理
@@ -71,24 +71,24 @@ export function DataPanel() {
       {/* Summary */}
       {summary && (
         <div style={{
-          padding: 12, borderBottom: "1px solid #1a1a2e",
+          padding: 12, borderBottom: "1px solid #141b2d",
           display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8,
           fontSize: 12,
         }}>
-          <div style={{ textAlign: "center", padding: "8px 4px", background: "#1a1a2e", borderRadius: 4 }}>
-            <div style={{ color: "#888", marginBottom: 2 }}>股票数</div>
-            <div style={{ color: "#fbbf24", fontSize: 18, fontWeight: 600 }}>
+          <div style={{ textAlign: "center", padding: "8px 4px", background: "#141b2d", borderRadius: 4 }}>
+            <div style={{ color: "#94A3B8", marginBottom: 2 }}>股票数</div>
+            <div style={{ color: "#00D8FF", fontSize: 18, fontWeight: 600 }}>
               {summary.total_stocks}
             </div>
           </div>
-          <div style={{ textAlign: "center", padding: "8px 4px", background: "#1a1a2e", borderRadius: 4 }}>
-            <div style={{ color: "#888", marginBottom: 2 }}>总行数</div>
-            <div style={{ color: "#60a5fa", fontSize: 18, fontWeight: 600 }}>
+          <div style={{ textAlign: "center", padding: "8px 4px", background: "#141b2d", borderRadius: 4 }}>
+            <div style={{ color: "#94A3B8", marginBottom: 2 }}>总行数</div>
+            <div style={{ color: "#00D8FF", fontSize: 18, fontWeight: 600 }}>
               {summary.total_rows.toLocaleString()}
             </div>
           </div>
-          <div style={{ textAlign: "center", padding: "8px 4px", background: "#1a1a2e", borderRadius: 4 }}>
-            <div style={{ color: "#888", marginBottom: 2 }}>数据库</div>
+          <div style={{ textAlign: "center", padding: "8px 4px", background: "#141b2d", borderRadius: 4 }}>
+            <div style={{ color: "#94A3B8", marginBottom: 2 }}>数据库</div>
             <div style={{ color: "#34d399", fontSize: 18, fontWeight: 600 }}>
               {formatMB(summary.db_size_mb)}
             </div>
@@ -98,7 +98,7 @@ export function DataPanel() {
 
       {message && (
         <div style={{
-          padding: "6px 12px", background: "#1a3a2e", color: "#22c55e",
+          padding: "6px 12px", background: "#1a3a2e", color: "#00E676",
           fontSize: 12, textAlign: "center",
         }}>
           {message}
@@ -109,8 +109,8 @@ export function DataPanel() {
       <div style={{ flex: 1, overflow: "auto" }}>
         <div style={{
           display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 1fr 0.8fr",
-          padding: "6px 12px", background: "#1a1a2e", fontSize: 11,
-          color: "#888", borderBottom: "1px solid #2a2a4a",
+          padding: "6px 12px", background: "#141b2d", fontSize: 11,
+          color: "#94A3B8", borderBottom: "1px solid #1E293B",
         }}>
           <span>代码</span>
           <span>名称</span>
@@ -121,17 +121,17 @@ export function DataPanel() {
         {stocks.map(s => (
           <div key={s.id} style={{
             display: "grid", gridTemplateColumns: "1fr 1.5fr 0.8fr 1fr 0.8fr",
-            padding: "6px 12px", borderBottom: "1px solid #1a1a2e",
+            padding: "6px 12px", borderBottom: "1px solid #141b2d",
             fontSize: 12, alignItems: "center",
           }}>
-            <span style={{ color: "#fbbf24" }}>{s.code}</span>
-            <span style={{ color: "#ccc" }}>{s.name || "-"}</span>
-            <span style={{ color: "#aaa" }}>{s.exchange}</span>
-            <span style={{ color: "#888", fontSize: 11 }}>
+            <span style={{ color: "#00D8FF" }}>{s.code}</span>
+            <span style={{ color: "#F1F5F9" }}>{s.name || "-"}</span>
+            <span style={{ color: "#94A3B8" }}>{s.exchange}</span>
+            <span style={{ color: "#94A3B8", fontSize: 11 }}>
               {s.total_rows}条{s.first_date ? ` · ${s.first_date}~${s.last_date}` : ""}
             </span>
             <button onClick={() => handleDeleteStock(s.id, s.code)} style={{
-              background: "none", border: "1px solid #5a3a3a", color: "#ef4444",
+              background: "none", border: "1px solid #5a3a3a", color: "#FF2A7A",
               cursor: "pointer", fontSize: 11, padding: "2px 6px", borderRadius: 3,
             }}>
               删除

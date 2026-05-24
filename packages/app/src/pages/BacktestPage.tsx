@@ -100,15 +100,15 @@ export default function BacktestPage() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
       {/* Page header */}
       <div style={{
-        padding: "12px 20px", background: "#16213e",
-        borderBottom: "1px solid #2a2a4a", display: "flex",
+        padding: "12px 20px", background: "#111827",
+        borderBottom: "1px solid #1E293B", display: "flex",
         alignItems: "center", gap: 16, flexShrink: 0,
       }}>
-        <h2 style={{ color: "#fbbf24", fontSize: 16, fontFamily: "monospace", margin: 0 }}>
+        <h2 style={{ color: "#00D8FF", fontSize: 16, fontFamily: "monospace", margin: 0 }}>
           策略回测
         </h2>
         {selectedStockCode && (
-          <span style={{ color: "#888", fontSize: 12, fontFamily: "monospace" }}>
+          <span style={{ color: "#94A3B8", fontSize: 12, fontFamily: "monospace" }}>
             当前标的: {selectedStockCode}
           </span>
         )}
@@ -116,10 +116,10 @@ export default function BacktestPage() {
 
       {/* Configuration bar */}
       <div style={{
-        padding: "8px 20px", background: "#1a1a2e",
-        borderBottom: "1px solid #2a2a4a", display: "flex",
+        padding: "8px 20px", background: "#1a1f2e",
+        borderBottom: "1px solid #1E293B", display: "flex",
         gap: 16, alignItems: "center", flexWrap: "wrap",
-        fontSize: 12, fontFamily: "monospace", color: "#aaa", flexShrink: 0,
+        fontSize: 12, fontFamily: "monospace", color: "#94A3B8", flexShrink: 0,
       }}>
         <label>
           模板:
@@ -163,8 +163,8 @@ export default function BacktestPage() {
           onClick={handleRunBacktest}
           style={{
             padding: "4px 16px",
-            background: running || !selectedStockId ? "#3a3a5a" : "#fbbf24",
-            color: running || !selectedStockId ? "#888" : "#000",
+            background: running || !selectedStockId ? "#1E293B" : "#00D8FF",
+            color: running || !selectedStockId ? "#94A3B8" : "#000",
             border: "none", borderRadius: 4,
             cursor: running || !selectedStockId ? "not-allowed" : "pointer",
             fontFamily: "monospace", fontSize: 12, fontWeight: 600,
@@ -177,7 +177,7 @@ export default function BacktestPage() {
             const md = generateBacktestReportMarkdown(config, result, selectedStockCode ?? "");
             downloadMarkdownReport(md, `backtest-${config.template}-${Date.now()}.md`);
           }} style={{
-            padding: "4px 16px", background: "#22c55e", color: "#000",
+            padding: "4px 16px", background: "#00E676", color: "#000",
             border: "none", borderRadius: 4, cursor: "pointer",
             fontFamily: "monospace", fontSize: 12, fontWeight: 600,
           }}>
@@ -185,7 +185,7 @@ export default function BacktestPage() {
           </button>
         )}
         {!selectedStockId && (
-          <span style={{ color: "#666", fontSize: 11 }}>请先在图表页面选择股票</span>
+          <span style={{ color: "#64748B", fontSize: 11 }}>请先在图表页面选择股票</span>
         )}
       </div>
 
@@ -193,7 +193,7 @@ export default function BacktestPage() {
       {running && progress.total > 0 && (
         <div style={{ padding: "0 20px", flexShrink: 0 }}>
           <div style={{
-            height: 3, background: "#2a2a4a", borderRadius: 2,
+            height: 3, background: "#1E293B", borderRadius: 2,
             overflow: "hidden", marginTop: 2,
           }}>
             <div style={{
@@ -203,7 +203,7 @@ export default function BacktestPage() {
             }} />
           </div>
           <div style={{
-            color: "#888", fontSize: 10, fontFamily: "monospace",
+            color: "#94A3B8", fontSize: 10, fontFamily: "monospace",
             textAlign: "right", marginTop: 1,
           }}>
             {Math.round((progress.current / progress.total) * 100)}%
@@ -214,8 +214,8 @@ export default function BacktestPage() {
       {/* Results summary */}
       {result && (
         <div style={{
-          padding: "10px 20px", background: "#0f0f23",
-          borderBottom: "1px solid #2a2a4a", display: "flex",
+          padding: "10px 20px", background: "#0A0E1A",
+          borderBottom: "1px solid #1E293B", display: "flex",
           gap: 24, flexWrap: "wrap", fontSize: 12,
           fontFamily: "monospace", flexShrink: 0,
         }}>
@@ -230,7 +230,7 @@ export default function BacktestPage() {
 
       {error && (
         <div style={{
-          padding: "8px 20px", background: "#3a1a1a", color: "#f87171",
+          padding: "8px 20px", background: "#2a1525", color: "#FF2A7A",
           fontSize: 12, fontFamily: "monospace", flexShrink: 0,
         }}>
           {error}
@@ -256,15 +256,15 @@ function Metric({
 }) {
   return (
     <div>
-      <span style={{ color: "#888" }}>{label}: </span>
+      <span style={{ color: "#94A3B8" }}>{label}: </span>
       <span
         style={{
           color:
             positive === undefined
-              ? "#ccc"
+              ? "#F1F5F9"
               : positive
-                ? "#22c55e"
-                : "#ef4444",
+                ? "#00E676"
+                : "#FF2A7A",
           fontWeight: 600,
         }}
       >
@@ -277,9 +277,9 @@ function Metric({
 const selectStyle: React.CSSProperties = {
   marginLeft: 6,
   padding: "2px 6px",
-  background: "#16213e",
-  color: "#ccc",
-  border: "1px solid #2a2a4a",
+  background: "#111827",
+  color: "#F1F5F9",
+  border: "1px solid #1E293B",
   borderRadius: 3,
   fontFamily: "monospace",
   fontSize: 12,
@@ -289,9 +289,9 @@ const inputStyle: React.CSSProperties = {
   marginLeft: 6,
   padding: "2px 6px",
   width: 80,
-  background: "#16213e",
-  color: "#ccc",
-  border: "1px solid #2a2a4a",
+  background: "#111827",
+  color: "#F1F5F9",
+  border: "1px solid #1E293B",
   borderRadius: 3,
   fontFamily: "monospace",
   fontSize: 12,

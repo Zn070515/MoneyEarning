@@ -57,7 +57,7 @@ function toOutputStyle(style: string | object): "line" | "histogram" | "dots" | 
 }
 
 const COLORS = [
-  "#fbbf24", "#60a5fa", "#34d399", "#f87171", "#a78bfa",
+  "#00D8FF", "#60a5fa", "#34d399", "#f87171", "#a78bfa",
   "#fb923c", "#22d3ee", "#e879f9", "#2dd4bf", "#facc15",
 ];
 
@@ -127,16 +127,16 @@ export function IndicatorSelector({
 
   return (
     <div style={{
-      background: "#16213e", color: "#ccc", fontFamily: "monospace",
+      background: "#111827", color: "#F1F5F9", fontFamily: "monospace",
       fontSize: 12, height: "100%", display: "flex", flexDirection: "column",
       overflow: "hidden",
     }}>
       <div style={{
-        padding: "10px 12px", borderBottom: "1px solid #2a2a4a",
+        padding: "10px 12px", borderBottom: "1px solid #1E293B",
         fontWeight: 600, color: "#fff", fontSize: 13,
       }}>
-        技术指标 {computing && <span style={{ color: "#fbbf24" }}>计算中...</span>}
-        <span style={{ color: "#888", fontSize: 11, marginLeft: 8 }}>
+        技术指标 {computing && <span style={{ color: "#00D8FF" }}>计算中...</span>}
+        <span style={{ color: "#94A3B8", fontSize: 11, marginLeft: 8 }}>
           ({indicators.length})
         </span>
       </div>
@@ -145,7 +145,7 @@ export function IndicatorSelector({
         <div style={{
           margin: "0 12px", padding: "6px 10px", borderRadius: 4,
           background: "#2a1a1a", border: "1px solid #5a3a3a",
-          color: "#ef4444", fontSize: 11, lineHeight: "16px",
+          color: "#FF2A7A", fontSize: 11, lineHeight: "16px",
         }}>
           {errorMsg}
         </div>
@@ -154,12 +154,12 @@ export function IndicatorSelector({
       {/* Category tabs */}
       <div style={{
         display: "flex", flexWrap: "wrap", gap: 2,
-        padding: "6px 8px", borderBottom: "1px solid #2a2a4a",
+        padding: "6px 8px", borderBottom: "1px solid #1E293B",
       }}>
         {categories.map(cat => (
           <button key={cat} onClick={() => setSelectedCat(cat)} style={{
-            background: selectedCat === cat ? "#fbbf24" : "#1a1a2e",
-            color: selectedCat === cat ? "#000" : "#888",
+            background: selectedCat === cat ? "#00D8FF" : "#141b2d",
+            color: selectedCat === cat ? "#000" : "#94A3B8",
             border: "none", padding: "3px 8px", borderRadius: 3,
             cursor: "pointer", fontSize: 11, fontFamily: "monospace",
           }}>
@@ -177,7 +177,7 @@ export function IndicatorSelector({
             const isExpanded = expanded[meta.name];
 
             return (
-              <div key={meta.name} style={{ borderBottom: "1px solid #1a1a2e" }}>
+              <div key={meta.name} style={{ borderBottom: "1px solid #141b2d" }}>
                 <div
                   onClick={() => handleToggle(meta)}
                   style={{
@@ -188,16 +188,16 @@ export function IndicatorSelector({
                   }}
                 >
                   <div>
-                    <span style={{ color: isActive ? "#fbbf24" : "#ccc" }}>
+                    <span style={{ color: isActive ? "#00D8FF" : "#F1F5F9" }}>
                       {meta.name_cn}
                     </span>
-                    <span style={{ color: "#666", marginLeft: 6, fontSize: 10 }}>
+                    <span style={{ color: "#64748B", marginLeft: 6, fontSize: 10 }}>
                       {meta.name}
                     </span>
                   </div>
                   <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                     {!meta.is_free && (
-                      <span style={{ color: "#fbbf24", fontSize: 10 }}>PRO</span>
+                      <span style={{ color: "#00D8FF", fontSize: 10 }}>PRO</span>
                     )}
                     <button
                       onClick={e => {
@@ -207,7 +207,7 @@ export function IndicatorSelector({
                       }}
                       style={{
                         background: "none", border: "none",
-                        color: "#666", cursor: "pointer", fontSize: 12,
+                        color: "#64748B", cursor: "pointer", fontSize: 12,
                       }}>
                       ⚙
                     </button>
@@ -216,8 +216,8 @@ export function IndicatorSelector({
 
                 {/* Description */}
                 {isExpanded && (
-                  <div style={{ padding: "6px 12px", background: "#1a1a2e" }}>
-                    <div style={{ color: "#888", fontSize: 11, marginBottom: 6 }}>
+                  <div style={{ padding: "6px 12px", background: "#141b2d" }}>
+                    <div style={{ color: "#94A3B8", fontSize: 11, marginBottom: 6 }}>
                       {meta.description}
                     </div>
 
@@ -227,7 +227,7 @@ export function IndicatorSelector({
                         display: "flex", alignItems: "center", gap: 8,
                         marginBottom: 4,
                       }}>
-                        <label style={{ color: "#aaa", width: 80, fontSize: 11 }}>
+                        <label style={{ color: "#94A3B8", width: 80, fontSize: 11 }}>
                           {p.name}
                         </label>
                         <input
@@ -238,7 +238,7 @@ export function IndicatorSelector({
                           step={p.step}
                           onChange={e => handleParamChange(meta.name, p.name, parseFloat(e.target.value) || p.default)}
                           style={{
-                            width: 70, background: "#0f0f23", border: "1px solid #3a3a5a",
+                            width: 70, background: "#0A0E1A", border: "1px solid #1E293B",
                             color: "#fff", padding: "2px 6px", borderRadius: 3,
                             fontSize: 11, fontFamily: "monospace", outline: "none",
                           }}

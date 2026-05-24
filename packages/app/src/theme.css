@@ -1,6 +1,221 @@
 /* ══════════════════════════════════════════════════════════
-   Accessibility Theme — 适老化UI
-   Large font mode & High contrast mode
+   QuantVault — Cyber Finance Terminal Theme v0.9.0
+   Dark immersive design system for professional quant workstation
+   ══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Background layers ── */
+  --bg-base:       #0A0E1A;
+  --bg-surface:    #111827;
+  --bg-elevated:   #1a1f2e;
+  --bg-card:       #141b2d;
+
+  /* ── Borders ── */
+  --border-subtle: #1E293B;
+  --border-active: #00D8FF;
+
+  /* ── Accent neons ── */
+  --cyan:          #00D8FF;
+  --cyan-glow:     rgba(0, 216, 255, 0.15);
+  --violet:        #7C3CFF;
+  --violet-glow:   rgba(124, 60, 255, 0.12);
+  --amber:         #FF9A00;
+  --amber-glow:    rgba(255, 154, 0, 0.15);
+
+  /* ── Semantic colors ── */
+  --positive:      #00E676;
+  --negative:      #FF2A7A;
+  --warning:       #FF9A00;
+
+  /* ── Text ── */
+  --text-primary:  #F1F5F9;
+  --text-secondary:#94A3B8;
+  --text-muted:    #64748B;
+  --text-inverse:  #0A0E1A;
+
+  /* ── Typography ── */
+  --font-data:     "JetBrains Mono", "Consolas", monospace;
+  --font-ui:       "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:     "JetBrains Mono", "Consolas", monospace;
+
+  /* ── Sizing ── */
+  --sidebar-width: 56px;
+  --radius-sm:     3px;
+  --radius-md:     6px;
+  --radius-lg:     8px;
+
+  /* ── Shadows / Glow ── */
+  --glow-cyan:     0 0 10px rgba(0, 216, 255, 0.25);
+  --glow-violet:   0 0 10px rgba(124, 60, 255, 0.2);
+  --glow-card:     0 0 0 1px var(--border-subtle);
+}
+
+/* ── Global reset ── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── Scrollbar — cyber thin ── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* ── Selection ── */
+::selection {
+  background: rgba(0, 216, 255, 0.25);
+  color: var(--text-primary);
+}
+
+/* ── Focus ring ── */
+:focus-visible {
+  outline: 1px solid var(--cyan);
+  outline-offset: 2px;
+}
+
+/* ── Shared component classes (opt-in via className) ── */
+
+.cyber-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+
+.cyber-card:hover {
+  border-color: var(--cyan);
+  box-shadow: var(--cyan-glow);
+}
+
+.cyber-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 5px 14px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.cyber-btn-ghost:hover {
+  border-color: var(--cyan);
+  box-shadow: var(--glow-cyan);
+}
+
+.cyber-btn-primary {
+  background: var(--cyan);
+  border: none;
+  color: var(--text-inverse);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 16px;
+  transition: box-shadow 0.2s;
+}
+.cyber-btn-primary:hover {
+  box-shadow: var(--glow-cyan);
+}
+.cyber-btn-primary:disabled {
+  background: var(--border-subtle);
+  color: var(--text-muted);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.cyber-pro-badge {
+  padding: 2px 8px;
+  background: rgba(124, 60, 255, 0.15);
+  border: 1px solid rgba(124, 60, 255, 0.3);
+  color: var(--violet);
+  border-radius: var(--radius-sm);
+  font-size: 10px;
+  font-family: var(--font-mono);
+}
+
+.cyber-input {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.cyber-input:focus {
+  border-color: var(--cyan);
+  box-shadow: var(--cyan-glow);
+}
+
+.cyber-select {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  outline: none;
+}
+
+.cyber-divider {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 0;
+}
+
+/* ── Animated progress bar ── */
+@keyframes cyber-progress-slide {
+  0%   { left: -35%; }
+  100% { left: 100%; }
+}
+
+.cyber-progress-indeterminate {
+  height: 3px;
+  background: var(--border-subtle);
+  border-radius: 2px;
+  overflow: hidden;
+  position: relative;
+}
+.cyber-progress-indeterminate::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 35%;
+  background: linear-gradient(90deg, var(--cyan), var(--violet));
+  border-radius: 2px;
+  animation: cyber-progress-slide 1.2s ease-in-out infinite;
+}
+
+
+/* ══════════════════════════════════════════════════════════
+   Accessibility Theme — 适老化UI (preserved from v0.8.0)
    ══════════════════════════════════════════════════════════ */
 
 /* —— Large Font Mode —— */
@@ -74,12 +289,6 @@ html[data-high-contrast] body {
   color: #ffffff !important;
 }
 
-/* Force high-contrast overrides for common dark-theme backgrounds */
-html[data-high-contrast] [style*="background"] {
-  /* Let specific overrides handle this */
-}
-
-/* Buttons — ensure text is readable */
 html[data-high-contrast] button {
   border: 2px solid #ffffff !important;
   color: #ffffff !important;
@@ -91,7 +300,6 @@ html[data-high-contrast] button:hover {
   color: #000000 !important;
 }
 
-/* Inputs/selects — white borders */
 html[data-high-contrast] input,
 html[data-high-contrast] select,
 html[data-high-contrast] textarea {
@@ -100,7 +308,6 @@ html[data-high-contrast] textarea {
   background: #000000 !important;
 }
 
-/* Tables — clear borders */
 html[data-high-contrast] table,
 html[data-high-contrast] th,
 html[data-high-contrast] td {
@@ -112,24 +319,15 @@ html[data-high-contrast] th {
   background: #1a1a1a !important;
 }
 
-/* Links */
 html[data-high-contrast] a {
   color: #ffff00 !important;
 }
 
-/* Focus visible */
 html[data-high-contrast] *:focus-visible {
   outline: 3px solid #ffff00 !important;
   outline-offset: 2px;
 }
 
-/* Reduce transparency/blur effects for better readability */
-html[data-high-contrast] [style*="opacity"],
-html[data-high-contrast] [style*="rgba"] {
-  /* Preserve but ensure readability of text inside */
-}
-
-/* —— Combined mode — apply both —— */
 html[data-large-font][data-high-contrast] {
   /* Both modes active — each rule set applies independently */
 }

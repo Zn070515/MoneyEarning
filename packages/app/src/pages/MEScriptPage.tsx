@@ -181,16 +181,16 @@ export default function MEScriptPage() {
     <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", fontFamily: "monospace" }}>
       {/* Header */}
       <div style={{
-        padding: "10px 20px", background: "#16213e", borderBottom: "1px solid #2a2a4a",
+        padding: "10px 20px", background: "#111827", borderBottom: "1px solid #1E293B",
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <div style={{ display: "flex", gap: 16, alignItems: "center" }}>
-          <span style={{ color: "#fbbf24", fontWeight: 700, fontSize: 15 }}>ME Script 编辑器</span>
-          <span style={{ color: "#666", fontSize: 11 }}>通达信兼容语法 · 40+内置函数 · WASM沙箱编译执行</span>
+          <span style={{ color: "#00D8FF", fontWeight: 700, fontSize: 15 }}>ME Script 编辑器</span>
+          <span style={{ color: "#64748B", fontSize: 11 }}>通达信兼容语法 · 40+内置函数 · WASM沙箱编译执行</span>
         </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {!isPro && (
-            <span style={{ color: "#888", fontSize: 10, background: "#1a1a2e", padding: "2px 8px", borderRadius: 3 }}>
+            <span style={{ color: "#94A3B8", fontSize: 10, background: "#141b2d", padding: "2px 8px", borderRadius: 3 }}>
               免费版·基础功能
             </span>
           )}
@@ -203,7 +203,7 @@ export default function MEScriptPage() {
         <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
           {/* Toolbar */}
           <div style={{
-            padding: "8px 16px", background: "#1a1a2e", borderBottom: "1px solid #2a2a4a",
+            padding: "8px 16px", background: "#141b2d", borderBottom: "1px solid #1E293B",
             display: "flex", gap: 12, alignItems: "center",
           }}>
             <button onClick={handleCompile} disabled={compiling || !script.trim()}
@@ -215,7 +215,7 @@ export default function MEScriptPage() {
               }}>
               {compiling ? "编译中..." : "▶ 编译并测试"}
             </button>
-            <span style={{ color: "#666", fontSize: 11 }}>
+            <span style={{ color: "#64748B", fontSize: 11 }}>
               测试股票:
             </span>
             <input
@@ -224,21 +224,21 @@ export default function MEScriptPage() {
               onKeyDown={(e) => e.key === "Enter" && handleLookupStock()}
               placeholder="如 000001.SZ"
               style={{
-                width: 110, background: "#0f0f23", border: "1px solid #3a3a5a",
-                color: "#fbbf24", padding: "4px 8px", borderRadius: 3,
+                width: 110, background: "#0A0E1A", border: "1px solid #1E293B",
+                color: "#00D8FF", padding: "4px 8px", borderRadius: 3,
                 fontSize: 12, fontFamily: "monospace", outline: "none",
               }}
             />
             <button onClick={handleLookupStock}
               style={{
-                background: "#2a2a4a", color: "#ccc", border: "none",
+                background: "#1E293B", color: "#F1F5F9", border: "none",
                 padding: "4px 10px", borderRadius: 3, cursor: "pointer",
                 fontSize: 11, fontFamily: "monospace",
               }}>
               查找
             </button>
             {selectedStockId && (
-              <span style={{ color: "#888", fontSize: 10 }}>
+              <span style={{ color: "#94A3B8", fontSize: 10 }}>
                 (当前图表: {selectedStockCode} {selectedStockName})
               </span>
             )}
@@ -247,8 +247,8 @@ export default function MEScriptPage() {
           {/* Editor with line numbers */}
           <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
             <div style={{
-              padding: "12px 0", background: "#0f0f23",
-              borderRight: "1px solid #2a2a4a", minWidth: 44,
+              padding: "12px 0", background: "#0A0E1A",
+              borderRight: "1px solid #1E293B", minWidth: 44,
               textAlign: "right", userSelect: "none",
               fontSize: 13, lineHeight: "22px", color: "#555",
               fontFamily: '"JetBrains Mono", "Consolas", monospace',
@@ -280,8 +280,8 @@ export default function MEScriptPage() {
             <div style={{
               padding: "10px 16px", maxHeight: 160, overflow: "auto",
               background: compileResult.includes("✓") ? "#0a1a1a" : "#1a0a0a",
-              borderTop: "1px solid #2a2a4a",
-              color: compileResult.includes("✓") ? "#22c55e" : "#ef4444",
+              borderTop: "1px solid #1E293B",
+              color: compileResult.includes("✓") ? "#00E676" : "#FF2A7A",
               fontSize: 12, whiteSpace: "pre-wrap", lineHeight: "20px",
               fontFamily: "monospace",
             }}>
@@ -292,20 +292,20 @@ export default function MEScriptPage() {
 
         {/* Right sidebar */}
         <div style={{
-          width: 280, borderLeft: "1px solid #2a2a4a",
+          width: 280, borderLeft: "1px solid #1E293B",
           display: "flex", flexDirection: "column", overflow: "hidden",
-          background: "#16213e",
+          background: "#111827",
         }}>
           {/* Tab selector */}
-          <div style={{ display: "flex", borderBottom: "1px solid #2a2a4a" }}>
+          <div style={{ display: "flex", borderBottom: "1px solid #1E293B" }}>
             {(["reference", "templates"] as const).map((tab) => (
               <button key={tab} onClick={() => setRightTab(tab)} style={{
                 flex: 1, padding: "8px 12px", border: "none",
-                background: rightTab === tab ? "#1a1a2e" : "transparent",
-                color: rightTab === tab ? "#fbbf24" : "#888",
+                background: rightTab === tab ? "#141b2d" : "transparent",
+                color: rightTab === tab ? "#00D8FF" : "#94A3B8",
                 cursor: "pointer", fontSize: 12, fontWeight: rightTab === tab ? 600 : 400,
                 fontFamily: "monospace",
-                borderBottom: rightTab === tab ? "2px solid #fbbf24" : "2px solid transparent",
+                borderBottom: rightTab === tab ? "2px solid #00D8FF" : "2px solid transparent",
               }}>
                 {tab === "reference" ? "函数参考" : "快速模板"}
               </button>
@@ -317,7 +317,7 @@ export default function MEScriptPage() {
               <div style={{ padding: 12 }}>
                 {Object.entries(REFERENCE_CATEGORIES).map(([cat, funcs]) => (
                   <div key={cat} style={{ marginBottom: 16 }}>
-                    <div style={{ color: "#fbbf24", fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
+                    <div style={{ color: "#00D8FF", fontSize: 12, fontWeight: 600, marginBottom: 8 }}>
                       {cat}
                     </div>
                     {funcs.map((name) => {
@@ -334,8 +334,8 @@ export default function MEScriptPage() {
                             return s;
                           });
                         }}>
-                          <span style={{ color: "#60a5fa", fontFamily: "monospace" }}>{name}</span>
-                          <span style={{ color: "#666", textAlign: "right", maxWidth: 140 }}>
+                          <span style={{ color: "#00D8FF", fontFamily: "monospace" }}>{name}</span>
+                          <span style={{ color: "#64748B", textAlign: "right", maxWidth: 140 }}>
                             {desc ?? ""}
                           </span>
                         </div>
@@ -352,9 +352,9 @@ export default function MEScriptPage() {
                   <div key={t.label} onClick={() => setScript(t.script)}
                     style={{
                       padding: "8px 10px", cursor: "pointer", borderRadius: 4,
-                      marginBottom: 6, background: "#1a1a2e", border: "1px solid #2a2a4a",
+                      marginBottom: 6, background: "#141b2d", border: "1px solid #1E293B",
                     }}>
-                    <div style={{ color: "#ccc", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
+                    <div style={{ color: "#F1F5F9", fontSize: 12, fontWeight: 600, marginBottom: 4 }}>
                       {t.label}
                     </div>
                     <div style={{ color: "#555", fontSize: 10, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>

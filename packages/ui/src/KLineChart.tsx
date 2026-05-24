@@ -170,7 +170,7 @@ export function KLineChart({
       {activeTool && (
         <div style={{
           position: "absolute", top: 8, left: 8,
-          background: "rgba(251,191,36,0.15)", color: "#fbbf24",
+          background: "rgba(0,216,255,0.12)", color: "#00D8FF",
           padding: "4px 10px", borderRadius: 4, fontSize: 12,
           fontFamily: "monospace", pointerEvents: "none",
           border: "1px solid rgba(251,191,36,0.3)",
