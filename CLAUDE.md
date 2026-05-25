@@ -10,7 +10,7 @@
 - **核心计算**：Rust → WASM（技术指标、回测、选股扫描全部在 WASM 沙箱执行）
 - **数据存储**：SQLite（本地单文件数据库）
 - **图表渲染**：自研 Canvas + WebGL 引擎（对标 TradingView 交互体验）
-- **代码保护**：四层防御（Rust原生二进制 → JS混淆 → WASM加密嵌入 → RSA离线授权）
+- **技术架构**：Rust原生二进制 + WASM计算引擎 + React/TypeScript UI
 - **平台支持**：Windows（主力）+ macOS + Linux（暂缓）
 
 ## Agent skills 配置

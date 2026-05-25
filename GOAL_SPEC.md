@@ -1,6 +1,8 @@
 # GOAL_SPEC — 产品目标规格文档
 
-> 版本 v0.11.0 | 2026-05-24 | 图表细节增强 + 回测修复 + 安全审计硬化
+> 版本 v0.12.1 | 2026-05-24 | "可卖 Alpha 闸门"完成 — 合规重构 + 分发闸门 + P0 功能 + 文档体系 + UI 重新设计
+>
+> 本文档合并了原 GOAL_SPEC.md（产品愿景/架构/功能矩阵）和 NEXT_STAGE_SPEC.md（v0.12-v0.15 阶段任务书）的内容。
 
 ---
 
@@ -99,37 +101,74 @@
 
 ---
 
-## 变更日志 v0.12.0（规划中）
+## 变更日志 v0.12.1（已完成 — "可卖 Alpha 闸门"）
 
-> 目标：弥补 v0.10.0/v0.11.0 延后项，夯实核心体验
+> 发布日期：2026-05-24 | 目标：从"功能原型"推进为"可被真实用户下载、安装、理解、信任、试用、付费且合规风险可控的可卖 Alpha"
 
-### 优先级一：后台预警 + Windows 原生通知
-- 后台定时扫描（每5分钟自动检查所有预警规则）
-- Windows 原生 Toast 通知（`tauri-plugin-notification`）
-- 预警触发声音提示（Web Audio API 合成提示音）
-- 系统托盘图标 + 右键菜单
+### Phase 1 — 合规边界重构 ✅
 
-### 优先级二：多周期 K 线切换
-- 支持日线/周线/月线/60分钟/30分钟/15分钟/5分钟切换
-- 周线/月线通过日线数据合成（`DataFrame.resample()`）
-- 分钟线数据复用现有 `minute_prices` 表
-- ChartToolbar 周期选择器（下拉菜单或按钮组）
-- 2×2 网格模式下各画布独立周期
+**6 个合规文档**（`compliance/`）：
+- `securities-compliance-audit.md` — 逐条列出所有风险功能、风险原因、修改方式、A股合规框架
+- `prohibited-copywriting.md` — 100+ 禁止词/表达（荐股类、收益承诺类、稳赚暴涨类、目标价类、内幕主力类、代客决策类、虚假宣传类）
+- `allowed-copywriting.md` — 对应禁止词的合规替代表达、6种允许定位 + 示例文案
+- `risk-disclaimer.md` — 可复用风险免责声明模板（短版按钮下 + 长版独立页面版）
+- `feature-risk-classification.md` — L1-L4 四级风险分类，每个功能标注当前层级和建议 UI 措施
+- `product-positioning-boundary.md` — 产品定位一句话 + 允许/禁止定位清单 + 标准合规回复 Q&A
 
-### 优先级三：WebGL 散点图层
-- 筹码分布/成交量 Profile 图表切换至 WebGL 渲染
-- 10万+散点实时交互（缩放、刷选）
-- 散点着色按时间/价格/成交量维度
+**UI 合规改造**：
+- 高危功能改名："智能选股"→"条件扫描"、"买入信号"→"条件触发标记"、"牛股评分"→"技术条件匹配度"
+- 策略模板名称移除所有"高收益""稳赚""暴涨"字眼
+- 所有回测结果页/报告加入免责声明
+- L3 功能入口（扫描/策略/预警）加免责提示
+- DashboardPage 加风险提示入口
 
-### 优先级四：数据管理增强
-- 数据库备份/恢复（导出 SQLite → 用户选择目录）
-- 自动备份提醒（每7天提醒一次）
-- 数据清除确认对话框（按股票/按日期范围）
+### Phase 2 — 安装信任与分发闸门 ✅
 
-### 优先级五：体验小优化
-- 图表页键盘快捷键（← → 切换股票，Space 切换周期）
-- 策略回测结果一键导出 PNG 截图
-- 导入进度条支持多文件并行
+**6 个分发文档**（`distribution/`）：
+- `install-trust-audit.md` — 用户安装全部障碍清单 + 解决状态
+- `unsigned-windows-warning-guide.md` — SmartScreen 提示截图 + 用户操作步骤
+- `release-package-checklist.md` — 每次发版 15 项检查清单
+- `antivirus-false-positive-plan.md` — 误报处理流程 + VirusTotal 提交方案
+- `installer-user-guide.md` — 面向用户的安装教程（下载→安装→SmartScreen→校验→卸载）
+- `first-run-experience.md` — 首次使用 3 分钟体验设计
+
+### Phase 3 — v0.12 P0 功能实现 ✅
+
+1. **后台预警 + Windows 原生通知** — `tauri-plugin-notification`、后台定时器、前端 ReviewPage 扫描频率设置
+2. **系统托盘** — `TrayIconBuilder`、显示/隐藏/暂停预警/退出菜单
+3. **多周期 K 线** — 日/周/月/60m/30m/15m/5m/1m、`DataFrame.resample()`、ChartToolbar 周期选择器、2×2 网格独立周期
+4. **数据备份/恢复** — `backup_database`/`restore_database` 命令、SettingsPage 备份/恢复按钮、7天提醒
+5. **首次使用引导** — `OnboardingWizard` 3步向导（加载演示数据→导入通达信→快速教程）、localStorage 标记
+6. **错误状态与空状态优化** — KLineChart 降级 UI、各组件空状态占位
+
+### Phase 4-7 — 文档体系全面完成 ✅
+
+- **回测可信度审计**（`backtest-validation/` 5文档）— 未来函数检查、停牌/涨跌停/缺失数据处理、手续费/滑点配置、10+手工验证测试场景
+- **ME Script 兼容性验证**（`me-script/` 5文档）— 通达信兼容矩阵、50公式测试样例、用户友好错误提示规范、示例公式库、危险公式审计
+- **Alpha 测试准备**（`alpha-test/` 6文档）— 用户画像、测试脚本、反馈问卷、测试记录、Bug分级、通过线定义
+- **销售材料**（`sales/` 8文档）— Landing页、淘宝/闲鱼商品页、知乎文章、小红书帖子、50+FAQ、退款/售后政策
+- **授权 SOP**（`license/` 6文档）— 离线授权流程、激活码生成、用户指南、20+失败情况、交付SOP、防盗版边界
+- **发版闸门**（`release/` 7文档）— 发版检查清单18项、冒烟测试、回归测试、安全回归、性能基准、已知问题、变更日志
+
+### UI 重新设计 ✅
+
+- 自研设计系统：4级表面深度（`--bg-deepest`/`--bg-default`/`--bg-raised`/`--bg-modal`）
+- 专业金融终端配色：`#D4A017` 金色强调 + `#38BDF8` 辅助蓝
+- Inter（UI）+ JetBrains Mono（数据）双字体体系
+- 26个手写 SVG 图标组件（`icons.tsx`）
+- 自定义无边框标题栏（`Titlebar.tsx`）+ 窗口控制
+- 命令面板（`CommandPalette.tsx`：Ctrl+K 模糊搜索 + 最近使用）
+- 6种微动画（价格闪烁、骨架屏、面板入场、脉冲辉光、悬停浮动、玻璃拟态遮罩）
+- 零硬编码颜色——全部通过 CSS 变量引用
+
+### 关键验收问题回答
+
+1. **是否可给 5-10 个真实用户试用？** → 是，alpha 测试材料齐全
+2. **用户安装最大阻碍？** → Windows SmartScreen 警告（未签名），已准备用户指南
+3. **合规最大风险？** → 已解决：全产品文案统一为"本地离线数据分析工具"
+4. **用户问"能不能帮我选股/能不能赚钱"？** → 标准合规回复已就绪（`product-positioning-boundary.md`）
+5. **如何收款发码售后？** → 完整 SOP（`manual-delivery-sop.md` + `after-sales-policy.md` + `refund-policy.md`）
+6. **0 CRITICAL + 0 HIGH 安全问题** → 已通过 3 Agent 并行审计循环清零
 
 ---
 
@@ -2351,8 +2390,9 @@ COLORWHITE COLORCYAN COLORMAGENTA
 
 ---
 
-## 十五、待完成事项
+## 十五、完成事项
 
+### v0.11.0 前完成
 - [x] 技术指标 316个完整分类清单（10大类，pandas_ta+ThinkorSwim+通达信对标）
 - [x] 指标评价标准体系（7步流程、6大维度、双曲衰减模型、Löwdin正交化、2024学术前沿）
 - [x] 通达信76内置指标兼容映射（4大公式类型、50+函数兼容、ME Script设计方向）
@@ -2361,15 +2401,27 @@ COLORWHITE COLORCYAN COLORMAGENTA
 - [x] 功能矩阵每个细分项的用户故事（§十七）
 - [x] 每个模块的 UI/UX 线框图（§二十一）
 - [x] 打包/分发/自动更新方案（§十八）
-- [x] 适老化UI设计（大字体模式、高对比度模式）— `packages/app/src/theme.tsx` + `theme.css`
+- [x] 适老化UI设计（大字体模式、高对比度模式）
 - [x] 官网落地页设计（§二十）
 - [x] 定价策略 A/B 测试方案（§十九）
-- [x] Alpha158因子库→WASM迁移方案（162/158因子、DAG计算管线）— `crates/wasm-factors/src/`
-- [x] 4种原创搜索算法（CAPS/CGPC/MARS/MetaSearcher）的产品化方案 — `crates/wasm-scanner/src/search.rs`
-- [x] 数据下载源方案（A股日线/分钟线免费数据源选型）（§十六）
-- [x] WASM各模块性能基准测试方案 — `crates/wasm-*/src/benches.rs`（3个crate，10个bench case）
-- [x] ME Script编译器的完整实现（Lexer→Parser→AST→Compiler→Runtime — `crates/wasm-custom/src/` 6模块 + 27测试）
-- [x] 20个策略模板的完整回测验证（每个策略在A股2015-2024全周期测试）
+- [x] Alpha158因子库→WASM迁移方案
+- [x] 4种原创搜索算法产品化方案
+- [x] 数据下载源方案（§十六）
+- [x] WASM各模块性能基准测试方案
+- [x] ME Script编译器的完整实现（Lexer→Parser→AST→Compiler→Runtime）
+- [x] 20个策略模板的完整回测验证
+
+### v0.12.1 "可卖 Alpha 闸门"完成
+- [x] 合规边界重构：6 文档 + UI 改名/免责声明/风险分级
+- [x] 安装信任与分发闸门：6 文档 + 安装教程 + 首发体验设计
+- [x] P0 功能：后台预警 + Windows 通知 + 系统托盘 + 多周期 K 线 + 数据备份/恢复 + 首次使用引导
+- [x] 回测可信度审计：5 文档 + 10 手工验证测试场景
+- [x] ME Script 兼容性验证：5 文档 + 50 公式测试样例
+- [x] Alpha 测试准备：6 文档（用户画像/测试脚本/反馈问卷/测试记录/Bug分级/通过线）
+- [x] 销售材料：8 文档（Landing页/淘宝/闲鱼/知乎/小红书/FAQ/退款/售后）
+- [x] 授权 SOP：6 文档（离线授权/激活码生成/用户指南/失败处理/交付SOP/防盗版）
+- [x] 发版闸门：7 文档（检查清单/冒烟测试/回归测试/安全回归/性能基准/已知问题/变更日志）
+- [x] UI 重新设计：设计系统 + 26 SVG 图标 + 无边框标题栏 + 命令面板 + 6 微动画
 
 ---
 

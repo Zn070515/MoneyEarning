@@ -38,6 +38,13 @@ logs/
 *.db-journal
 *.db-wal
 
+# Internal planning & validation docs (not for public repo)
+compliance-external-review/
+external-validation/
+platform-validation/
+post-alpha/
+release-candidate/
+
 # Package locks (optional)
 pnpm-lock.yaml
 yarn.lock
