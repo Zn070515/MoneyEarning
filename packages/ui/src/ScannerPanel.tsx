@@ -734,7 +734,7 @@ export function ScannerPanel() {
                 </span>
               </div>
               <div>
-                <span style={{ color: "#858585" }}>推荐策略: </span>
+                <span style={{ color: "#858585" }}>匹配策略: </span>
                 <span style={{ color: "#CCAA00", fontWeight: 600 }}>
                   {strategyLabel(marsResult.recommended_strategy)}
                 </span>
@@ -744,7 +744,7 @@ export function ScannerPanel() {
               <thead>
                 <tr style={{ color: "#858585", borderBottom: "1px solid #2A2A2A" }}>
                   <th style={thStyle}>体制</th>
-                  <th style={thStyle}>推荐策略</th>
+                  <th style={thStyle}>匹配策略</th>
                   <th style={{ ...thStyle, textAlign: "right" }}>样本数</th>
                 </tr>
               </thead>
